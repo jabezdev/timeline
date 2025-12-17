@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Milestone } from '@/types/timeline';
-import { Flag, GripVertical } from 'lucide-react';
+import { Flag } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface MilestoneItemProps {
@@ -23,23 +23,17 @@ export function MilestoneItem({ milestone, workspaceColor }: MilestoneItemProps)
     <motion.div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`group relative flex items-center gap-2 px-3 py-2 rounded-lg bg-milestone/15 border border-milestone/30 hover:border-milestone/50 transition-all ${
+      className={`group relative flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-milestone/15 border border-milestone/30 hover:border-milestone/50 transition-all cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50 shadow-lg z-50' : ''
       }`}
     >
-      <div 
-        {...attributes} 
-        {...listeners}
-        className="drag-handle opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-      </div>
+      <Flag className="w-3 h-3 text-milestone shrink-0" />
       
-      <Flag className="w-4 h-4 text-milestone shrink-0" />
-      
-      <span className="text-sm font-medium text-milestone truncate">
+      <span className="text-xs font-medium text-milestone truncate">
         {milestone.title}
       </span>
     </motion.div>

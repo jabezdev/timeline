@@ -64,7 +64,7 @@ export function ProjectRow({
               const hasNote = project.notes.some(n => n.date === dateStr);
               
               return (
-                <div key={day.toISOString()} className="flex-1 min-w-[120px] flex items-center justify-center gap-1 border-r border-border/30 last:border-r-0">
+                <div key={day.toISOString()} className="flex-1 min-w-[100px] flex items-center justify-center gap-1 border-r border-border/30 last:border-r-0">
                   {hasMilestone && <div className="w-2 h-2 rounded-full bg-milestone" />}
                   {hasTask && <div className="w-2 h-2 rounded-full bg-task" />}
                   {hasNote && <div className="w-2 h-2 rounded-full bg-note" />}

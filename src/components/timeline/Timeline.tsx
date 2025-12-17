@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { addDays, subDays, startOfWeek, format } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
+import { addDays, subDays, startOfWeek } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
 import { WorkspaceSection } from './WorkspaceSection';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
@@ -81,6 +81,19 @@ export function Timeline() {
     ws.projects.map(p => ({ ...p, workspaceName: ws.name }))
   );
 
+  // Sort workspaces: active (not collapsed and has open project) first, then collapsed at bottom
+  const sortedWorkspaces = useMemo(() => {
+    const activeWorkspaces = workspaces.filter(ws => 
+      !ws.isCollapsed && ws.projects.some(p => p.id === openProjectId)
+    );
+    const expandedWorkspaces = workspaces.filter(ws => 
+      !ws.isCollapsed && !ws.projects.some(p => p.id === openProjectId)
+    );
+    const collapsedWorkspaces = workspaces.filter(ws => ws.isCollapsed);
+    
+    return [...activeWorkspaces, ...expandedWorkspaces, ...collapsedWorkspaces];
+  }, [workspaces, openProjectId]);
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col bg-background">
@@ -109,7 +122,7 @@ export function Timeline() {
           />
           
           <div className="min-w-fit">
-            {workspaces.map(workspace => (
+            {sortedWorkspaces.map(workspace => (
               <WorkspaceSection
                 key={workspace.id}
                 workspace={workspace}
