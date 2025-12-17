@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
-import { Workspace, Task, Note, Milestone } from '@/types/timeline';
+import { Workspace, Project, Task, Note, Milestone } from '@/types/timeline';
 import { sampleWorkspaces } from '@/data/sampleData';
 
 export function useTimelineStore() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>(sampleWorkspaces);
-  const [openProjectId, setOpenProjectId] = useState<string | null>('proj-1');
+  const [openProjectIds, setOpenProjectIds] = useState<Set<string>>(new Set(['proj-1']));
 
   const toggleWorkspace = useCallback((workspaceId: string) => {
     setWorkspaces(prev => prev.map(ws => 
@@ -12,9 +12,27 @@ export function useTimelineStore() {
     ));
   }, []);
 
-  const toggleProject = useCallback((projectId: string) => {
-    setOpenProjectId(prev => prev === projectId ? null : projectId);
-  }, []);
+  const toggleProject = useCallback((projectId: string, workspaceId: string) => {
+    setOpenProjectIds(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        // Close projects from other workspaces
+        const newWorkspaceProjects = workspaces
+          .find(ws => ws.id === workspaceId)?.projects.map(p => p.id) || [];
+        
+        prev.forEach(id => {
+          const isFromSameWorkspace = newWorkspaceProjects.includes(id);
+          if (!isFromSameWorkspace) {
+            next.delete(id);
+          }
+        });
+        next.add(projectId);
+      }
+      return next;
+    });
+  }, [workspaces]);
 
   const updateTaskDate = useCallback((taskId: string, newDate: string) => {
     setWorkspaces(prev => prev.map(ws => ({
@@ -100,9 +118,40 @@ export function useTimelineStore() {
     })));
   }, []);
 
+  const addWorkspace = useCallback((name: string, color: number) => {
+    const newWorkspace: Workspace = {
+      id: `ws-${Date.now()}`,
+      name,
+      color,
+      isCollapsed: false,
+      projects: [],
+    };
+    setWorkspaces(prev => [...prev, newWorkspace]);
+  }, []);
+
+  const addProject = useCallback((workspaceId: string, name: string) => {
+    setWorkspaces(prev => {
+      const workspace = prev.find(ws => ws.id === workspaceId);
+      const newProject: Project = {
+        id: `proj-${Date.now()}`,
+        name,
+        workspaceId,
+        color: workspace?.color || 1,
+        milestones: [],
+        tasks: [],
+        notes: [],
+      };
+      return prev.map(ws => 
+        ws.id === workspaceId 
+          ? { ...ws, projects: [...ws.projects, newProject] }
+          : ws
+      );
+    });
+  }, []);
+
   return {
     workspaces,
-    openProjectId,
+    openProjectIds,
     toggleWorkspace,
     toggleProject,
     updateTaskDate,
@@ -111,5 +160,7 @@ export function useTimelineStore() {
     toggleTaskComplete,
     addTask,
     addNote,
+    addWorkspace,
+    addProject,
   };
 }

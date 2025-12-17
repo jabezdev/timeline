@@ -32,24 +32,24 @@ export function ProjectRow({
       {/* Project header row */}
       <div className="flex">
         <div 
-          className="w-72 shrink-0 flex items-center gap-2 px-4 py-2 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors"
+          className="w-56 shrink-0 flex items-center gap-1.5 px-2 py-1 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors"
           onClick={onToggle}
         >
-          <div className="pl-4 flex items-center gap-2">
+          <div className="pl-3 flex items-center gap-1.5">
             {isOpen ? (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              <ChevronDown className="w-3 h-3 text-muted-foreground" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <ChevronRight className="w-3 h-3 text-muted-foreground" />
             )}
             <FolderKanban 
-              className="w-4 h-4" 
+              className="w-3 h-3" 
               style={{ color: `hsl(var(--workspace-${workspaceColor}))` }}
             />
-            <span className="text-sm font-medium text-foreground truncate">
+            <span className="text-xs font-medium text-foreground truncate">
               {project.name}
             </span>
           </div>
-          <span className="ml-auto text-xs text-muted-foreground">
+          <span className="ml-auto text-[10px] text-muted-foreground">
             {completedCount}/{taskCount}
           </span>
         </div>
@@ -64,10 +64,10 @@ export function ProjectRow({
               const hasNote = project.notes.some(n => n.date === dateStr);
               
               return (
-                <div key={day.toISOString()} className="flex-1 min-w-[100px] flex items-center justify-center gap-1 border-r border-border/30 last:border-r-0">
-                  {hasMilestone && <div className="w-2 h-2 rounded-full bg-milestone" />}
-                  {hasTask && <div className="w-2 h-2 rounded-full bg-task" />}
-                  {hasNote && <div className="w-2 h-2 rounded-full bg-note" />}
+                <div key={day.toISOString()} className="flex-1 min-w-[80px] flex items-center justify-center gap-0.5 border-r border-border/30 last:border-r-0">
+                  {hasMilestone && <div className="w-1.5 h-1.5 rounded-full bg-milestone" />}
+                  {hasTask && <div className="w-1.5 h-1.5 rounded-full bg-task" />}
+                  {hasNote && <div className="w-1.5 h-1.5 rounded-full bg-note" />}
                 </div>
               );
             })}
@@ -86,7 +86,7 @@ export function ProjectRow({
             className="overflow-hidden"
           >
             <div className="flex">
-              <div className="w-72 shrink-0 border-r border-border" />
+              <div className="w-56 shrink-0 border-r border-border" />
               <div className="flex flex-1 overflow-hidden">
                 {days.map((day) => (
                   <TimelineCell

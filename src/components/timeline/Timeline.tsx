@@ -14,7 +14,7 @@ export function Timeline() {
   
   const { 
     workspaces, 
-    openProjectId, 
+    openProjectIds, 
     toggleWorkspace, 
     toggleProject,
     updateTaskDate,
@@ -23,6 +23,8 @@ export function Timeline() {
     toggleTaskComplete,
     addTask,
     addNote,
+    addWorkspace,
+    addProject,
   } = useTimelineStore();
 
   const sensors = useSensors(
@@ -73,60 +75,41 @@ export function Timeline() {
     } else {
       addNote(projectId, content, date, type);
     }
-    setIsAddDialogOpen(false);
   };
 
-  // Get all projects for the add dialog
   const allProjects = workspaces.flatMap(ws => 
     ws.projects.map(p => ({ ...p, workspaceName: ws.name }))
   );
 
-  // Sort workspaces: active (not collapsed and has open project) first, then collapsed at bottom
+  // Sort: active workspaces (with open projects) first, then expanded, then collapsed
   const sortedWorkspaces = useMemo(() => {
-    const activeWorkspaces = workspaces.filter(ws => 
-      !ws.isCollapsed && ws.projects.some(p => p.id === openProjectId)
-    );
-    const expandedWorkspaces = workspaces.filter(ws => 
-      !ws.isCollapsed && !ws.projects.some(p => p.id === openProjectId)
-    );
+    const hasOpenProject = (ws: typeof workspaces[0]) => 
+      ws.projects.some(p => openProjectIds.has(p.id));
+    
+    const activeWorkspaces = workspaces.filter(ws => !ws.isCollapsed && hasOpenProject(ws));
+    const expandedWorkspaces = workspaces.filter(ws => !ws.isCollapsed && !hasOpenProject(ws));
     const collapsedWorkspaces = workspaces.filter(ws => ws.isCollapsed);
     
     return [...activeWorkspaces, ...expandedWorkspaces, ...collapsedWorkspaces];
-  }, [workspaces, openProjectId]);
+  }, [workspaces, openProjectIds]);
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col bg-background">
-        {/* Top bar */}
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Timeline</h1>
-            <p className="text-sm text-muted-foreground">Your productivity flow, visualized</p>
-          </div>
-          
-          <button
-            onClick={() => setIsAddDialogOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Item
-          </button>
-        </header>
-
         {/* Timeline */}
+        <TimelineHeader 
+          startDate={startDate} 
+          visibleDays={visibleDays}
+          onNavigate={handleNavigate}
+        />
+        
         <div className="flex-1 overflow-auto">
-          <TimelineHeader 
-            startDate={startDate} 
-            visibleDays={visibleDays}
-            onNavigate={handleNavigate}
-          />
-          
           <div className="min-w-fit">
             {sortedWorkspaces.map(workspace => (
               <WorkspaceSection
                 key={workspace.id}
                 workspace={workspace}
-                openProjectId={openProjectId}
+                openProjectIds={openProjectIds}
                 onToggleWorkspace={() => toggleWorkspace(workspace.id)}
                 onToggleProject={toggleProject}
                 startDate={startDate}
@@ -137,31 +120,23 @@ export function Timeline() {
           </div>
         </div>
         
-        {/* Legend */}
-        <div className="flex items-center gap-6 px-6 py-3 border-t border-border bg-secondary/20">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-milestone" />
-            <span className="text-xs text-muted-foreground">Milestone</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-task" />
-            <span className="text-xs text-muted-foreground">Task</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-note" />
-            <span className="text-xs text-muted-foreground">Note</span>
-          </div>
-          <span className="text-xs text-muted-foreground ml-auto">
-            Drag items to reschedule • Click checkboxes to complete tasks
-          </span>
-        </div>
+        {/* Floating Add Button */}
+        <button
+          onClick={() => setIsAddDialogOpen(true)}
+          className="fixed bottom-4 right-4 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
       </div>
       
       <AddItemDialog 
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddItem}
+        onAddItem={handleAddItem}
+        onAddWorkspace={addWorkspace}
+        onAddProject={addProject}
         projects={allProjects}
+        workspaces={workspaces}
       />
     </DndContext>
   );

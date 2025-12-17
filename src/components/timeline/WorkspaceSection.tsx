@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
-  openProjectId: string | null;
+  openProjectIds: Set<string>;
   onToggleWorkspace: () => void;
-  onToggleProject: (projectId: string) => void;
+  onToggleProject: (projectId: string, workspaceId: string) => void;
   startDate: Date;
   visibleDays: number;
   onToggleTaskComplete: (taskId: string) => void;
@@ -15,7 +15,7 @@ interface WorkspaceSectionProps {
 
 export function WorkspaceSection({ 
   workspace, 
-  openProjectId,
+  openProjectIds,
   onToggleWorkspace, 
   onToggleProject,
   startDate, 
@@ -24,41 +24,46 @@ export function WorkspaceSection({
 }: WorkspaceSectionProps) {
   const totalTasks = workspace.projects.reduce((acc, p) => acc + p.tasks.length, 0);
   const completedTasks = workspace.projects.reduce((acc, p) => acc + p.tasks.filter(t => t.completed).length, 0);
+  const completionPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
   return (
     <div className="border-b border-border">
       {/* Workspace header */}
       <div 
-        className="flex items-center gap-3 px-4 py-3 bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors"
+        className="flex items-center gap-2 px-2 py-1.5 bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors"
         onClick={onToggleWorkspace}
       >
         {workspace.isCollapsed ? (
-          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
         )}
         
+        {/* Stats on left */}
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground min-w-[80px]">
+          <span>{workspace.projects.length}p</span>
+          <div className="flex items-center gap-1">
+            <div className="w-12 h-1 bg-secondary rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-task rounded-full transition-all" 
+                style={{ width: `${completionPercent}%` }}
+              />
+            </div>
+            <span>{completedTasks}/{totalTasks}</span>
+          </div>
+        </div>
+        
         <div 
-          className="w-8 h-8 rounded-lg flex items-center justify-center"
+          className="w-5 h-5 rounded flex items-center justify-center shrink-0"
           style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.2)` }}
         >
           <Building2 
-            className="w-4 h-4" 
+            className="w-3 h-3" 
             style={{ color: `hsl(var(--workspace-${workspace.color}))` }}
           />
         </div>
         
-        <div className="flex-1">
-          <h2 className="font-semibold text-foreground">{workspace.name}</h2>
-          <p className="text-xs text-muted-foreground">
-            {workspace.projects.length} project{workspace.projects.length !== 1 ? 's' : ''} • {completedTasks}/{totalTasks} tasks
-          </p>
-        </div>
-        
-        <div 
-          className="w-2 h-8 rounded-full"
-          style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}))` }}
-        />
+        <span className="text-xs font-medium text-foreground truncate">{workspace.name}</span>
       </div>
       
       {/* Projects */}
@@ -75,8 +80,8 @@ export function WorkspaceSection({
               <ProjectRow
                 key={project.id}
                 project={project}
-                isOpen={openProjectId === project.id}
-                onToggle={() => onToggleProject(project.id)}
+                isOpen={openProjectIds.has(project.id)}
+                onToggle={() => onToggleProject(project.id, workspace.id)}
                 startDate={startDate}
                 visibleDays={visibleDays}
                 workspaceColor={workspace.color}
