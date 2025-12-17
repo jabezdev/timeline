@@ -1,5 +1,5 @@
 import { useDroppable } from '@dnd-kit/core';
-import { format, addDays, isSameDay, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { Project } from '@/types/timeline';
 import { TaskItem } from './TaskItem';
 import { NoteItem } from './NoteItem';
@@ -10,9 +10,10 @@ interface TimelineCellProps {
   project: Project;
   workspaceColor: number;
   onToggleTaskComplete: (taskId: string) => void;
+  cellWidth: number;
 }
 
-export function TimelineCell({ date, project, workspaceColor, onToggleTaskComplete }: TimelineCellProps) {
+export function TimelineCell({ date, project, workspaceColor, onToggleTaskComplete, cellWidth }: TimelineCellProps) {
   const dateStr = format(date, 'yyyy-MM-dd');
   
   const { setNodeRef, isOver } = useDroppable({
@@ -24,14 +25,13 @@ export function TimelineCell({ date, project, workspaceColor, onToggleTaskComple
   const dayTasks = project.tasks.filter(task => task.date === dateStr);
   const dayNotes = project.notes.filter(note => note.date === dateStr);
 
-  const hasItems = dayMilestones.length > 0 || dayTasks.length > 0 || dayNotes.length > 0;
-
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[80px] min-h-[40px] px-1 py-1 border-r border-border last:border-r-0 transition-colors ${
+      className={`min-h-[40px] px-1 py-1 border-r border-border last:border-r-0 transition-colors shrink-0 ${
         isOver ? 'bg-primary/10' : ''
       }`}
+      style={{ width: cellWidth, minWidth: cellWidth }}
     >
       <div className="flex flex-col gap-1">
         {dayMilestones.map(milestone => (

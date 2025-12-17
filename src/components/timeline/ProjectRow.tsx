@@ -14,6 +14,9 @@ interface ProjectRowProps {
   onToggleTaskComplete: (taskId: string) => void;
 }
 
+const SIDEBAR_WIDTH = 200;
+const CELL_WIDTH = 80;
+
 export function ProjectRow({ 
   project, 
   isOpen, 
@@ -31,32 +34,34 @@ export function ProjectRow({
     <div className="border-b border-border/50">
       {/* Project header row */}
       <div className="flex">
+        {/* Sticky project title */}
         <div 
-          className="w-72 shrink-0 flex items-center gap-1.5 px-2 py-1 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors sticky left-0 bg-background z-10"
+          className="flex items-center gap-1.5 px-2 py-1 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors sticky left-0 bg-background z-10"
+          style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
           onClick={onToggle}
         >
-          <div className="pl-3 flex items-center gap-1.5 flex-1">
+          <div className="pl-3 flex items-center gap-1.5 flex-1 min-w-0">
             {isOpen ? (
-              <ChevronDown className="w-3 h-3 text-muted-foreground" />
+              <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
             ) : (
-              <ChevronRight className="w-3 h-3 text-muted-foreground" />
+              <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
             )}
             <FolderKanban 
-              className="w-3 h-3" 
+              className="w-3 h-3 shrink-0" 
               style={{ color: `hsl(var(--workspace-${workspaceColor}))` }}
             />
             <span className="text-xs font-medium text-foreground truncate">
               {project.name}
             </span>
           </div>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground shrink-0">
             {completedCount}/{taskCount}
           </span>
         </div>
         
-        {/* Collapsed state - show summary dots */}
+        {/* Date cells - collapsed shows dots */}
         {!isOpen && (
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex">
             {days.map((day) => {
               const dateStr = day.toISOString().split('T')[0];
               const hasMilestone = project.milestones.some(ms => ms.date === dateStr);
@@ -64,7 +69,11 @@ export function ProjectRow({
               const hasNote = project.notes.some(n => n.date === dateStr);
               
               return (
-                <div key={day.toISOString()} className="flex-1 min-w-[80px] flex items-center justify-center gap-0.5 border-r border-border/30 last:border-r-0">
+                <div 
+                  key={day.toISOString()} 
+                  className="flex items-center justify-center gap-0.5 border-r border-border/30 last:border-r-0"
+                  style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
+                >
                   {hasMilestone && <div className="w-1.5 h-1.5 rounded-full bg-milestone" />}
                   {hasTask && <div className="w-1.5 h-1.5 rounded-full bg-task" />}
                   {hasNote && <div className="w-1.5 h-1.5 rounded-full bg-note" />}
@@ -86,8 +95,13 @@ export function ProjectRow({
             className="overflow-hidden"
           >
             <div className="flex">
-              <div className="w-72 shrink-0 border-r border-border sticky left-0 bg-background z-10" />
-              <div className="flex flex-1 overflow-hidden">
+              {/* Sticky spacer */}
+              <div 
+                className="border-r border-border sticky left-0 bg-background z-10 shrink-0" 
+                style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
+              />
+              {/* Timeline cells */}
+              <div className="flex">
                 {days.map((day) => (
                   <TimelineCell
                     key={day.toISOString()}
@@ -95,6 +109,7 @@ export function ProjectRow({
                     project={project}
                     workspaceColor={workspaceColor}
                     onToggleTaskComplete={onToggleTaskComplete}
+                    cellWidth={CELL_WIDTH}
                   />
                 ))}
               </div>

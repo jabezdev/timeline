@@ -29,45 +29,42 @@ export function WorkspaceSection({
 
   return (
     <div className="border-b border-border">
-      {/* Workspace header */}
+      {/* Workspace header - spans full width */}
       <div 
-        className="flex bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors"
+        className="flex items-center gap-2 px-2 py-1.5 bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors sticky left-0 z-10"
         onClick={onToggleWorkspace}
       >
-        <div className="w-72 shrink-0 flex items-center gap-2 px-2 py-1.5 sticky left-0 bg-secondary/30 z-10 border-r border-border">
-          {workspace.isCollapsed ? (
-            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-          )}
-          
-          <div 
-            className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.2)` }}
-          >
-            <Building2 
-              className="w-3 h-3" 
-              style={{ color: `hsl(var(--workspace-${workspace.color}))` }}
-            />
-          </div>
-          
-          <span className="text-xs font-medium text-foreground truncate">{workspace.name}</span>
-          
-          {/* Stats on right side */}
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground ml-auto shrink-0">
-            <span>{projectCount} {projectCount === 1 ? 'project' : 'projects'}</span>
-            <div className="flex items-center gap-1">
-              <div className="w-8 h-1 bg-secondary rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-task rounded-full transition-all" 
-                  style={{ width: `${completionPercent}%` }}
-                />
-              </div>
-              <span>{completedTasks}/{totalTasks}</span>
+        {workspace.isCollapsed ? (
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+        )}
+        
+        <div 
+          className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+          style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.2)` }}
+        >
+          <Building2 
+            className="w-3 h-3" 
+            style={{ color: `hsl(var(--workspace-${workspace.color}))` }}
+          />
+        </div>
+        
+        <span className="text-xs font-medium text-foreground">{workspace.name}</span>
+        
+        {/* Stats on rightmost side */}
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground ml-auto">
+          <span>{projectCount} {projectCount === 1 ? 'project' : 'projects'}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-12 h-1 bg-secondary rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-task rounded-full transition-all" 
+                style={{ width: `${completionPercent}%` }}
+              />
             </div>
+            <span>{completedTasks}/{totalTasks} tasks</span>
           </div>
         </div>
-        <div className="flex-1" />
       </div>
       
       {/* Projects */}

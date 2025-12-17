@@ -8,14 +8,20 @@ interface TimelineHeaderProps {
   scrollRef: RefObject<HTMLDivElement>;
 }
 
+const SIDEBAR_WIDTH = 200;
+const CELL_WIDTH = 80;
+
 export function TimelineHeader({ startDate, visibleDays, onNavigate, scrollRef }: TimelineHeaderProps) {
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
 
   return (
     <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="flex">
-        {/* Sticky sidebar spacer */}
-        <div className="w-72 shrink-0 flex items-center justify-between px-2 py-1.5 border-r border-border bg-background/95 sticky left-0 z-10">
+        {/* Sticky navigation */}
+        <div 
+          className="shrink-0 flex items-center justify-between px-2 py-1.5 border-r border-border bg-background/95 sticky left-0 z-10"
+          style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
+        >
           <button 
             onClick={() => onNavigate('prev')}
             className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
@@ -33,17 +39,18 @@ export function TimelineHeader({ startDate, visibleDays, onNavigate, scrollRef }
           </button>
         </div>
         
-        {/* Date columns - scrollable */}
+        {/* Date columns - fixed width, scrollable */}
         <div 
           ref={scrollRef}
-          className="flex flex-1 overflow-hidden"
+          className="flex overflow-hidden"
         >
           {days.map((day) => (
             <div
               key={day.toISOString()}
-              className={`flex-1 min-w-[80px] px-1 py-1 text-center border-r border-border last:border-r-0 transition-colors ${
+              className={`px-1 py-1 text-center border-r border-border last:border-r-0 transition-colors ${
                 isToday(day) ? 'bg-primary/10' : ''
               }`}
+              style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
             >
               <div className={`text-[10px] font-medium uppercase tracking-wider ${
                 isToday(day) ? 'text-primary' : 'text-muted-foreground'
