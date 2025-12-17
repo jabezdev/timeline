@@ -1,4 +1,4 @@
-import { format, addDays, isToday, isSameDay } from 'date-fns';
+import { format, addDays, isToday } from 'date-fns';
 
 interface TimelineHeaderProps {
   startDate: Date;
@@ -13,19 +13,19 @@ export function TimelineHeader({ startDate, visibleDays, onNavigate }: TimelineH
     <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="flex">
         {/* Sidebar spacer */}
-        <div className="w-72 shrink-0 flex items-center justify-between px-4 py-3 border-r border-border">
+        <div className="w-56 shrink-0 flex items-center justify-between px-2 py-1.5 border-r border-border">
           <button 
             onClick={() => onNavigate('prev')}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
           >
             ←
           </button>
-          <span className="text-sm font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {format(startDate, 'MMM yyyy')}
           </span>
           <button 
             onClick={() => onNavigate('next')}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
           >
             →
           </button>
@@ -36,23 +36,20 @@ export function TimelineHeader({ startDate, visibleDays, onNavigate }: TimelineH
           {days.map((day) => (
             <div
               key={day.toISOString()}
-              className={`flex-1 min-w-[100px] px-1.5 py-2 text-center border-r border-border last:border-r-0 transition-colors ${
+              className={`flex-1 min-w-[80px] px-1 py-1 text-center border-r border-border last:border-r-0 transition-colors ${
                 isToday(day) ? 'bg-primary/10' : ''
               }`}
             >
-              <div className={`text-xs font-medium uppercase tracking-wider ${
+              <div className={`text-[10px] font-medium uppercase tracking-wider ${
                 isToday(day) ? 'text-primary' : 'text-muted-foreground'
               }`}>
                 {format(day, 'EEE')}
               </div>
-              <div className={`text-lg font-semibold mt-0.5 ${
+              <div className={`text-sm font-semibold ${
                 isToday(day) ? 'text-primary' : 'text-foreground'
               }`}>
                 {format(day, 'd')}
               </div>
-              {isToday(day) && (
-                <div className="w-1.5 h-1.5 rounded-full bg-primary mx-auto mt-1" />
-              )}
             </div>
           ))}
         </div>

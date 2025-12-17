@@ -29,7 +29,7 @@ export function TimelineCell({ date, project, workspaceColor, onToggleTaskComple
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[100px] min-h-[60px] px-1.5 py-1.5 border-r border-border last:border-r-0 transition-colors ${
+      className={`flex-1 min-w-[80px] min-h-[40px] px-1 py-1 border-r border-border last:border-r-0 transition-colors ${
         isOver ? 'bg-primary/10' : ''
       }`}
     >
