@@ -32,10 +32,10 @@ export function ProjectRow({
       {/* Project header row */}
       <div className="flex">
         <div 
-          className="w-56 shrink-0 flex items-center gap-1.5 px-2 py-1 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors"
+          className="w-72 shrink-0 flex items-center gap-1.5 px-2 py-1 border-r border-border cursor-pointer hover:bg-secondary/30 transition-colors sticky left-0 bg-background z-10"
           onClick={onToggle}
         >
-          <div className="pl-3 flex items-center gap-1.5">
+          <div className="pl-3 flex items-center gap-1.5 flex-1">
             {isOpen ? (
               <ChevronDown className="w-3 h-3 text-muted-foreground" />
             ) : (
@@ -49,7 +49,7 @@ export function ProjectRow({
               {project.name}
             </span>
           </div>
-          <span className="ml-auto text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground">
             {completedCount}/{taskCount}
           </span>
         </div>
@@ -86,7 +86,7 @@ export function ProjectRow({
             className="overflow-hidden"
           >
             <div className="flex">
-              <div className="w-56 shrink-0 border-r border-border" />
+              <div className="w-72 shrink-0 border-r border-border sticky left-0 bg-background z-10" />
               <div className="flex flex-1 overflow-hidden">
                 {days.map((day) => (
                   <TimelineCell

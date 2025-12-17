@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { addDays, subDays, startOfWeek } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
@@ -11,6 +11,9 @@ export function Timeline() {
   const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const visibleDays = 14;
+  
+  const headerScrollRef = useRef<HTMLDivElement>(null);
+  const contentScrollRef = useRef<HTMLDivElement>(null);
   
   const { 
     workspaces, 
@@ -42,6 +45,12 @@ export function Timeline() {
         : subDays(prev, 7)
     );
   };
+
+  const handleContentScroll = useCallback(() => {
+    if (contentScrollRef.current && headerScrollRef.current) {
+      headerScrollRef.current.scrollLeft = contentScrollRef.current.scrollLeft;
+    }
+  }, []);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -96,14 +105,20 @@ export function Timeline() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col bg-background">
-        {/* Timeline */}
+        {/* Timeline Header */}
         <TimelineHeader 
           startDate={startDate} 
           visibleDays={visibleDays}
           onNavigate={handleNavigate}
+          scrollRef={headerScrollRef}
         />
         
-        <div className="flex-1 overflow-auto">
+        {/* Content area with synchronized scroll */}
+        <div 
+          ref={contentScrollRef}
+          className="flex-1 overflow-auto"
+          onScroll={handleContentScroll}
+        >
           <div className="min-w-fit">
             {sortedWorkspaces.map(workspace => (
               <WorkspaceSection
