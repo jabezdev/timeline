@@ -15,7 +15,7 @@ interface ProjectRowProps {
 }
 
 const SIDEBAR_WIDTH = 200;
-const CELL_WIDTH = 80;
+const CELL_WIDTH = 180;
 
 export function ProjectRow({ 
   project, 
