@@ -36,7 +36,7 @@ export function TimelineHeader({ startDate, visibleDays, onNavigate }: TimelineH
           {days.map((day) => (
             <div
               key={day.toISOString()}
-              className={`flex-1 min-w-[120px] px-2 py-3 text-center border-r border-border last:border-r-0 transition-colors ${
+              className={`flex-1 min-w-[100px] px-1.5 py-2 text-center border-r border-border last:border-r-0 transition-colors ${
                 isToday(day) ? 'bg-primary/10' : ''
               }`}
             >

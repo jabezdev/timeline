@@ -29,13 +29,13 @@ export function TimelineCell({ date, project, workspaceColor, onToggleTaskComple
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[120px] min-h-[80px] px-2 py-2 border-r border-border last:border-r-0 transition-colors ${
+      className={`flex-1 min-w-[100px] min-h-[60px] px-1.5 py-1.5 border-r border-border last:border-r-0 transition-colors ${
         isOver ? 'bg-primary/10' : ''
       }`}
     >
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         {dayMilestones.map(milestone => (
-          <MilestoneItem 
+          <MilestoneItem
             key={milestone.id} 
             milestone={milestone}
             workspaceColor={workspaceColor}

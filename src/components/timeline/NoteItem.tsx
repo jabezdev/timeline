@@ -1,7 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Note } from '@/types/timeline';
-import { GripVertical, BookOpen, FileText } from 'lucide-react';
+import { BookOpen, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface NoteItemProps {
@@ -25,23 +25,17 @@ export function NoteItem({ note, workspaceColor }: NoteItemProps) {
     <motion.div
       ref={setNodeRef}
       style={style}
+      {...attributes}
+      {...listeners}
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`group relative flex items-start gap-2 px-3 py-2 rounded-lg bg-note/10 border border-note/20 hover:border-note/40 transition-all cursor-pointer ${
+      className={`group relative flex items-start gap-1.5 px-2 py-1.5 rounded-md bg-note/10 border border-note/20 hover:border-note/40 transition-all cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50 shadow-lg z-50' : ''
       }`}
     >
-      <div 
-        {...attributes} 
-        {...listeners}
-        className="drag-handle opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"
-      >
-        <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
-      </div>
+      <Icon className="w-3 h-3 text-note shrink-0 mt-0.5" />
       
-      <Icon className="w-4 h-4 text-note shrink-0 mt-0.5" />
-      
-      <p className="text-sm text-foreground/90 line-clamp-2">
+      <p className="text-xs text-foreground/90 line-clamp-2">
         {note.content}
       </p>
     </motion.div>
