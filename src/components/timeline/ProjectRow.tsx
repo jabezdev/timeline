@@ -3,6 +3,7 @@ import { Project } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
 import { ChevronDown, ChevronRight, FolderKanban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SIDEBAR_WIDTH, CELL_WIDTH } from './TimelineHeader';
 
 interface ProjectRowProps {
   project: Project;
@@ -14,8 +15,6 @@ interface ProjectRowProps {
   onToggleTaskComplete: (taskId: string) => void;
 }
 
-const SIDEBAR_WIDTH = 200;
-const CELL_WIDTH = 180;
 
 export function ProjectRow({ 
   project, 
