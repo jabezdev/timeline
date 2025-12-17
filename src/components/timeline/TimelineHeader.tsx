@@ -9,7 +9,7 @@ interface TimelineHeaderProps {
 }
 
 const SIDEBAR_WIDTH = 200;
-const CELL_WIDTH = 80;
+const CELL_WIDTH = 180;
 
 export function TimelineHeader({ startDate, visibleDays, onNavigate, scrollRef }: TimelineHeaderProps) {
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
