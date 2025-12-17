@@ -14,20 +14,30 @@ export function useTimelineStore() {
 
   const toggleProject = useCallback((projectId: string, workspaceId: string) => {
     setOpenProjectIds(prev => {
-      const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
+      const next = new Set<string>();
+      if (prev.has(projectId)) {
+        // Closing this project - just remove it
+        prev.forEach(id => {
+          if (id !== projectId) next.add(id);
+        });
       } else {
-        // Close projects from other workspaces
+        // Opening a new project - check if from same workspace
         const newWorkspaceProjects = workspaces
           .find(ws => ws.id === workspaceId)?.projects.map(p => p.id) || [];
         
-        prev.forEach(id => {
-          const isFromSameWorkspace = newWorkspaceProjects.includes(id);
-          if (!isFromSameWorkspace) {
-            next.delete(id);
-          }
-        });
+        const hasProjectFromSameWorkspace = Array.from(prev).some(id => 
+          newWorkspaceProjects.includes(id)
+        );
+        
+        if (hasProjectFromSameWorkspace) {
+          // Keep existing projects from same workspace
+          prev.forEach(id => {
+            if (newWorkspaceProjects.includes(id)) {
+              next.add(id);
+            }
+          });
+        }
+        // Otherwise close all (next stays empty except for new project)
         next.add(projectId);
       }
       return next;
