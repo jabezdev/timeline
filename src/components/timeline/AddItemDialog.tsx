@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { format } from 'date-fns';
-import { X, CheckSquare, Building2, FolderKanban } from 'lucide-react';
+import { format, addDays } from 'date-fns';
+import { X, CheckSquare, Building2, FolderKanban, FolderGit2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workspace } from '@/types/timeline';
 
@@ -16,16 +16,18 @@ interface AddItemDialogProps {
   onAddItem: (title: string, date: string, projectId: string) => void;
   onAddWorkspace: (name: string, color: number) => void;
   onAddProject: (workspaceId: string, name: string) => void;
+  onAddSubProject: (projectId: string, title: string, startDate: string, endDate: string) => void;
   projects: Project[];
   workspaces: Workspace[];
 }
 
-type ItemType = 'workspace' | 'project' | 'item';
+type ItemType = 'workspace' | 'project' | 'sub-project' | 'item';
 
-export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAddProject, projects, workspaces }: AddItemDialogProps) {
+export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAddProject, onAddSubProject, projects, workspaces }: AddItemDialogProps) {
   const [type, setType] = useState<ItemType>('item');
   const [content, setContent] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(addDays(new Date(), 5), 'yyyy-MM-dd'));
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
   const [workspaceId, setWorkspaceId] = useState(workspaces[0]?.id || '');
   const [workspaceColor, setWorkspaceColor] = useState(1);
@@ -39,6 +41,9 @@ export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAd
     } else if (type === 'project') {
       if (!workspaceId) return;
       onAddProject(workspaceId, content);
+    } else if (type === 'sub-project') {
+      if (!projectId) return;
+      onAddSubProject(projectId, content, date, endDate);
     } else {
       if (!projectId) return;
       onAddItem(content, date, projectId);
@@ -49,6 +54,7 @@ export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAd
 
   const types = [
     { value: 'item', label: 'Item', icon: CheckSquare },
+    { value: 'sub-project', label: 'Sub-Project', icon: FolderGit2 },
     { value: 'project', label: 'Project', icon: FolderKanban },
     { value: 'workspace', label: 'Org', icon: Building2 },
   ] as const;
@@ -134,8 +140,8 @@ export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAd
                 </div>
               )}
               
-              {/* Project selector for task/note/diary */}
-              {(type === 'task' || type === 'note' || type === 'diary') && (
+              {/* Project selector for item/sub-project */}
+              {(type === 'item' || type === 'sub-project') && (
                 <>
                   <div>
                     <label className="block text-xs font-medium text-foreground mb-1.5">Project</label>
@@ -152,14 +158,29 @@ export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAd
                     </select>
                   </div>
                   
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1.5">Date</label>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded bg-secondary border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
-                    />
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                        <label className="block text-xs font-medium text-foreground mb-1.5">
+                            {type === 'sub-project' ? 'Start Date' : 'Date'}
+                        </label>
+                        <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded bg-secondary border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                        />
+                    </div>
+                    {type === 'sub-project' && (
+                        <div className="flex-1">
+                            <label className="block text-xs font-medium text-foreground mb-1.5">End Date</label>
+                            <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full px-3 py-2 rounded bg-secondary border border-border text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
+                            />
+                        </div>
+                    )}
                   </div>
                 </>
               )}
@@ -167,25 +188,15 @@ export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAd
               {/* Content */}
               <div>
                 <label className="block text-xs font-medium text-foreground mb-1.5">
-                  {type === 'workspace' ? 'Organization Name' : type === 'project' ? 'Project Name' : type === 'task' ? 'Task Title' : 'Content'}
+                  {type === 'workspace' ? 'Organization Name' : type === 'project' ? 'Project Name' : type === 'sub-project' ? 'Sub-Project Name' : 'Item Title'}
                 </label>
-                {type === 'task' || type === 'workspace' || type === 'project' ? (
-                  <input
+                <input
                     type="text"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
-                    placeholder={type === 'workspace' ? 'e.g. Acme Corp' : type === 'project' ? 'e.g. Website Redesign' : 'What needs to be done?'}
+                    placeholder={type === 'workspace' ? 'e.g. Acme Corp' : type === 'project' ? 'e.g. Website Redesign' : type === 'sub-project' ? 'e.g. Backend' : 'What needs to be done?'}
                     className="w-full px-3 py-2 rounded bg-secondary border border-border text-foreground placeholder:text-muted-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary/50"
-                  />
-                ) : (
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder={type === 'diary' ? "How are you feeling today?" : "Write your note..."}
-                    rows={2}
-                    className="w-full px-3 py-2 rounded bg-secondary border border-border text-foreground placeholder:text-muted-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
-                  />
-                )}
+                />
               </div>
               
               {/* Actions */}

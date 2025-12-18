@@ -7,6 +7,7 @@ import { MilestoneItem } from './MilestoneItem';
 interface TimelineCellProps {
   date: Date;
   projectId: string;
+  subProjectId?: string;
   items: TimelineItem[];
   milestones: Milestone[];
   workspaceColor: number;
@@ -18,6 +19,7 @@ interface TimelineCellProps {
 export function TimelineCell({ 
   date, 
   projectId,
+  subProjectId,
   items,
   milestones,
   workspaceColor, 
@@ -28,8 +30,8 @@ export function TimelineCell({
   const dateStr = format(date, 'yyyy-MM-dd');
   
   const { setNodeRef, isOver } = useDroppable({
-    id: `${projectId}-${dateStr}`,
-    data: { projectId: projectId, date: dateStr },
+    id: `${projectId}-${subProjectId || 'main'}-${dateStr}`,
+    data: { projectId: projectId, date: dateStr, subProjectId },
   });
 
   return (

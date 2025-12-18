@@ -5,6 +5,7 @@ export interface TimelineItem {
   date: string;
   completed: boolean;
   projectId: string;
+  subProjectId?: string;
   color?: string;
 }
 
@@ -16,12 +17,23 @@ export interface Milestone {
   content?: string;
 }
 
+export interface SubProject {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  projectId: string;
+  color?: string;
+  description?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   workspaceId: string;
   color: number;
   milestones: Milestone[];
+  subProjects: SubProject[];
   items: TimelineItem[];
 }
 

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Workspace, Project, TimelineItem, Milestone } from '@/types/timeline';
+import { Workspace, Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { sampleWorkspaces } from '@/data/sampleData';
+import { differenceInDays, parseISO, addDays, format } from 'date-fns';
 
 interface TimelineStore {
   workspaces: Workspace[];
@@ -14,11 +15,14 @@ interface TimelineStore {
   updateMilestoneDate: (milestoneId: string, newDate: string) => void;
   updateMilestone: (milestoneId: string, updates: Partial<Milestone>) => void;
   toggleItemComplete: (itemId: string) => void;
-  addItem: (projectId: string, title: string, date: string) => void;
+  addItem: (projectId: string, title: string, date: string, subProjectId?: string) => void;
   updateItem: (itemId: string, updates: Partial<TimelineItem>) => void;
   addWorkspace: (name: string, color: number) => void;
   addProject: (workspaceId: string, name: string) => void;
   expandAllWorkspaces: () => void;
+  addSubProject: (projectId: string, title: string, startDate: string, endDate: string) => void;
+  updateSubProjectDate: (subProjectId: string, newStartDate: string) => void;
+  updateSubProject: (subProjectId: string, updates: Partial<SubProject>) => void;
 }
 
 export const useTimelineStore = create<TimelineStore>()(
@@ -112,7 +116,7 @@ export const useTimelineStore = create<TimelineStore>()(
         }))
       })),
 
-      addItem: (projectId, title, date) => set((state) => {
+      addItem: (projectId, title, date, subProjectId) => set((state) => {
         const newItem: TimelineItem = {
           id: `item-${Date.now()}`,
           title,
@@ -120,6 +124,7 @@ export const useTimelineStore = create<TimelineStore>()(
           date,
           completed: false,
           projectId,
+          subProjectId,
         };
         return {
           workspaces: state.workspaces.map(ws => ({
@@ -164,6 +169,7 @@ export const useTimelineStore = create<TimelineStore>()(
           workspaceId,
           color: workspace?.color || 1,
           milestones: [],
+          subProjects: [],
           items: [],
         };
         return {
@@ -172,6 +178,147 @@ export const useTimelineStore = create<TimelineStore>()(
               ? { ...ws, projects: [...ws.projects, newProject] }
               : ws
           )
+        };
+      }),
+
+      addSubProject: (projectId, title, startDate, endDate) => set((state) => {
+        const newSubProject: SubProject = {
+            id: `sub-${Date.now()}`,
+            title,
+            startDate,
+            endDate,
+            projectId
+        };
+        return {
+            workspaces: state.workspaces.map(ws => ({
+                ...ws,
+                projects: ws.projects.map(proj => 
+                    proj.id === projectId
+                    ? { ...proj, subProjects: [...(proj.subProjects || []), newSubProject] }
+                    : proj
+                )
+            }))
+        }
+      }),
+
+      updateSubProject: (subProjectId, updates) => set((state) => {
+        // Find the original subproject to compare dates
+        let originalSubProject: SubProject | undefined;
+        let projectId = '';
+        
+        state.workspaces.forEach(ws => {
+          ws.projects.forEach(proj => {
+            const sub = proj.subProjects?.find(s => s.id === subProjectId);
+            if (sub) {
+              originalSubProject = sub;
+              projectId = proj.id;
+            }
+          });
+        });
+
+        if (!originalSubProject) return state;
+
+        // Check if dates are changing
+        const newStartDate = updates.startDate || originalSubProject.startDate;
+        const newEndDate = updates.endDate || originalSubProject.endDate;
+        const oldStartDate = originalSubProject.startDate;
+        const oldEndDate = originalSubProject.endDate;
+        
+        const startDateChanged = newStartDate !== oldStartDate;
+        const endDateChanged = newEndDate !== oldEndDate;
+
+        // Calculate the shift for items if start date changed
+        const daysDiff = startDateChanged 
+          ? differenceInDays(parseISO(newStartDate), parseISO(oldStartDate))
+          : 0;
+
+        return {
+          workspaces: state.workspaces.map(ws => ({
+            ...ws,
+            projects: ws.projects.map(proj => {
+              if (proj.id !== projectId) return proj;
+
+              // Update the subproject
+              const updatedSubProjects = proj.subProjects?.map(sub => 
+                sub.id === subProjectId ? { ...sub, ...updates } : sub
+              ) || [];
+
+              // Update items if dates changed
+              let updatedItems = proj.items;
+              
+              if (startDateChanged || endDateChanged) {
+                updatedItems = proj.items.map(item => {
+                  if (item.subProjectId !== subProjectId) return item;
+                  
+                  const itemDate = parseISO(item.date);
+                  const newSubStart = parseISO(newStartDate);
+                  const newSubEnd = parseISO(newEndDate);
+                  
+                  if (startDateChanged && daysDiff !== 0) {
+                    // Shift item date by the same amount as the start date shift
+                    let newItemDate = addDays(itemDate, daysDiff);
+                    
+                    // Clamp to new subproject bounds
+                    if (newItemDate < newSubStart) newItemDate = newSubStart;
+                    if (newItemDate > newSubEnd) newItemDate = newSubEnd;
+                    
+                    return { ...item, date: format(newItemDate, 'yyyy-MM-dd') };
+                  } else if (endDateChanged && !startDateChanged) {
+                    // Only end date changed - clamp items that are now outside
+                    if (itemDate > newSubEnd) {
+                      return { ...item, date: format(newSubEnd, 'yyyy-MM-dd') };
+                    }
+                  }
+                  
+                  return item;
+                });
+              }
+
+              return { ...proj, subProjects: updatedSubProjects, items: updatedItems };
+            })
+          }))
+        };
+      }),
+
+      updateSubProjectDate: (subProjectId, newStartDate) => set((state) => {
+        let oldStartDate = '';
+        let projectId = '';
+        
+        state.workspaces.forEach(ws => {
+            ws.projects.forEach(proj => {
+                const sub = proj.subProjects?.find(s => s.id === subProjectId);
+                if (sub) {
+                    oldStartDate = sub.startDate;
+                    projectId = proj.id;
+                }
+            })
+        });
+
+        if (!oldStartDate) return state;
+
+        const daysDiff = differenceInDays(parseISO(newStartDate), parseISO(oldStartDate));
+
+        return {
+            workspaces: state.workspaces.map(ws => ({
+                ...ws,
+                projects: ws.projects.map(proj => {
+                    if (proj.id !== projectId) return proj;
+
+                    const updatedSubProjects = proj.subProjects?.map(sub => {
+                        if (sub.id !== subProjectId) return sub;
+                        const newEndDate = format(addDays(parseISO(sub.endDate), daysDiff), 'yyyy-MM-dd');
+                        return { ...sub, startDate: newStartDate, endDate: newEndDate };
+                    }) || [];
+
+                    const updatedItems = proj.items.map(item => {
+                        if (item.subProjectId !== subProjectId) return item;
+                        const newItemDate = format(addDays(parseISO(item.date), daysDiff), 'yyyy-MM-dd');
+                        return { ...item, date: newItemDate };
+                    });
+
+                    return { ...proj, subProjects: updatedSubProjects, items: updatedItems };
+                })
+            }))
         };
       }),
     }),

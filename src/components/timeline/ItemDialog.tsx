@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { TimelineItem, Milestone } from "@/types/timeline";
+import { TimelineItem, Milestone, SubProject } from "@/types/timeline";
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -24,10 +24,10 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface ItemDialogProps {
-  item: TimelineItem | Milestone | null;
+  item: TimelineItem | Milestone | SubProject | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (item: TimelineItem | Milestone) => void;
+  onSave: (item: TimelineItem | Milestone | SubProject) => void;
 }
 
 const COLORS = [
@@ -40,6 +40,8 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
   const [content, setContent] = useState("");
   const [completed, setCompleted] = useState(false);
   const [color, setColor] = useState<string | undefined>(undefined);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [viewMode, setViewMode] = useState<'edit' | 'split' | 'preview'>(() => {
     if (typeof window !== 'undefined') {
         return (localStorage.getItem('timeline-item-view-mode') as 'edit' | 'split' | 'preview') || 'preview';
@@ -50,7 +52,9 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
-  const isMilestone = item && !('completed' in item);
+  const isMilestone = item && !('completed' in item) && !('startDate' in item);
+  const isSubProject = item && 'startDate' in item;
+  const isItem = item && 'completed' in item;
 
   useEffect(() => {
     if (titleRef.current) {
@@ -62,14 +66,23 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
   useEffect(() => {
     if (item) {
       setTitle(item.title);
-      setContent(item.content || "");
-      if (!isMilestone) {
+      if (isItem) {
         const tItem = item as TimelineItem;
+        setContent(tItem.content || "");
         setCompleted(tItem.completed);
         setColor(tItem.color);
+      } else if (isMilestone) {
+        const mItem = item as Milestone;
+        setContent(mItem.content || "");
+      } else if (isSubProject) {
+        const sItem = item as SubProject;
+        setStartDate(sItem.startDate);
+        setEndDate(sItem.endDate);
+        setContent(sItem.description || "");
+        setColor(sItem.color);
       }
     }
-  }, [item, isMilestone]);
+  }, [item, isMilestone, isItem, isSubProject]);
 
   const handleViewModeChange = (value: string) => {
     if (value) {
@@ -85,11 +98,18 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
       const updates: any = {
         ...item,
         title,
-        content,
       };
       
-      if (!isMilestone) {
+      if (isItem) {
+        updates.content = content;
         updates.completed = completed;
+        updates.color = color;
+      } else if (isMilestone) {
+        updates.content = content;
+      } else if (isSubProject) {
+        updates.startDate = startDate;
+        updates.endDate = endDate;
+        updates.description = content;
         updates.color = color;
       }
 
@@ -227,7 +247,7 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
       <DialogContent className="sm:max-w-[900px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden [&>button]:hidden">
         <DialogHeader className="flex-shrink-0 p-4 border-b bg-background z-10">
           <div className="flex items-center gap-4 w-full">
-             {!isMilestone && (
+             {!isMilestone && !isSubProject && (
                 <Checkbox 
                     checked={completed} 
                     onCheckedChange={(c) => setCompleted(!!c)}
@@ -299,6 +319,28 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
                 </Button>
              </div>
           </div>
+          {isSubProject && (
+            <div className="flex gap-4 mt-2">
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-muted-foreground">Start Date</label>
+                    <Input 
+                        type="date" 
+                        value={startDate} 
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="h-8 text-xs"
+                    />
+                </div>
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-muted-foreground">End Date</label>
+                    <Input 
+                        type="date" 
+                        value={endDate} 
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="h-8 text-xs"
+                    />
+                </div>
+            </div>
+          )}
         </DialogHeader>
         
         <div className="flex-1 flex min-h-0 relative">
