@@ -20,15 +20,13 @@ export const sampleWorkspaces: Workspace[] = [
           { id: 'ms-2', title: 'Development Sprint 1', date: format(addDays(today, 12), 'yyyy-MM-dd'), projectId: 'proj-1' },
           { id: 'ms-3', title: 'Launch', date: format(addDays(today, 20), 'yyyy-MM-dd'), projectId: 'proj-1' },
         ],
-        tasks: [
-          { id: 'task-1', title: 'Create wireframes', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
-          { id: 'task-2', title: 'Review brand guidelines', date: format(addDays(today, 2), 'yyyy-MM-dd'), completed: true, projectId: 'proj-1' },
-          { id: 'task-3', title: 'Setup development env', date: format(addDays(today, 6), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
-          { id: 'task-4', title: 'Build homepage', date: format(addDays(today, 8), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
-        ],
-        notes: [
-          { id: 'note-1', content: 'Met with stakeholders - they want a modern, clean look', date: format(addDays(today, 0), 'yyyy-MM-dd'), type: 'note', projectId: 'proj-1' },
-          { id: 'note-2', content: 'Feeling productive today! Made great progress on the designs.', date: format(addDays(today, 3), 'yyyy-MM-dd'), type: 'diary', projectId: 'proj-1' },
+        items: [
+          { id: 'task-1', title: 'Create wireframes', content: '', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
+          { id: 'task-2', title: 'Review brand guidelines', content: '', date: format(addDays(today, 2), 'yyyy-MM-dd'), completed: true, projectId: 'proj-1' },
+          { id: 'task-3', title: 'Setup development env', content: '', date: format(addDays(today, 6), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
+          { id: 'task-4', title: 'Build homepage', content: '', date: format(addDays(today, 8), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
+          { id: 'note-1', title: 'Meeting Notes', content: 'Met with stakeholders - they want a modern, clean look', date: format(addDays(today, 0), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
+          { id: 'note-2', title: 'Diary', content: 'Feeling productive today! Made great progress on the designs.', date: format(addDays(today, 3), 'yyyy-MM-dd'), completed: false, projectId: 'proj-1' },
         ],
       },
       {
@@ -39,10 +37,9 @@ export const sampleWorkspaces: Workspace[] = [
         milestones: [
           { id: 'ms-4', title: 'Alpha Release', date: format(addDays(today, 15), 'yyyy-MM-dd'), projectId: 'proj-2' },
         ],
-        tasks: [
-          { id: 'task-5', title: 'Define user stories', date: format(addDays(today, 4), 'yyyy-MM-dd'), completed: false, projectId: 'proj-2' },
+        items: [
+          { id: 'task-5', title: 'Define user stories', content: '', date: format(addDays(today, 4), 'yyyy-MM-dd'), completed: false, projectId: 'proj-2' },
         ],
-        notes: [],
       },
     ],
   },
@@ -61,12 +58,10 @@ export const sampleWorkspaces: Workspace[] = [
           { id: 'ms-5', title: 'Literature Review Done', date: format(addDays(today, 10), 'yyyy-MM-dd'), projectId: 'proj-3' },
           { id: 'ms-6', title: 'First Draft', date: format(addDays(today, 25), 'yyyy-MM-dd'), projectId: 'proj-3' },
         ],
-        tasks: [
-          { id: 'task-6', title: 'Read paper on ML', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-3' },
-          { id: 'task-7', title: 'Write methodology section', date: format(addDays(today, 7), 'yyyy-MM-dd'), completed: false, projectId: 'proj-3' },
-        ],
-        notes: [
-          { id: 'note-3', content: 'Supervisor suggested new angle for research', date: format(addDays(today, 2), 'yyyy-MM-dd'), type: 'note', projectId: 'proj-3' },
+        items: [
+          { id: 'task-6', title: 'Read paper on ML', content: '', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-3' },
+          { id: 'task-7', title: 'Write methodology section', content: '', date: format(addDays(today, 7), 'yyyy-MM-dd'), completed: false, projectId: 'proj-3' },
+          { id: 'note-3', title: 'Research Note', content: 'Supervisor suggested new angle for research', date: format(addDays(today, 2), 'yyyy-MM-dd'), completed: false, projectId: 'proj-3' },
         ],
       },
     ],
@@ -85,11 +80,10 @@ export const sampleWorkspaces: Workspace[] = [
         milestones: [
           { id: 'ms-7', title: 'Complete Beginner Course', date: format(addDays(today, 30), 'yyyy-MM-dd'), projectId: 'proj-4' },
         ],
-        tasks: [
-          { id: 'task-8', title: 'Practice scales', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-4' },
-          { id: 'task-9', title: 'Learn first song', date: format(addDays(today, 14), 'yyyy-MM-dd'), completed: false, projectId: 'proj-4' },
+        items: [
+          { id: 'task-8', title: 'Practice scales', content: '', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-4' },
+          { id: 'task-9', title: 'Learn first song', content: '', date: format(addDays(today, 14), 'yyyy-MM-dd'), completed: false, projectId: 'proj-4' },
         ],
-        notes: [],
       },
     ],
   },

@@ -7,9 +7,10 @@ import { motion } from 'framer-motion';
 interface MilestoneItemProps {
   milestone: Milestone;
   workspaceColor: number;
+  onClick?: (milestone: Milestone) => void;
 }
 
-export function MilestoneItem({ milestone, workspaceColor }: MilestoneItemProps) {
+export function MilestoneItem({ milestone, workspaceColor, onClick }: MilestoneItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: milestone.id,
     data: { type: 'milestone', item: milestone },
@@ -27,6 +28,12 @@ export function MilestoneItem({ milestone, workspaceColor }: MilestoneItemProps)
       {...listeners}
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
+      onClick={(e) => {
+        if (!isDragging && onClick) {
+          e.stopPropagation();
+          onClick(milestone);
+        }
+      }}
       className={`group relative flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-milestone/15 border border-milestone/30 hover:border-milestone/50 transition-all cursor-grab active:cursor-grabbing ${
         isDragging ? 'opacity-50 shadow-lg z-50' : ''
       }`}

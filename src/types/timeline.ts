@@ -1,18 +1,11 @@
-export interface Note {
-  id: string;
-  content: string;
-  date: string;
-  type: 'note' | 'diary';
-  projectId: string;
-}
-
-export interface Task {
+export interface TimelineItem {
   id: string;
   title: string;
+  content: string;
   date: string;
   completed: boolean;
   projectId: string;
-  milestoneId?: string;
+  color?: string;
 }
 
 export interface Milestone {
@@ -20,6 +13,7 @@ export interface Milestone {
   title: string;
   date: string;
   projectId: string;
+  content?: string;
 }
 
 export interface Project {
@@ -28,8 +22,7 @@ export interface Project {
   workspaceId: string;
   color: number;
   milestones: Milestone[];
-  tasks: Task[];
-  notes: Note[];
+  items: TimelineItem[];
 }
 
 export interface Workspace {

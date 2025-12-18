@@ -1,29 +1,36 @@
 import { useDroppable } from '@dnd-kit/core';
 import { format } from 'date-fns';
-import { Project } from '@/types/timeline';
-import { TaskItem } from './TaskItem';
-import { NoteItem } from './NoteItem';
+import { TimelineItem, Milestone } from '@/types/timeline';
+import { UnifiedItem } from './UnifiedItem';
 import { MilestoneItem } from './MilestoneItem';
 
 interface TimelineCellProps {
   date: Date;
-  project: Project;
+  projectId: string;
+  items: TimelineItem[];
+  milestones: Milestone[];
   workspaceColor: number;
-  onToggleTaskComplete: (taskId: string) => void;
+  onToggleItemComplete: (itemId: string) => void;
+  onItemClick: (item: TimelineItem | Milestone) => void;
   cellWidth: number;
 }
 
-export function TimelineCell({ date, project, workspaceColor, onToggleTaskComplete, cellWidth }: TimelineCellProps) {
+export function TimelineCell({ 
+  date, 
+  projectId,
+  items,
+  milestones,
+  workspaceColor, 
+  onToggleItemComplete,
+  onItemClick,
+  cellWidth 
+}: TimelineCellProps) {
   const dateStr = format(date, 'yyyy-MM-dd');
   
   const { setNodeRef, isOver } = useDroppable({
-    id: `${project.id}-${dateStr}`,
-    data: { projectId: project.id, date: dateStr },
+    id: `${projectId}-${dateStr}`,
+    data: { projectId: projectId, date: dateStr },
   });
-
-  const dayMilestones = project.milestones.filter(ms => ms.date === dateStr);
-  const dayTasks = project.tasks.filter(task => task.date === dateStr);
-  const dayNotes = project.notes.filter(note => note.date === dateStr);
 
   return (
     <div
@@ -34,7 +41,7 @@ export function TimelineCell({ date, project, workspaceColor, onToggleTaskComple
       style={{ width: cellWidth, minWidth: cellWidth }}
     >
       <div className="flex flex-col gap-1">
-        {dayMilestones.map(milestone => (
+        {milestones.map(milestone => (
           <MilestoneItem
             key={milestone.id} 
             milestone={milestone}
@@ -42,19 +49,12 @@ export function TimelineCell({ date, project, workspaceColor, onToggleTaskComple
           />
         ))}
         
-        {dayTasks.map(task => (
-          <TaskItem 
-            key={task.id} 
-            task={task} 
-            onToggleComplete={onToggleTaskComplete}
-            workspaceColor={workspaceColor}
-          />
-        ))}
-        
-        {dayNotes.map(note => (
-          <NoteItem 
-            key={note.id} 
-            note={note}
+        {items.map(item => (
+          <UnifiedItem 
+            key={item.id} 
+            item={item} 
+            onToggleComplete={onToggleItemComplete}
+            onClick={onItemClick}
             workspaceColor={workspaceColor}
           />
         ))}

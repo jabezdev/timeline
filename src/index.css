@@ -6,33 +6,33 @@
 
 @layer base {
   :root {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 222 47% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
 
-    --muted: 222 30% 18%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 280 65% 60%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 222 30% 16%;
-    --input: 222 30% 16%;
-    --ring: 217 91% 60%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
 
     --radius: 0.75rem;
 
@@ -44,22 +44,61 @@
     --workspace-5: 340 82% 52%;
 
     /* Timeline specific */
-    --timeline-line: 222 30% 20%;
-    --timeline-today: 217 91% 60%;
+    --timeline-line: 214.3 31.8% 91.4%;
+    --timeline-today: 222.2 47.4% 11.2%;
     --milestone: 45 93% 58%;
-    --task: 217 91% 60%;
+    --task: 222.2 47.4% 11.2%;
     --note: 280 65% 60%;
 
     /* Shadows */
-    --shadow-sm: 0 2px 8px hsl(222 47% 4% / 0.4);
-    --shadow-md: 0 4px 16px hsl(222 47% 4% / 0.5);
-    --shadow-lg: 0 8px 32px hsl(222 47% 4% / 0.6);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --shadow-glow: 0 0 24px hsl(217 91% 60% / 0.15);
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Everforest Dark Medium */
+    --background: 206 13% 20%;
+    --foreground: 43 13% 75%;
+
+    --card: 207 14% 23%;
+    --card-foreground: 43 13% 75%;
+
+    --popover: 206 13% 20%;
+    --popover-foreground: 43 13% 75%;
+
+    --primary: 83 35% 63%;
+    --primary-foreground: 206 13% 20%;
+
+    --secondary: 207 14% 26%;
+    --secondary-foreground: 43 13% 75%;
+
+    --muted: 207 14% 26%;
+    --muted-foreground: 206 10% 55%;
+
+    --accent: 172 30% 62%;
+    --accent-foreground: 206 13% 20%;
+
+    --destructive: 359 68% 70%;
+    --destructive-foreground: 206 13% 20%;
+
+    --border: 207 14% 26%;
+    --input: 207 14% 26%;
+    --ring: 83 35% 63%;
+
+    /* Timeline specific - Dark */
+    --timeline-line: 207 14% 26%;
+    --timeline-today: 83 35% 63%;
+    --milestone: 40 56% 68%;
+    --task: 83 35% 63%;
+    --note: 331 41% 72%;
+    
+    /* Shadows */
+    --shadow-sm: 0 2px 8px hsl(222 47% 4% / 0.4);
+    --shadow-md: 0 4px 16px hsl(222 47% 4% / 0.5);
+    --shadow-lg: 0 8px 32px hsl(222 47% 4% / 0.6);
+    --shadow-glow: 0 0 24px hsl(83 35% 63% / 0.15);
   }
 }
 
@@ -121,5 +160,29 @@
 
   .drag-handle:active {
     cursor: grabbing;
+  }
+
+  /* Fix for task lists in prose */
+  .prose ul:not(.contains-task-list) {
+    list-style-type: disc;
+    padding-left: 1.5em;
+  }
+
+  .prose ul.contains-task-list {
+    list-style-type: none;
+    padding-left: 0;
+  }
+
+  .prose li[data-task-list-item] {
+    list-style-type: none;
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .prose input[type="checkbox"] {
+    margin-top: 0;
+    margin-bottom: 0;
+    vertical-align: middle;
+    margin-right: 0.5rem;
   }
 }

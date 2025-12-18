@@ -1,15 +1,20 @@
 import { format, addDays, isToday } from 'date-fns';
+import { ModeToggle } from '../mode-toggle';
+import { Button } from '../ui/button';
+import { Calendar, ChevronsDown } from 'lucide-react';
 
 interface TimelineHeaderProps {
   startDate: Date;
   visibleDays: number;
   onNavigate: (direction: 'prev' | 'next') => void;
+  onTodayClick: () => void;
+  onExpandAll: () => void;
 }
 
-export const SIDEBAR_WIDTH = 200;
+export const SIDEBAR_WIDTH = 260;
 export const CELL_WIDTH = 180;
 
-export function TimelineHeader({ startDate, visibleDays, onNavigate }: TimelineHeaderProps) {
+export function TimelineHeader({ startDate, visibleDays, onNavigate, onTodayClick, onExpandAll }: TimelineHeaderProps) {
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
 
   return (
@@ -19,21 +24,34 @@ export function TimelineHeader({ startDate, visibleDays, onNavigate }: TimelineH
         className="shrink-0 flex items-center justify-between px-2 py-1.5 border-r border-border bg-background/95 sticky left-0 z-30"
         style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
       >
-        <button 
-          onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }}
-          className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
-        >
-          ←
-        </button>
-        <span className="text-xs font-medium text-muted-foreground">
-          {format(startDate, 'MMM yyyy')}
-        </span>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onNavigate('next'); }}
-          className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
-        >
-          →
-        </button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={onExpandAll} title="Expand All Workspaces">
+            <ChevronsDown className="h-[1.2rem] w-[1.2rem]" />
+            <span className="sr-only">Expand All Workspaces</span>
+          </Button>
+          <ModeToggle />
+          <Button variant="outline" size="icon" onClick={onTodayClick} title="Go to Today">
+            <Calendar className="h-[1.2rem] w-[1.2rem]" />
+            <span className="sr-only">Go to Today</span>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }}
+            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
+          >
+            ←
+          </button>
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+            {format(startDate, 'MMM yyyy')}
+          </span>
+          <button 
+            onClick={(e) => { e.stopPropagation(); onNavigate('next'); }}
+            className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
+          >
+            →
+          </button>
+        </div>
       </div>
       
       {/* Date columns - fixed width */}

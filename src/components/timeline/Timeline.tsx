@@ -6,10 +6,14 @@ import { WorkspaceSection } from './WorkspaceSection';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { Plus } from 'lucide-react';
 import { AddItemDialog } from './AddItemDialog';
+import { ItemDialog } from './ItemDialog';
+import { TimelineItem, Milestone } from '@/types/timeline';
 
 export function Timeline() {
   const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | null>(null);
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const visibleDays = 14;
   
   const { 
@@ -17,14 +21,15 @@ export function Timeline() {
     openProjectIds, 
     toggleWorkspace, 
     toggleProject,
-    updateTaskDate,
-    updateNoteDate,
+    updateItemDate,
     updateMilestoneDate,
-    toggleTaskComplete,
-    addTask,
-    addNote,
+    toggleItemComplete,
+    addItem,
+    updateItem,
+    updateMilestone,
     addWorkspace,
     addProject,
+    expandAllWorkspaces,
   } = useTimelineStore();
 
   const sensors = useSensors(
@@ -43,6 +48,10 @@ export function Timeline() {
     );
   };
 
+  const handleTodayClick = () => {
+    setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     
@@ -57,11 +66,8 @@ export function Timeline() {
     const newDate = dropData.date;
     
     switch (dragData.type) {
-      case 'task':
-        updateTaskDate(dragData.item.id, newDate);
-        break;
-      case 'note':
-        updateNoteDate(dragData.item.id, newDate);
+      case 'item':
+        updateItemDate(dragData.item.id, newDate);
         break;
       case 'milestone':
         updateMilestoneDate(dragData.item.id, newDate);
@@ -69,11 +75,20 @@ export function Timeline() {
     }
   };
 
-  const handleAddItem = (type: 'task' | 'note' | 'diary', content: string, date: string, projectId: string) => {
-    if (type === 'task') {
-      addTask(projectId, content, date);
+  const handleAddItem = (title: string, date: string, projectId: string) => {
+    addItem(projectId, title, date);
+  };
+
+  const handleItemClick = (item: TimelineItem | Milestone) => {
+    setSelectedItem(item);
+    setIsItemDialogOpen(true);
+  };
+
+  const handleItemSave = (updatedItem: TimelineItem | Milestone) => {
+    if ('completed' in updatedItem) {
+      updateItem(updatedItem.id, updatedItem as TimelineItem);
     } else {
-      addNote(projectId, content, date, type);
+      updateMilestone(updatedItem.id, updatedItem as Milestone);
     }
   };
 
@@ -104,6 +119,8 @@ export function Timeline() {
               startDate={startDate} 
               visibleDays={visibleDays}
               onNavigate={handleNavigate}
+              onTodayClick={handleTodayClick}
+              onExpandAll={expandAllWorkspaces}
             />
             
             {/* Workspaces and projects */}
@@ -116,7 +133,8 @@ export function Timeline() {
                 onToggleProject={toggleProject}
                 startDate={startDate}
                 visibleDays={visibleDays}
-                onToggleTaskComplete={toggleTaskComplete}
+                onToggleItemComplete={toggleItemComplete}
+                onItemClick={handleItemClick}
               />
             ))}
           </div>
@@ -139,6 +157,13 @@ export function Timeline() {
         onAddProject={addProject}
         projects={allProjects}
         workspaces={workspaces}
+      />
+
+      <ItemDialog
+        item={selectedItem}
+        open={isItemDialogOpen}
+        onOpenChange={setIsItemDialogOpen}
+        onSave={handleItemSave}
       />
     </DndContext>
   );

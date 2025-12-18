@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { X, CheckSquare, FileText, BookOpen, Building2, FolderKanban } from 'lucide-react';
+import { X, CheckSquare, Building2, FolderKanban } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workspace } from '@/types/timeline';
 
@@ -13,17 +13,17 @@ interface Project {
 interface AddItemDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddItem: (type: 'task' | 'note' | 'diary', content: string, date: string, projectId: string) => void;
+  onAddItem: (title: string, date: string, projectId: string) => void;
   onAddWorkspace: (name: string, color: number) => void;
   onAddProject: (workspaceId: string, name: string) => void;
   projects: Project[];
   workspaces: Workspace[];
 }
 
-type ItemType = 'workspace' | 'project' | 'task' | 'note' | 'diary';
+type ItemType = 'workspace' | 'project' | 'item';
 
 export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAddProject, projects, workspaces }: AddItemDialogProps) {
-  const [type, setType] = useState<ItemType>('task');
+  const [type, setType] = useState<ItemType>('item');
   const [content, setContent] = useState('');
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
@@ -41,18 +41,16 @@ export function AddItemDialog({ isOpen, onClose, onAddItem, onAddWorkspace, onAd
       onAddProject(workspaceId, content);
     } else {
       if (!projectId) return;
-      onAddItem(type, content, date, projectId);
+      onAddItem(content, date, projectId);
     }
     setContent('');
     onClose();
   };
 
   const types = [
-    { value: 'workspace', label: 'Org', icon: Building2 },
+    { value: 'item', label: 'Item', icon: CheckSquare },
     { value: 'project', label: 'Project', icon: FolderKanban },
-    { value: 'task', label: 'Task', icon: CheckSquare },
-    { value: 'note', label: 'Note', icon: FileText },
-    { value: 'diary', label: 'Diary', icon: BookOpen },
+    { value: 'workspace', label: 'Org', icon: Building2 },
   ] as const;
 
   const colors = [1, 2, 3, 4, 5];

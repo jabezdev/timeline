@@ -1,7 +1,9 @@
-import { Workspace } from '@/types/timeline';
+import { useState } from 'react';
+import { Workspace, TimelineItem, Milestone } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
 import { ChevronDown, ChevronRight, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SIDEBAR_WIDTH } from './TimelineHeader';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
@@ -10,7 +12,8 @@ interface WorkspaceSectionProps {
   onToggleProject: (projectId: string, workspaceId: string) => void;
   startDate: Date;
   visibleDays: number;
-  onToggleTaskComplete: (taskId: string) => void;
+  onToggleItemComplete: (itemId: string) => void;
+  onItemClick: (item: TimelineItem | Milestone) => void;
 }
 
 export function WorkspaceSection({ 
@@ -20,51 +23,46 @@ export function WorkspaceSection({
   onToggleProject,
   startDate, 
   visibleDays,
-  onToggleTaskComplete 
+  onToggleItemComplete,
+  onItemClick
 }: WorkspaceSectionProps) {
-  const totalTasks = workspace.projects.reduce((acc, p) => acc + p.tasks.length, 0);
-  const completedTasks = workspace.projects.reduce((acc, p) => acc + p.tasks.filter(t => t.completed).length, 0);
-  const completionPercent = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+  const [isAnimating, setIsAnimating] = useState(false);
   const projectCount = workspace.projects.length;
 
   return (
     <div className="border-b border-border">
       {/* Workspace header - spans full width */}
-      <div 
-        className="flex items-center gap-2 px-2 py-1.5 bg-secondary/30 cursor-pointer hover:bg-secondary/50 transition-colors sticky left-0 z-10"
-        onClick={onToggleWorkspace}
-      >
-        {workspace.isCollapsed ? (
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-        )}
-        
+      <div className="flex sticky left-0 z-10">
         <div 
-          className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.2)` }}
+          className="flex items-center gap-2 px-2 py-1.5 bg-background cursor-pointer hover:bg-secondary/30 transition-colors border-r border-border sticky left-0"
+          style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
+          onClick={onToggleWorkspace}
         >
-          <Building2 
-            className="w-3 h-3" 
-            style={{ color: `hsl(var(--workspace-${workspace.color}))` }}
-          />
-        </div>
-        
-        <span className="text-xs font-medium text-foreground">{workspace.name}</span>
-        
-        {/* Stats on rightmost side */}
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground ml-auto">
-          <span>{projectCount} {projectCount === 1 ? 'project' : 'projects'}</span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-12 h-1 bg-secondary rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-task rounded-full transition-all" 
-                style={{ width: `${completionPercent}%` }}
-              />
-            </div>
-            <span>{completedTasks}/{totalTasks} tasks</span>
+          {workspace.isCollapsed ? (
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+          )}
+          
+          <div 
+            className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+            style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.2)` }}
+          >
+            <Building2 
+              className="w-3 h-3" 
+              style={{ color: `hsl(var(--workspace-${workspace.color}))` }}
+            />
           </div>
+          
+          <span className="text-xs font-medium text-foreground truncate flex-1">{workspace.name}</span>
+          
+          <span className="text-[10px] text-muted-foreground shrink-0">
+            {projectCount} {projectCount === 1 ? 'proj' : 'projs'}
+          </span>
         </div>
+        
+        {/* Divider/Filler for the rest of the row */}
+        <div className="flex-1 bg-secondary/10 border-b border-border/50 min-w-0" />
       </div>
       
       {/* Projects */}
@@ -75,7 +73,9 @@ export function WorkspaceSection({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            className={isAnimating ? "overflow-hidden" : ""}
+            onAnimationStart={() => setIsAnimating(true)}
+            onAnimationComplete={() => setIsAnimating(false)}
           >
             {workspace.projects.map(project => (
               <ProjectRow
@@ -86,7 +86,8 @@ export function WorkspaceSection({
                 startDate={startDate}
                 visibleDays={visibleDays}
                 workspaceColor={workspace.color}
-                onToggleTaskComplete={onToggleTaskComplete}
+                onToggleItemComplete={onToggleItemComplete}
+                onItemClick={onItemClick}
               />
             ))}
           </motion.div>
