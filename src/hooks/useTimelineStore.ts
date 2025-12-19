@@ -7,6 +7,7 @@ import { differenceInDays, parseISO, addDays, format } from 'date-fns';
 interface TimelineStore {
   workspaces: Workspace[];
   openProjectIds: Set<string>;
+  projectHeights: Map<string, number>; // Registry for actual rendered heights
   
   // Actions
   toggleWorkspace: (id: string) => void;
@@ -23,6 +24,7 @@ interface TimelineStore {
   addSubProject: (projectId: string, title: string, startDate: string, endDate: string) => void;
   updateSubProjectDate: (subProjectId: string, newStartDate: string) => void;
   updateSubProject: (subProjectId: string, updates: Partial<SubProject>) => void;
+  setProjectHeight: (projectId: string, height: number) => void;
 }
 
 export const useTimelineStore = create<TimelineStore>()(
@@ -30,6 +32,16 @@ export const useTimelineStore = create<TimelineStore>()(
     (set, get) => ({
       workspaces: sampleWorkspaces,
       openProjectIds: new Set(['proj-1']),
+      projectHeights: new Map<string, number>(),
+
+      setProjectHeight: (projectId, height) => set((state) => {
+        const newHeights = new Map(state.projectHeights);
+        if (newHeights.get(projectId) !== height) {
+          newHeights.set(projectId, height);
+          return { projectHeights: newHeights };
+        }
+        return state;
+      }),
 
       expandAllWorkspaces: () => set((state) => ({
         workspaces: state.workspaces.map(ws => ({ ...ws, isCollapsed: false }))
@@ -324,7 +336,7 @@ export const useTimelineStore = create<TimelineStore>()(
     }),
     {
       name: 'timeline-storage',
-      partialize: (state) => ({ workspaces: state.workspaces }),
+      partialize: (state) => ({ workspaces: state.workspaces, openProjectIds: state.openProjectIds }),
     }
   )
 );

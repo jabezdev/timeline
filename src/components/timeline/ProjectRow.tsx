@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
 import { MilestoneItem } from './MilestoneItem';
-import { SubProjectLane } from './SubProjectRow';
+import { SubProjectSection } from './SubProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CELL_WIDTH } from './TimelineHeader';
-import { packSubProjects } from '@/lib/utils';
+import { PROJECT_HEADER_HEIGHT, calculateProjectExpandedHeight, packSubProjects } from '@/lib/timelineUtils';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 // Droppable cell for milestones in the header row
 function MilestoneDropCell({ 
@@ -124,10 +125,34 @@ export function ProjectRow({
       return packSubProjects(project.subProjects || []);
   }, [project.subProjects]);
 
+  // Use shared height calculation for consistency with sidebar
+  const { mainRowHeight, subProjectRowHeights } = useMemo(() => 
+    calculateProjectExpandedHeight(project),
+    [project]
+  );
+
+  // Measure actual rendered height and report to store
+  const expandedContentRef = useRef<HTMLDivElement>(null);
+  const setProjectHeight = useTimelineStore(state => state.setProjectHeight);
+
+  useEffect(() => {
+    if (!isOpen || !expandedContentRef.current) return;
+    
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.contentRect.height;
+        setProjectHeight(project.id, height);
+      }
+    });
+    
+    observer.observe(expandedContentRef.current);
+    return () => observer.disconnect();
+  }, [isOpen, project.id, setProjectHeight]);
+
   return (
     <div className="flex flex-col border-b border-border/50">
       {/* HEADER ROW - Milestones */}
-      <div className="flex min-h-[40px]">
+      <div className="flex" style={{ height: PROJECT_HEADER_HEIGHT }}>
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayMilestones = milestones.get(dateStr) || [];
@@ -152,6 +177,7 @@ export function ProjectRow({
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            ref={expandedContentRef}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -173,27 +199,28 @@ export function ProjectRow({
                     onToggleItemComplete={onToggleItemComplete}
                     onItemClick={onItemClick}
                     cellWidth={CELL_WIDTH}
+                    rowHeight={mainRowHeight}
                   />
                 );
               })}
             </div>
 
-            {/* SubProjects Lanes */}
-            {subProjectLanes.map((lane, index) => (
-              <SubProjectLane 
-                key={index}
-                subProjects={lane}
-                itemsBySubProject={subProjectItems}
-                days={days}
-                workspaceColor={workspaceColor}
-                onToggleItemComplete={onToggleItemComplete}
-                onItemClick={onItemClick}
-                onSubProjectClick={onSubProjectClick}
-              />
-            ))}
+            {/* SubProjects Section - unified droppable zone spanning all lanes */}
+            <SubProjectSection
+              projectId={project.id}
+              subProjectLanes={subProjectLanes}
+              subProjectRowHeights={subProjectRowHeights}
+              itemsBySubProject={subProjectItems}
+              days={days}
+              workspaceColor={workspaceColor}
+              onToggleItemComplete={onToggleItemComplete}
+              onItemClick={onItemClick}
+              onSubProjectClick={onSubProjectClick}
+            />
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
 }
+// End ProjectRow

@@ -3,6 +3,7 @@ import { Workspace, TimelineItem, Milestone, SubProject } from '@/types/timeline
 import { ProjectRow } from './ProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CELL_WIDTH } from './TimelineHeader';
+import { WORKSPACE_HEADER_HEIGHT } from '@/lib/timelineUtils';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
@@ -31,7 +32,7 @@ export function WorkspaceSection({
       <div 
         className="bg-secondary/10 border-b border-border/50"
         style={{ 
-          height: '36px',
+          height: WORKSPACE_HEADER_HEIGHT,
           width: visibleDays * CELL_WIDTH 
         }}
       />

@@ -1,4 +1,4 @@
-import { Workspace, Project, SubProject } from '@/types/timeline';
+import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
 import { ChevronDown, ChevronRight, Building2, FolderKanban } from 'lucide-react';
 import { ModeToggle } from '../mode-toggle';
 import { Button } from '../ui/button';
@@ -6,7 +6,17 @@ import { Calendar, ChevronsDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { SIDEBAR_WIDTH } from './TimelineHeader';
 import { motion, AnimatePresence } from 'framer-motion';
-import { packSubProjects } from '@/lib/utils';
+import { useMemo } from 'react';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { 
+  HEADER_HEIGHT, 
+  WORKSPACE_HEADER_HEIGHT, 
+  PROJECT_HEADER_HEIGHT,
+  calculateProjectExpandedHeight 
+} from '@/lib/timelineUtils';
+
+// Re-export for backwards compatibility
+export { HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT, SUBPROJECT_HEADER_HEIGHT } from '@/lib/timelineUtils';
 
 interface SidebarHeaderProps {
   startDate: Date;
@@ -18,8 +28,8 @@ interface SidebarHeaderProps {
 export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll }: SidebarHeaderProps) {
   return (
     <div 
-      className="shrink-0 flex items-center justify-between px-2 py-1.5 border-r border-b border-border bg-background"
-      style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
+      className="shrink-0 flex items-center justify-between px-2 border-r border-b border-border bg-background"
+      style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH, height: HEADER_HEIGHT }}
     >
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" onClick={onExpandAll} title="Expand All Workspaces">
@@ -72,7 +82,8 @@ export function SidebarWorkspace({
     <div className="border-b border-border">
       {/* Workspace header */}
       <div 
-        className="flex items-center gap-2 px-2 py-1.5 bg-background cursor-pointer hover:bg-secondary/30 transition-colors"
+        className="flex items-center gap-2 px-2 bg-background cursor-pointer hover:bg-secondary/30 transition-colors"
+        style={{ height: WORKSPACE_HEADER_HEIGHT }}
         onClick={onToggleWorkspace}
       >
         {workspace.isCollapsed ? (
@@ -135,13 +146,22 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
   const completedCount = project.items.filter(t => t.completed).length;
   const completionPercent = itemCount > 0 ? (completedCount / itemCount) * 100 : 0;
   
-  const subProjectLanes = packSubProjects(project.subProjects || []);
+  // Get the actual rendered height from the store, fallback to calculated height
+  const projectHeights = useTimelineStore(state => state.projectHeights);
+  const { totalHeight: calculatedHeight } = useMemo(() => 
+    calculateProjectExpandedHeight(project), 
+    [project]
+  );
+  
+  // Use actual height from timeline if available, otherwise use calculated
+  const totalHeight = projectHeights.get(project.id) ?? calculatedHeight;
 
   return (
     <div className="border-b border-border/50">
       {/* Project header */}
       <div 
-        className="flex items-center gap-1.5 px-2 py-1 min-h-[40px] cursor-pointer hover:bg-secondary/30 transition-colors"
+        className="flex items-center gap-1.5 px-2 cursor-pointer hover:bg-secondary/30 transition-colors"
+        style={{ height: PROJECT_HEADER_HEIGHT }}
         onClick={onToggle}
       >
         <div className="pl-3 flex items-center gap-1.5 flex-1 min-w-0">
@@ -174,7 +194,7 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
         </div>
       </div>
 
-      {/* Expanded content spacers */}
+      {/* Expanded content spacer - single blank area matching timeline height */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -184,13 +204,7 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            {/* Main items row spacer */}
-            <div className="min-h-[40px] border-b border-border/30" />
-            
-            {/* SubProject lane spacers */}
-            {subProjectLanes.map((_, index) => (
-              <div key={index} className="min-h-[60px] border-b border-border/30" />
-            ))}
+            <div style={{ minHeight: totalHeight }} />
           </motion.div>
         )}
       </AnimatePresence>

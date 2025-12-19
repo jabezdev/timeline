@@ -1,13 +1,29 @@
 import React from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
-import { TimelineCell } from './TimelineCell';
+import { UnifiedItem } from './UnifiedItem';
 import { CELL_WIDTH } from './TimelineHeader';
-import { GripHorizontal } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
+import { SUBPROJECT_HEADER_HEIGHT } from '@/lib/timelineUtils';
 
 interface SubProjectLaneProps {
   subProjects: SubProject[];
+  itemsBySubProject: Map<string, Map<string, TimelineItem[]>>;
+  days: Date[];
+  workspaceColor: number;
+  onToggleItemComplete: (itemId: string) => void;
+  onItemClick: (item: TimelineItem) => void;
+  onSubProjectClick: (subProject: SubProject) => void;
+  rowHeight?: number;
+  laneIndex: number;
+  projectId: string;
+}
+
+interface SubProjectSectionProps {
+  projectId: string;
+  subProjectLanes: SubProject[][];
+  subProjectRowHeights: number[];
   itemsBySubProject: Map<string, Map<string, TimelineItem[]>>;
   days: Date[];
   workspaceColor: number;
@@ -38,7 +54,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     return (
         <div 
             ref={ref}
-            className={`rounded-md border-2 border-dashed transition-colors flex flex-col pointer-events-auto ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+            className={`rounded-md border-2 border-dashed transition-colors flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
             style={{
                 left: left !== undefined ? `${left}px` : undefined,
                 width: width !== undefined ? `${width}px` : undefined,
@@ -47,30 +63,39 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
                 ...style
             }}
         >
-            {/* Drag Handle with Title */}
-            <div 
-                {...dragHandleProps}
-                className="h-6 shrink-0 w-full cursor-grab active:cursor-grabbing flex items-center justify-between hover:bg-black/5 dark:hover:bg-white/5 rounded-t-md z-20 group/handle px-2"
+            {/* Header with Drag Handle and Title */}
+            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto border-b border-dashed"
+                 style={{ borderColor: subProject.color ? `${subProject.color}30` : 'hsl(var(--primary) / 0.1)' }}
             >
-                <span 
-                    className="text-xs font-medium truncate flex-1"
-                    style={{ color: subProject.color || 'hsl(var(--primary) / 0.7)' }}
+                {/* Drag Handle - Left */}
+                <div 
+                    {...dragHandleProps}
+                    className="h-full px-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-black/10 dark:hover:bg-white/10 rounded-tl-md transition-colors"
                 >
-                    {subProject.title}
-                </span>
-                <GripHorizontal className="w-4 h-4 opacity-0 group-hover/handle:opacity-50 transition-opacity shrink-0" />
+                    <GripVertical className="w-3.5 h-3.5 opacity-50" />
+                </div>
+
+                {/* Title - Clickable to Edit */}
+                <div 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isDragging && onClick) {
+                            onClick(subProject);
+                        }
+                    }}
+                    className="flex-1 h-full flex items-center px-2 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-tr-md min-w-0 transition-colors"
+                >
+                    <span 
+                        className="text-xs font-medium truncate"
+                        style={{ color: subProject.color || 'hsl(var(--primary) / 0.7)' }}
+                    >
+                        {subProject.title}
+                    </span>
+                </div>
             </div>
 
-            {/* Content area - clickable to open dialog */}
-            <div 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isDragging && onClick) {
-                        onClick(subProject);
-                    }
-                }}
-                className="flex-1 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-b-md overflow-hidden" 
-            />
+            {/* Content area - Pass through clicks */}
+            <div className="flex-1 rounded-b-md overflow-hidden pointer-events-none" />
         </div>
     );
 });
@@ -112,6 +137,38 @@ function DraggableSubProjectBar({
     );
 }
 
+// Droppable cell for a SubProject lane - only droppable within SubProject date ranges
+function SubProjectLaneDropCell({ 
+  date, 
+  projectId,
+  subProject,
+  laneIndex,
+  rowHeight
+}: { 
+  date: Date; 
+  projectId: string;
+  subProject: SubProject | undefined;
+  laneIndex: number;
+  rowHeight: number;
+}) {
+  const dateStr = format(date, 'yyyy-MM-dd');
+  
+  // Only create a droppable if this date is within a SubProject's range
+  const { setNodeRef, isOver } = useDroppable({
+    id: subProject ? `subproject-lane-${laneIndex}-${subProject.id}-${dateStr}` : `subproject-lane-${laneIndex}-empty-${dateStr}`,
+    data: { projectId, date: dateStr, subProjectId: subProject?.id },
+    disabled: !subProject, // Disable droppable when outside SubProject ranges
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`shrink-0 transition-colors ${isOver && subProject ? 'bg-primary/10' : ''}`}
+      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: rowHeight }}
+    />
+  );
+}
+
 export function SubProjectLane({
   subProjects,
   itemsBySubProject,
@@ -119,14 +176,52 @@ export function SubProjectLane({
   workspaceColor,
   onToggleItemComplete,
   onItemClick,
-  onSubProjectClick
+  onSubProjectClick,
+  rowHeight = 64,
+  laneIndex,
+  projectId
 }: SubProjectLaneProps) {
   const timelineStartDate = days[0];
+  const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
 
   return (
-    <div className="border-b border-border/30 relative min-h-[60px]">
-      {/* SubProject Bars - rendered first as background layer, pointer-events-none except for drag handle */}
-      <div className="absolute inset-0 pointer-events-none">
+    <div className="relative flex flex-col" style={{ minHeight: rowHeight }}>
+      {/* Column dividers - full height background layer */}
+      <div className="absolute inset-0 flex pointer-events-none">
+        {days.map((day, index) => (
+          <div
+            key={day.toISOString()}
+            className={`shrink-0 ${index < days.length - 1 ? 'border-r border-border' : ''}`}
+            style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
+          />
+        ))}
+      </div>
+
+      {/* Droppable cells - only active within SubProject date ranges, pointer-events-none to allow items to be interactive */}
+      <div className="absolute inset-0 flex z-10 pointer-events-none">
+        {days.map((day) => {
+          const activeSubProject = subProjects.find(sub => 
+            isWithinInterval(day, {
+              start: parseISO(sub.startDate),
+              end: parseISO(sub.endDate)
+            })
+          );
+
+          return (
+            <SubProjectLaneDropCell
+              key={day.toISOString()}
+              date={day}
+              projectId={projectId}
+              subProject={activeSubProject}
+              laneIndex={laneIndex}
+              rowHeight={rowHeight}
+            />
+          );
+        })}
+      </div>
+
+      {/* SubProject Bars - visual layer with drag handles */}
+      <div className="absolute inset-0 pointer-events-none z-20">
         {subProjects.map(sub => (
           <DraggableSubProjectBar 
             key={sub.id} 
@@ -137,13 +232,11 @@ export function SubProjectLane({
         ))}
       </div>
 
-      {/* Cells - rendered with padding to account for subproject bars */}
-      <div className="flex relative pt-6"> 
+      {/* Items layer - rendered on top with padding to account for subproject header */}
+      <div className="relative flex z-30" style={{ marginTop: SUBPROJECT_HEADER_HEIGHT }}> 
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           
-          // Find which subproject this day belongs to (if any)
-          // Since we packed them, there should be at most one.
           const activeSubProject = subProjects.find(sub => 
             isWithinInterval(day, {
               start: parseISO(sub.startDate),
@@ -156,21 +249,62 @@ export function SubProjectLane({
             : [];
 
           return (
-            <TimelineCell
+            <div
               key={day.toISOString()}
-              date={day}
-              projectId={subProjects[0]?.projectId} // All subprojects in this lane belong to same project
-              subProjectId={activeSubProject?.id}
-              items={items}
-              milestones={[]}
-              workspaceColor={workspaceColor}
-              onToggleItemComplete={onToggleItemComplete}
-              onItemClick={onItemClick}
-              cellWidth={CELL_WIDTH}
-            />
+              className="shrink-0 px-1 py-1"
+              style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: cellHeight }}
+            >
+              <div className="flex flex-col gap-1">
+                {items.map(item => (
+                  <UnifiedItem 
+                    key={item.id} 
+                    item={item} 
+                    onToggleComplete={onToggleItemComplete}
+                    onClick={onItemClick}
+                    workspaceColor={workspaceColor}
+                  />
+                ))}
+              </div>
+            </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Wrapper component for all SubProject lanes - each lane has its own droppable zones
+export function SubProjectSection({
+  projectId,
+  subProjectLanes,
+  subProjectRowHeights,
+  itemsBySubProject,
+  days,
+  workspaceColor,
+  onToggleItemComplete,
+  onItemClick,
+  onSubProjectClick
+}: SubProjectSectionProps) {
+  if (subProjectLanes.length === 0) return null;
+
+  return (
+    <div className="relative">
+      {/* Individual SubProject lanes with their own droppable zones */}
+      {subProjectLanes.map((lane, index) => (
+        <SubProjectLane 
+          key={index}
+          subProjects={lane}
+          itemsBySubProject={itemsBySubProject}
+          days={days}
+          workspaceColor={workspaceColor}
+          onToggleItemComplete={onToggleItemComplete}
+          onItemClick={onItemClick}
+          onSubProjectClick={onSubProjectClick}
+          rowHeight={subProjectRowHeights[index]}
+          laneIndex={index}
+          projectId={projectId}
+        />
+      ))}
     </div>
   );
 }

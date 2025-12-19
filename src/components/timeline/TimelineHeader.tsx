@@ -1,4 +1,5 @@
 import { format, addDays, isToday } from 'date-fns';
+import { HEADER_HEIGHT } from '@/lib/timelineUtils';
 
 interface TimelineHeaderProps {
   startDate: Date;
@@ -12,12 +13,15 @@ export function TimelineHeader({ startDate, visibleDays }: TimelineHeaderProps) 
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
 
   return (
-    <div className="flex sticky top-0 z-40 bg-background border-b border-border">
+    <div 
+      className="flex sticky top-0 z-40 bg-background border-b border-border"
+      style={{ height: HEADER_HEIGHT }}
+    >
       {/* Date columns - fixed width */}
       {days.map((day) => (
         <div
           key={day.toISOString()}
-          className={`shrink-0 px-1 py-1 text-center border-r border-border last:border-r-0 transition-colors ${
+          className={`shrink-0 px-1 flex flex-col items-center justify-center text-center border-r border-border last:border-r-0 transition-colors ${
             isToday(day) ? 'bg-primary/10' : ''
           }`}
           style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
