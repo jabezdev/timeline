@@ -337,6 +337,32 @@ export const useTimelineStore = create<TimelineStore>()(
     {
       name: 'timeline-storage',
       partialize: (state) => ({ workspaces: state.workspaces, openProjectIds: state.openProjectIds }),
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          const parsed = JSON.parse(str);
+          // Convert openProjectIds array back to Set
+          if (parsed.state?.openProjectIds) {
+            parsed.state.openProjectIds = new Set(parsed.state.openProjectIds);
+          }
+          return parsed;
+        },
+        setItem: (name, value) => {
+          // Convert Set to array for JSON serialization
+          const toStore = {
+            ...value,
+            state: {
+              ...value.state,
+              openProjectIds: value.state?.openProjectIds instanceof Set 
+                ? Array.from(value.state.openProjectIds) 
+                : value.state?.openProjectIds || []
+            }
+          };
+          localStorage.setItem(name, JSON.stringify(toStore));
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
     }
   )
 );

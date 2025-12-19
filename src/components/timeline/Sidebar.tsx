@@ -1,6 +1,6 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
-import { ChevronDown, ChevronRight, Building2, FolderKanban } from 'lucide-react';
-import { ModeToggle } from '../mode-toggle';
+import { ChevronDown, ChevronRight, Building2 } from 'lucide-react';
+import { PreferencesPopover } from '../preferences-popover';
 import { Button } from '../ui/button';
 import { Calendar, ChevronsDown } from 'lucide-react';
 import { format } from 'date-fns';
@@ -36,7 +36,7 @@ export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll
           <ChevronsDown className="h-[1.2rem] w-[1.2rem]" />
           <span className="sr-only">Expand All Workspaces</span>
         </Button>
-        <ModeToggle />
+        <PreferencesPopover />
         <Button variant="outline" size="icon" onClick={onTodayClick} title="Go to Today">
           <Calendar className="h-[1.2rem] w-[1.2rem]" />
           <span className="sr-only">Go to Today</span>
@@ -102,7 +102,7 @@ export function SidebarWorkspace({
           />
         </div>
         
-        <span className="text-xs font-medium text-foreground truncate flex-1">{workspace.name}</span>
+        <span className="text-sm font-medium text-foreground truncate flex-1">{workspace.name}</span>
         
         <span className="text-[10px] text-muted-foreground shrink-0">
           {projectCount} {projectCount === 1 ? 'proj' : 'projs'}
@@ -144,7 +144,6 @@ interface SidebarProjectProps {
 function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarProjectProps) {
   const itemCount = project.items.length;
   const completedCount = project.items.filter(t => t.completed).length;
-  const completionPercent = itemCount > 0 ? (completedCount / itemCount) * 100 : 0;
   
   // Get the actual rendered height from the store, fallback to calculated height
   const projectHeights = useTimelineStore(state => state.projectHeights);
@@ -170,27 +169,12 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
           ) : (
             <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
           )}
-          <FolderKanban 
-            className="w-3 h-3 shrink-0" 
-            style={{ color: `hsl(var(--workspace-${workspaceColor}))` }}
-          />
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-xs font-medium text-foreground truncate">
-              {project.name}
-            </span>
-            {/* Progress bar */}
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="w-12 h-1 bg-secondary rounded-full overflow-hidden shrink-0">
-                <div 
-                  className="h-full bg-task rounded-full transition-all" 
-                  style={{ width: `${completionPercent}%` }}
-                />
-              </div>
-              <span className="text-[9px] text-muted-foreground shrink-0">
-                {completedCount}/{itemCount}
-              </span>
-            </div>
-          </div>
+          <span className="text-xs font-medium text-foreground truncate flex-1">
+            {project.name}
+          </span>
+          <span className="text-xs text-muted-foreground shrink-0">
+            {completedCount}/{itemCount}
+          </span>
         </div>
       </div>
 

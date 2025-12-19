@@ -1,5 +1,5 @@
 import React from 'react';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { UnifiedItem } from './UnifiedItem';
@@ -54,7 +54,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     return (
         <div 
             ref={ref}
-            className={`rounded-md border-2 border-dashed transition-colors flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+            className={`rounded-md border border-dashed transition-colors flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
             style={{
                 left: left !== undefined ? `${left}px` : undefined,
                 width: width !== undefined ? `${width}px` : undefined,
@@ -64,8 +64,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
             }}
         >
             {/* Header with Drag Handle and Title */}
-            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto border-b border-dashed"
-                 style={{ borderColor: subProject.color ? `${subProject.color}30` : 'hsl(var(--primary) / 0.1)' }}
+            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto"
             >
                 {/* Drag Handle - Left */}
                 <div 
@@ -152,18 +151,20 @@ function SubProjectLaneDropCell({
   rowHeight: number;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
+  const { active } = useDndContext();
+  const isDraggingSubProject = active?.data.current?.type === 'subProject';
   
   // Only create a droppable if this date is within a SubProject's range
   const { setNodeRef, isOver } = useDroppable({
     id: subProject ? `subproject-lane-${laneIndex}-${subProject.id}-${dateStr}` : `subproject-lane-${laneIndex}-empty-${dateStr}`,
     data: { projectId, date: dateStr, subProjectId: subProject?.id },
-    disabled: !subProject, // Disable droppable when outside SubProject ranges
+    disabled: !subProject && !isDraggingSubProject, // Disable droppable when outside SubProject ranges, unless dragging a subproject
   });
 
   return (
     <div
       ref={setNodeRef}
-      className={`shrink-0 transition-colors ${isOver && subProject ? 'bg-primary/10' : ''}`}
+      className={`shrink-0 transition-colors ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: rowHeight }}
     />
   );

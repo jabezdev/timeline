@@ -22,7 +22,7 @@ export function Timeline() {
   const [activeDragItem, setActiveDragItem] = useState<{ type: string; item: any } | null>(null);
   const [dragOffsetDays, setDragOffsetDays] = useState(0);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const visibleDays = 14;
+  const visibleDays = 21;
   
   const { 
     workspaces, 
@@ -61,6 +61,18 @@ export function Timeline() {
 
   const handleTodayClick = () => {
     setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
+    // Scroll to today's date after state update
+    setTimeout(() => {
+      if (timelineRef.current) {
+        const today = new Date();
+        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const daysSinceStart = differenceInDays(today, weekStart);
+        if (daysSinceStart >= 0 && daysSinceStart < visibleDays) {
+          const scrollOffset = daysSinceStart * CELL_WIDTH;
+          timelineRef.current.scrollLeft = scrollOffset;
+        }
+      }
+    }, 0);
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -172,6 +184,19 @@ export function Timeline() {
   // Sync scroll between sidebar and timeline content
   const sidebarRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to today's date on initial load
+  useEffect(() => {
+    if (timelineRef.current) {
+      const today = new Date();
+      const daysSinceStart = differenceInDays(today, startDate);
+      // Only scroll if today is within the visible range
+      if (daysSinceStart >= 0 && daysSinceStart < visibleDays) {
+        const scrollOffset = daysSinceStart * CELL_WIDTH;
+        timelineRef.current.scrollLeft = scrollOffset;
+      }
+    }
+  }, []); // Only run on mount
 
   const handleTimelineScroll = () => {
     if (sidebarRef.current && timelineRef.current) {
