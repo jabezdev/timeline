@@ -7,55 +7,56 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Everforest Light Medium */
+    --background: 44 24% 96%;
+    --foreground: 151 17% 35%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 44 24% 93%;
+    --card-foreground: 151 17% 35%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 44 24% 96%;
+    --popover-foreground: 151 17% 35%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 142 28% 42%;
+    --primary-foreground: 44 24% 96%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 44 18% 88%;
+    --secondary-foreground: 151 17% 35%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 44 18% 88%;
+    --muted-foreground: 151 10% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 165 22% 45%;
+    --accent-foreground: 44 24% 96%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 43% 52%;
+    --destructive-foreground: 44 24% 96%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 44 18% 85%;
+    --input: 44 18% 85%;
+    --ring: 142 28% 42%;
 
     --radius: 0.75rem;
 
-    /* Custom workspace accent colors */
-    --workspace-1: 217 91% 60%;
-    --workspace-2: 280 65% 60%;
-    --workspace-3: 160 84% 39%;
-    --workspace-4: 32 95% 55%;
-    --workspace-5: 340 82% 52%;
+    /* Custom workspace accent colors - Everforest Light */
+    --workspace-1: 190 32% 45%;
+    --workspace-2: 286 24% 55%;
+    --workspace-3: 142 28% 42%;
+    --workspace-4: 35 50% 50%;
+    --workspace-5: 0 43% 52%;
 
-    /* Timeline specific */
-    --timeline-line: 214.3 31.8% 91.4%;
-    --timeline-today: 222.2 47.4% 11.2%;
-    --milestone: 45 93% 58%;
-    --task: 222.2 47.4% 11.2%;
-    --note: 280 65% 60%;
+    /* Timeline specific - Everforest Light */
+    --timeline-line: 44 18% 85%;
+    --timeline-today: 142 28% 42%;
+    --milestone: 40 50% 52%;
+    --task: 142 28% 42%;
+    --note: 286 24% 55%;
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-glow: 0 0 24px hsl(217 91% 60% / 0.15);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.12), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+    --shadow-glow: 0 0 24px hsl(142 28% 42% / 0.15);
   }
 
   .dark {

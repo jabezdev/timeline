@@ -1,4 +1,4 @@
-import { Settings, Check } from "lucide-react"
+import { Settings } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 
@@ -17,15 +17,6 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 
-const ACCENT_COLORS = [
-  { name: "Blue", value: "blue", color: "hsl(217 91% 60%)" },
-  { name: "Purple", value: "purple", color: "hsl(280 65% 60%)" },
-  { name: "Green", value: "green", color: "hsl(160 84% 39%)" },
-  { name: "Orange", value: "orange", color: "hsl(32 95% 55%)" },
-  { name: "Rose", value: "rose", color: "hsl(340 82% 52%)" },
-  { name: "Teal", value: "teal", color: "hsl(172 66% 50%)" },
-]
-
 const FONTS = [
   { name: "Inter", value: "inter", family: "'Inter', sans-serif" },
   { name: "Plus Jakarta Sans", value: "jakarta", family: "'Plus Jakarta Sans', sans-serif" },
@@ -34,28 +25,12 @@ const FONTS = [
 
 export function PreferencesPopover() {
   const { theme, setTheme } = useTheme()
-  const [accent, setAccent] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('accent-color') || 'blue'
-    }
-    return 'blue'
-  })
   const [font, setFont] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('font-family') || 'inter'
     }
     return 'inter'
   })
-
-  useEffect(() => {
-    // Apply accent color
-    const accentColor = ACCENT_COLORS.find(c => c.value === accent)
-    if (accentColor) {
-      document.documentElement.style.setProperty('--accent-color', accentColor.color)
-      document.documentElement.setAttribute('data-accent', accent)
-    }
-    localStorage.setItem('accent-color', accent)
-  }, [accent])
 
   useEffect(() => {
     // Apply font family
@@ -97,29 +72,6 @@ export function PreferencesPopover() {
                 <SelectItem value="system">System</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Color Accent */}
-          <div className="grid gap-2">
-            <Label>Color Accent</Label>
-            <div className="flex flex-wrap gap-2">
-              {ACCENT_COLORS.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => setAccent(color.value)}
-                  className="relative w-8 h-8 rounded-full border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                  style={{ 
-                    backgroundColor: color.color,
-                    borderColor: accent === color.value ? 'hsl(var(--foreground))' : 'transparent'
-                  }}
-                  title={color.name}
-                >
-                  {accent === color.value && (
-                    <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow-md" />
-                  )}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Font */}
