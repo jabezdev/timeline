@@ -11,25 +11,25 @@ import { PROJECT_HEADER_HEIGHT, packSubProjects, EXPAND_ANIMATION } from '@/lib/
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 // Droppable cell for milestones in the header row
-function MilestoneDropCell({ 
-  date, 
-  projectId, 
-  milestones, 
-  workspaceColor, 
+function MilestoneDropCell({
+  date,
+  projectId,
+  milestones,
+  workspaceColor,
   onItemClick,
   items,
   isOpen
-}: { 
-  date: Date; 
-  projectId: string; 
-  milestones: Milestone[]; 
+}: {
+  date: Date;
+  projectId: string;
+  milestones: Milestone[];
   workspaceColor: number;
   onItemClick: (item: Milestone) => void;
   items: TimelineItem[];
   isOpen: boolean;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
-  
+
   const { setNodeRef, isOver } = useDroppable({
     id: `milestone-${projectId}-${dateStr}`,
     data: { projectId, date: dateStr, type: 'milestone' },
@@ -39,18 +39,17 @@ function MilestoneDropCell({
   const uncompletedItems = items.filter(item => !item.completed);
 
   return (
-    <div 
+    <div
       ref={setNodeRef}
-      className={`flex flex-col justify-center px-1 border-r border-border/30 last:border-r-0 transition-colors ${
-        isOver ? 'bg-milestone/10' : ''
-      }`}
+      className={`flex flex-col justify-center px-1 border-r border-border/30 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
+        }`}
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
     >
       {/* Render Milestones */}
       <div className="flex flex-col gap-1">
         {milestones.map(milestone => (
           <MilestoneItem
-            key={milestone.id} 
+            key={milestone.id}
             milestone={milestone}
             workspaceColor={workspaceColor}
             onClick={onItemClick}
@@ -62,7 +61,7 @@ function MilestoneDropCell({
       {!isOpen && uncompletedItems.length > 0 && milestones.length === 0 && (
         <div className="flex justify-center gap-0.5 flex-wrap">
           {uncompletedItems.map(item => (
-            <div 
+            <div
               key={item.id}
               className="w-1.5 h-1.5 rounded-full"
               style={{ backgroundColor: item.color || 'hsl(var(--task))' }}
@@ -76,6 +75,9 @@ function MilestoneDropCell({
 
 interface ProjectRowProps {
   project: Project;
+  items: TimelineItem[];
+  milestones: Milestone[];
+  subProjects: SubProject[];
   isOpen: boolean;
   startDate: Date;
   visibleDays: number;
@@ -85,11 +87,14 @@ interface ProjectRowProps {
   onSubProjectClick: (subProject: SubProject) => void;
 }
 
-export function ProjectRow({ 
-  project, 
-  isOpen, 
-  startDate, 
-  visibleDays, 
+export function ProjectRow({
+  project,
+  items: propItems,
+  milestones: propMilestones,
+  subProjects: propSubProjects,
+  isOpen,
+  startDate,
+  visibleDays,
   workspaceColor,
   onToggleItemComplete,
   onItemClick,
@@ -104,35 +109,35 @@ export function ProjectRow({
     const subProjectItems = new Map<string, Map<string, TimelineItem[]>>();
     const allItems = new Map<string, TimelineItem[]>();
 
-    project.items.forEach(t => {
+    propItems.forEach(t => {
       // Add to allItems for collapsed view
       if (!allItems.has(t.date)) allItems.set(t.date, []);
       allItems.get(t.date)!.push(t);
 
       if (t.subProjectId) {
-          if (!subProjectItems.has(t.subProjectId)) {
-              subProjectItems.set(t.subProjectId, new Map());
-          }
-          const spMap = subProjectItems.get(t.subProjectId)!;
-          if (!spMap.has(t.date)) spMap.set(t.date, []);
-          spMap.get(t.date)!.push(t);
+        if (!subProjectItems.has(t.subProjectId)) {
+          subProjectItems.set(t.subProjectId, new Map());
+        }
+        const spMap = subProjectItems.get(t.subProjectId)!;
+        if (!spMap.has(t.date)) spMap.set(t.date, []);
+        spMap.get(t.date)!.push(t);
       } else {
-          if (!items.has(t.date)) items.set(t.date, []);
-          items.get(t.date)!.push(t);
+        if (!items.has(t.date)) items.set(t.date, []);
+        items.get(t.date)!.push(t);
       }
     });
 
-    project.milestones.forEach(m => {
+    propMilestones.forEach(m => {
       if (!milestones.has(m.date)) milestones.set(m.date, []);
       milestones.get(m.date)!.push(m);
     });
 
     return { items, milestones, subProjectItems, allItems };
-  }, [project]);
+  }, [propItems, propMilestones]);
 
   const subProjectLanes = useMemo(() => {
-      return packSubProjects(project.subProjects || []);
-  }, [project.subProjects]);
+    return packSubProjects(propSubProjects || []);
+  }, [propSubProjects]);
 
   // Ref for the expanded content
   const expandedContentRef = useRef<HTMLDivElement>(null);
@@ -171,14 +176,14 @@ export function ProjectRow({
       resizeObserver = new ResizeObserver(debouncedMeasure);
       resizeObserver.observe(expandedContentRef.current);
     }
-    
+
     return () => {
       if (measureTimeoutRef.current) {
         clearTimeout(measureTimeoutRef.current);
       }
       resizeObserver?.disconnect();
     };
-  }, [isOpen, project.id, project.items, project.subProjects, setProjectHeight]);
+  }, [isOpen, project.id, propItems, propSubProjects, setProjectHeight]);
 
   return (
     <div className="flex flex-col border-b border-border/50">
@@ -188,7 +193,7 @@ export function ProjectRow({
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayMilestones = milestones.get(dateStr) || [];
           const dayItems = allItems.get(dateStr) || [];
-          
+
           return (
             <MilestoneDropCell
               key={day.toISOString()}
@@ -219,7 +224,7 @@ export function ProjectRow({
             className="flex flex-col overflow-hidden"
           >
             {/* Main Items Row - uses layout animation for smooth height changes */}
-            <motion.div 
+            <motion.div
               className="flex border-b border-border/30 items-stretch"
               layout
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
@@ -259,4 +264,3 @@ export function ProjectRow({
     </div>
   );
 }
-// End ProjectRow

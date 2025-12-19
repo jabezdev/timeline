@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 
 const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-interface Project {
+interface ProjectOption {
   id: string;
   name: string;
   workspaceName: string;
@@ -30,19 +30,19 @@ interface AddItemDialogProps {
   onAddItem: (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => void;
   onAddMilestone: (projectId: string, title: string, date: string, color?: number) => void;
   onAddSubProject: (projectId: string, title: string, startDate: string, endDate: string, color?: number) => void;
-  projects: Project[];
+  projects: ProjectOption[];
   subProjects: SubProjectOption[];
   activeProjectId?: string;
 }
 
 type ItemType = 'task' | 'milestone' | 'sub-project';
 
-export function AddItemDialog({ 
-  isOpen, 
-  onClose, 
-  onAddItem, 
-  onAddMilestone, 
-  onAddSubProject, 
+export function AddItemDialog({
+  isOpen,
+  onClose,
+  onAddItem,
+  onAddMilestone,
+  onAddSubProject,
   projects,
   subProjects,
   activeProjectId
@@ -83,7 +83,7 @@ export function AddItemDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !projectId) return;
-    
+
     if (type === 'task') {
       onAddItem(title.trim(), date, projectId, subProjectId || undefined, color);
     } else if (type === 'milestone') {
@@ -91,7 +91,7 @@ export function AddItemDialog({
     } else if (type === 'sub-project') {
       onAddSubProject(projectId, title.trim(), date, endDate, color);
     }
-    
+
     setTitle('');
     onClose();
   };
@@ -108,7 +108,7 @@ export function AddItemDialog({
         <DialogHeader>
           <DialogTitle>Add to Timeline</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type selector */}
           <div className="grid grid-cols-3 gap-2">
@@ -117,18 +117,17 @@ export function AddItemDialog({
                 key={value}
                 type="button"
                 onClick={() => setType(value)}
-                className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-lg border transition-all ${
-                  type === value 
-                    ? 'bg-primary text-primary-foreground border-primary' 
+                className={`flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-lg border transition-all ${type === value
+                    ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-secondary/30 text-foreground hover:bg-secondary border-transparent'
-                }`}
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 <span className="text-xs font-medium">{label}</span>
               </button>
             ))}
           </div>
-          
+
           {/* Title - always first for quick entry */}
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-xs">
@@ -140,17 +139,17 @@ export function AddItemDialog({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={
-                type === 'task' 
-                  ? 'What needs to be done?' 
-                  : type === 'milestone' 
-                  ? 'e.g. Launch Day' 
-                  : 'e.g. Design Phase'
+                type === 'task'
+                  ? 'What needs to be done?'
+                  : type === 'milestone'
+                    ? 'e.g. Launch Day'
+                    : 'e.g. Design Phase'
               }
               autoFocus
               className="w-full px-2.5 py-1.5 rounded-md bg-secondary border border-border text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
             />
           </div>
-          
+
           {/* Project selector */}
           <div className="space-y-1.5">
             <Label htmlFor="project" className="text-xs">Project</Label>
@@ -174,7 +173,7 @@ export function AddItemDialog({
               </div>
             </div>
           </div>
-          
+
           {/* Sub-project selector (only for tasks if sub-projects exist) */}
           {type === 'task' && availableSubProjects.length > 0 && (
             <div className="space-y-1.5">
@@ -199,7 +198,7 @@ export function AddItemDialog({
               </div>
             </div>
           )}
-          
+
           {/* Date fields */}
           <div className={`grid gap-3 ${type === 'sub-project' ? 'grid-cols-2' : 'grid-cols-1'}`}>
             <div className="space-y-1.5">
@@ -227,7 +226,7 @@ export function AddItemDialog({
               </div>
             )}
           </div>
-          
+
           {/* Color picker */}
           <div className="space-y-1.5">
             <Label className="text-xs">Color</Label>
@@ -237,15 +236,14 @@ export function AddItemDialog({
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className={`w-6 h-6 rounded-full transition-all ${
-                    color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                  }`}
+                  className={`w-6 h-6 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
+                    }`}
                   style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
                 />
               ))}
             </div>
           </div>
-          
+
           {/* Actions */}
           <div className="flex gap-2 pt-2">
             <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={onClose}>

@@ -1,3 +1,4 @@
+
 export interface TimelineItem {
   id: string;
   title: string;
@@ -33,22 +34,28 @@ export interface Project {
   name: string;
   workspaceId: string;
   color: number;
-  milestones: Milestone[];
-  subProjects: SubProject[];
-  items: TimelineItem[];
+  // Normalized: references are now computed or stored in state.projectOrder
 }
 
 export interface Workspace {
   id: string;
   name: string;
   color: number;
-  projects: Project[];
+  projectIds: string[]; // Order of projects
   isCollapsed: boolean;
 }
 
 export interface TimelineState {
-  workspaces: Workspace[];
-  openProjectId: string | null;
-  currentDate: Date;
+  workspaces: Record<string, Workspace>;
+  projects: Record<string, Project>;
+  subProjects: Record<string, SubProject>;
+  milestones: Record<string, Milestone>;
+  items: Record<string, TimelineItem>;
+  workspaceOrder: string[];
+
+  openProjectIds: string[]; // Changed to array for easier serialization/management
+  currentDate: string; // ISO date string YYYY-MM-DD
   visibleDays: number;
+  isSyncing: boolean;
 }
+

@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -49,6 +50,7 @@ const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 interface SortableWorkspaceItemProps {
   workspace: Workspace;
+  projects: Project[];
   isExpanded: boolean;
   onToggleExpand: () => void;
   onEdit: () => void;
@@ -61,6 +63,7 @@ interface SortableWorkspaceItemProps {
 
 function SortableWorkspaceItem({
   workspace,
+  projects,
   isExpanded,
   onToggleExpand,
   onEdit,
@@ -93,10 +96,10 @@ function SortableWorkspaceItem({
   const handleProjectDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = workspace.projects.findIndex((p) => p.id === active.id);
-      const newIndex = workspace.projects.findIndex((p) => p.id === over.id);
-      const newOrder = arrayMove(workspace.projects, oldIndex, newIndex);
-      onReorderProjects(newOrder.map((p) => p.id));
+      const oldIndex = projects.findIndex((p) => p.id === active.id);
+      const newIndex = projects.findIndex((p) => p.id === over.id);
+      const newOrderIds = arrayMove(projects.map(p => p.id), oldIndex, newIndex);
+      onReorderProjects(newOrderIds);
     }
   };
 
@@ -110,7 +113,7 @@ function SortableWorkspaceItem({
         >
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </button>
-        
+
         <button onClick={onToggleExpand} className="p-1 hover:bg-secondary rounded">
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -118,7 +121,7 @@ function SortableWorkspaceItem({
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
           )}
         </button>
-        
+
         <div
           className="w-5 h-5 rounded flex items-center justify-center shrink-0"
           style={{ backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.2)` }}
@@ -128,9 +131,9 @@ function SortableWorkspaceItem({
             style={{ color: `hsl(var(--workspace-${workspace.color}))` }}
           />
         </div>
-        
+
         <span className="flex-1 text-sm font-medium truncate">{workspace.name}</span>
-        
+
         <button onClick={onEdit} className="p-1 hover:bg-secondary rounded">
           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
@@ -138,7 +141,7 @@ function SortableWorkspaceItem({
           <Trash2 className="w-3.5 h-3.5 text-destructive" />
         </button>
       </div>
-      
+
       {isExpanded && (
         <div className="px-2 pb-2">
           <DndContext
@@ -147,10 +150,10 @@ function SortableWorkspaceItem({
             onDragEnd={handleProjectDragEnd}
           >
             <SortableContext
-              items={workspace.projects.map((p) => p.id)}
+              items={projects.map((p) => p.id)}
               strategy={verticalListSortingStrategy}
             >
-              {workspace.projects.map((project) => (
+              {projects.map((project) => (
                 <SortableProjectItem
                   key={project.id}
                   project={project}
@@ -161,7 +164,7 @@ function SortableWorkspaceItem({
               ))}
             </SortableContext>
           </DndContext>
-          
+
           <button
             onClick={onAddProject}
             className="flex items-center gap-2 w-full mt-1 p-2 text-xs text-muted-foreground hover:bg-secondary rounded transition-colors"
@@ -211,14 +214,14 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete }: Sort
       >
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
-      
+
       <FolderKanban
         className="w-3.5 h-3.5 shrink-0"
         style={{ color: `hsl(var(--workspace-${workspaceColor}))` }}
       />
-      
+
       <span className="flex-1 text-xs truncate">{project.name}</span>
-      
+
       <button onClick={onEdit} className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="w-3 h-3 text-muted-foreground" />
       </button>
@@ -232,6 +235,8 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete }: Sort
 export function WorkspaceManagerPopover() {
   const {
     workspaces,
+    workspaceOrder,
+    projects,
     addWorkspace,
     addProject,
     updateWorkspace,
@@ -250,7 +255,7 @@ export function WorkspaceManagerPopover() {
   const [deletingWorkspace, setDeletingWorkspace] = useState<Workspace | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
-  
+
   // Form states
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceColor, setWorkspaceColor] = useState(1);
@@ -276,10 +281,10 @@ export function WorkspaceManagerPopover() {
   const handleWorkspaceDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = workspaces.findIndex((ws) => ws.id === active.id);
-      const newIndex = workspaces.findIndex((ws) => ws.id === over.id);
-      const newOrder = arrayMove(workspaces, oldIndex, newIndex);
-      reorderWorkspaces(newOrder.map((ws) => ws.id));
+      const oldIndex = workspaceOrder.indexOf(active.id as string);
+      const newIndex = workspaceOrder.indexOf(over.id as string);
+      const newOrder = arrayMove(workspaceOrder, oldIndex, newIndex);
+      reorderWorkspaces(newOrder);
     }
   };
 
@@ -343,6 +348,10 @@ export function WorkspaceManagerPopover() {
     setIsAddProjectOpen(true);
   };
 
+  const sortedWorkspaces = workspaceOrder
+    .map(id => workspaces[id])
+    .filter((w): w is Workspace => !!w);
+
   return (
     <>
       <Popover>
@@ -370,11 +379,11 @@ export function WorkspaceManagerPopover() {
                 Add Org
               </Button>
             </div>
-            
+
             <p className="text-xs text-muted-foreground">
               Drag to reorder workspaces and projects.
             </p>
-            
+
             <div className="max-h-[400px] overflow-y-auto pr-1">
               <DndContext
                 sensors={sensors}
@@ -382,23 +391,30 @@ export function WorkspaceManagerPopover() {
                 onDragEnd={handleWorkspaceDragEnd}
               >
                 <SortableContext
-                  items={workspaces.map((ws) => ws.id)}
+                  items={workspaceOrder}
                   strategy={verticalListSortingStrategy}
                 >
-                  {workspaces.map((workspace) => (
-                    <SortableWorkspaceItem
-                      key={workspace.id}
-                      workspace={workspace}
-                      isExpanded={expandedWorkspaces.has(workspace.id)}
-                      onToggleExpand={() => toggleExpand(workspace.id)}
-                      onEdit={() => openEditWorkspace(workspace)}
-                      onDelete={() => setDeletingWorkspace(workspace)}
-                      onAddProject={() => openAddProject(workspace.id)}
-                      onEditProject={openEditProject}
-                      onDeleteProject={(p) => setDeletingProject(p)}
-                      onReorderProjects={(ids) => reorderProjects(workspace.id, ids)}
-                    />
-                  ))}
+                  {sortedWorkspaces.map((workspace) => {
+                    const workspaceProjects = (workspace.projectIds || [])
+                      .map(pid => projects[pid])
+                      .filter((p): p is Project => !!p);
+
+                    return (
+                      <SortableWorkspaceItem
+                        key={workspace.id}
+                        workspace={workspace}
+                        projects={workspaceProjects}
+                        isExpanded={expandedWorkspaces.has(workspace.id)}
+                        onToggleExpand={() => toggleExpand(workspace.id)}
+                        onEdit={() => openEditWorkspace(workspace)}
+                        onDelete={() => setDeletingWorkspace(workspace)}
+                        onAddProject={() => openAddProject(workspace.id)}
+                        onEditProject={openEditProject}
+                        onDeleteProject={(p) => setDeletingProject(p)}
+                        onReorderProjects={(ids) => reorderProjects(workspace.id, ids)}
+                      />
+                    );
+                  })}
                 </SortableContext>
               </DndContext>
             </div>
@@ -411,6 +427,7 @@ export function WorkspaceManagerPopover() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Add Organization</DialogTitle>
+            <DialogDescription>Create a new top-level workspace.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -431,9 +448,8 @@ export function WorkspaceManagerPopover() {
                     key={c}
                     type="button"
                     onClick={() => setWorkspaceColor(c)}
-                    className={`w-7 h-7 rounded-full transition-all ${
-                      workspaceColor === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                    }`}
+                    className={`w-7 h-7 rounded-full transition-all ${workspaceColor === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
+                      }`}
                     style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
                   />
                 ))}
@@ -456,6 +472,7 @@ export function WorkspaceManagerPopover() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Edit Organization</DialogTitle>
+            <DialogDescription>Update workspace details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -475,9 +492,8 @@ export function WorkspaceManagerPopover() {
                     key={c}
                     type="button"
                     onClick={() => setWorkspaceColor(c)}
-                    className={`w-7 h-7 rounded-full transition-all ${
-                      workspaceColor === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                    }`}
+                    className={`w-7 h-7 rounded-full transition-all ${workspaceColor === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
+                      }`}
                     style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
                   />
                 ))}
@@ -500,6 +516,7 @@ export function WorkspaceManagerPopover() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Add Project</DialogTitle>
+            <DialogDescription>Create a new project in this organization.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -529,6 +546,7 @@ export function WorkspaceManagerPopover() {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>Update project details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -590,3 +608,4 @@ export function WorkspaceManagerPopover() {
     </>
   );
 }
+

@@ -1,4 +1,4 @@
-import { Workspace, TimelineItem, Milestone, SubProject } from '@/types/timeline';
+import { Workspace, Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CELL_WIDTH } from './TimelineHeader';
@@ -6,6 +6,10 @@ import { WORKSPACE_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/timelineUtils';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
+  projects: Project[];
+  projectsItems: Map<string, TimelineItem[]>;
+  projectsMilestones: Map<string, Milestone[]>;
+  projectsSubProjects: Map<string, SubProject[]>;
   openProjectIds: Set<string>;
   startDate: Date;
   visibleDays: number;
@@ -14,10 +18,14 @@ interface WorkspaceSectionProps {
   onSubProjectClick: (subProject: SubProject) => void;
 }
 
-export function WorkspaceSection({ 
-  workspace, 
+export function WorkspaceSection({
+  workspace,
+  projects,
+  projectsItems,
+  projectsMilestones,
+  projectsSubProjects,
   openProjectIds,
-  startDate, 
+  startDate,
   visibleDays,
   onToggleItemComplete,
   onItemClick,
@@ -26,14 +34,14 @@ export function WorkspaceSection({
   return (
     <div className="border-b border-border">
       {/* Workspace header - filler row for timeline side */}
-      <div 
+      <div
         className="bg-secondary/10 border-b border-border/50"
-        style={{ 
+        style={{
           height: WORKSPACE_HEADER_HEIGHT,
-          width: visibleDays * CELL_WIDTH 
+          width: visibleDays * CELL_WIDTH
         }}
       />
-      
+
       {/* Projects */}
       <AnimatePresence initial={false}>
         {!workspace.isCollapsed && (
@@ -47,10 +55,13 @@ export function WorkspaceSection({
             }}
             className="overflow-hidden"
           >
-            {workspace.projects.map(project => (
+            {projects.map(project => (
               <ProjectRow
                 key={project.id}
                 project={project}
+                items={projectsItems.get(project.id) || []}
+                milestones={projectsMilestones.get(project.id) || []}
+                subProjects={projectsSubProjects.get(project.id) || []}
                 isOpen={openProjectIds.has(project.id)}
                 startDate={startDate}
                 visibleDays={visibleDays}
