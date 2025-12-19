@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useLayoutEffect, useState } from 'react';
 import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
@@ -6,6 +6,8 @@ import { UnifiedItem } from './UnifiedItem';
 import { CELL_WIDTH } from './TimelineHeader';
 import { GripVertical } from 'lucide-react';
 import { SUBPROJECT_HEADER_HEIGHT } from '@/lib/timelineUtils';
+import { motion, LayoutGroup } from 'framer-motion';
+import { useDropAnimation } from './DropAnimationContext';
 
 interface SubProjectLaneProps {
   subProjects: SubProject[];
@@ -23,7 +25,6 @@ interface SubProjectLaneProps {
 interface SubProjectSectionProps {
   projectId: string;
   subProjectLanes: SubProject[][];
-  subProjectRowHeights: number[];
   itemsBySubProject: Map<string, Map<string, TimelineItem[]>>;
   days: Date[];
   workspaceColor: number;
@@ -121,6 +122,10 @@ function DraggableSubProjectBar({
         data: { type: 'subProject', item: subProject, rowHeight },
     });
 
+    const { consumeDropInfo } = useDropAnimation();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [animateFrom, setAnimateFrom] = useState<{ x: number; y: number } | null>(null);
+
     const subProjectStart = parseISO(subProject.startDate);
     const subProjectEnd = parseISO(subProject.endDate);
     
@@ -130,17 +135,38 @@ function DraggableSubProjectBar({
     const left = startOffsetDays * CELL_WIDTH;
     const width = durationDays * CELL_WIDTH;
 
+    useLayoutEffect(() => {
+        const dropInfo = consumeDropInfo(subProject.id);
+        if (dropInfo && containerRef.current) {
+            const currentRect = containerRef.current.getBoundingClientRect();
+            const offsetX = dropInfo.rect.left - currentRect.left;
+            const offsetY = dropInfo.rect.top - currentRect.top;
+            setAnimateFrom({ x: offsetX, y: offsetY });
+            // Clear the animation state after it completes
+            const timer = setTimeout(() => setAnimateFrom(null), 200);
+            return () => clearTimeout(timer);
+        }
+    }, [subProject.id, subProject.startDate, consumeDropInfo]);
+
     return (
-        <SubProjectBar
-            ref={setNodeRef}
-            subProject={subProject}
-            left={left}
-            width={width}
-            isDragging={isDragging}
-            onClick={onClick}
-            dragHandleProps={{ ...attributes, ...listeners }}
-            className="absolute top-1 bottom-1"
-        />
+        <div ref={containerRef} className="absolute top-1 bottom-1" style={{ left: `${left}px`, width: `${width}px` }}>
+            <motion.div
+                initial={animateFrom ? { x: animateFrom.x, y: animateFrom.y } : false}
+                animate={{ x: 0, y: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="h-full"
+            >
+                <SubProjectBar
+                    ref={setNodeRef}
+                    subProject={subProject}
+                    width={width}
+                    isDragging={isDragging}
+                    onClick={onClick}
+                    dragHandleProps={{ ...attributes, ...listeners }}
+                    className="h-full"
+                />
+            </motion.div>
+        </div>
     );
 }
 
@@ -173,7 +199,7 @@ function SubProjectLaneDropCell({
     <div
       ref={setNodeRef}
       className={`shrink-0 transition-colors duration-150 ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
-      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: rowHeight }}
+      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
     />
   );
 }
@@ -194,7 +220,7 @@ export function SubProjectLane({
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
 
   return (
-    <div className="relative flex flex-col" style={{ minHeight: rowHeight }}>
+    <div className="relative flex flex-col min-h-[64px]">
       {/* Column dividers - full height background layer */}
       <div className="absolute inset-0 flex pointer-events-none">
         {days.map((day, index) => (
@@ -262,19 +288,25 @@ export function SubProjectLane({
             <div
               key={day.toISOString()}
               className="shrink-0 px-1 py-1"
-              style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: cellHeight }}
+              style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
             >
-              <div className="flex flex-col gap-1">
-                {items.map(item => (
-                  <UnifiedItem 
-                    key={item.id} 
-                    item={item} 
-                    onToggleComplete={onToggleItemComplete}
-                    onClick={onItemClick}
-                    workspaceColor={workspaceColor}
-                  />
-                ))}
-              </div>
+              <LayoutGroup id={`sublane-${laneIndex}-${dateStr}`}>
+                <motion.div 
+                  className="flex flex-col gap-1"
+                  layout
+                  transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                >
+                  {items.map(item => (
+                    <UnifiedItem 
+                      key={item.id} 
+                      item={item} 
+                      onToggleComplete={onToggleItemComplete}
+                      onClick={onItemClick}
+                      workspaceColor={workspaceColor}
+                    />
+                  ))}
+                </motion.div>
+              </LayoutGroup>
             </div>
           );
         })}
@@ -287,7 +319,6 @@ export function SubProjectLane({
 export function SubProjectSection({
   projectId,
   subProjectLanes,
-  subProjectRowHeights,
   itemsBySubProject,
   days,
   workspaceColor,
@@ -298,7 +329,11 @@ export function SubProjectSection({
   if (subProjectLanes.length === 0) return null;
 
   return (
-    <div className="relative">
+    <motion.div 
+      className="relative"
+      layout
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+    >
       {/* Individual SubProject lanes with their own droppable zones */}
       {subProjectLanes.map((lane, index) => (
         <SubProjectLane 
@@ -310,11 +345,10 @@ export function SubProjectSection({
           onToggleItemComplete={onToggleItemComplete}
           onItemClick={onItemClick}
           onSubProjectClick={onSubProjectClick}
-          rowHeight={subProjectRowHeights[index]}
           laneIndex={index}
           projectId={projectId}
         />
       ))}
-    </div>
+    </motion.div>
   );
 }

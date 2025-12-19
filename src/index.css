@@ -44,6 +44,13 @@
     --workspace-3: 142 28% 42%;
     --workspace-4: 35 50% 50%;
     --workspace-5: 0 43% 52%;
+    --workspace-6: 220 45% 50%;
+    --workspace-7: 160 40% 45%;
+    --workspace-8: 340 45% 55%;
+    --workspace-9: 50 55% 50%;
+    --workspace-10: 270 35% 50%;
+    --workspace-11: 180 35% 45%;
+    --workspace-12: 15 50% 50%;
 
     /* Timeline specific - Everforest Light */
     --timeline-line: 44 18% 85%;
@@ -154,6 +161,13 @@
   .workspace-accent-3 { --workspace-accent: var(--workspace-3); }
   .workspace-accent-4 { --workspace-accent: var(--workspace-4); }
   .workspace-accent-5 { --workspace-accent: var(--workspace-5); }
+  .workspace-accent-6 { --workspace-accent: var(--workspace-6); }
+  .workspace-accent-7 { --workspace-accent: var(--workspace-7); }
+  .workspace-accent-8 { --workspace-accent: var(--workspace-8); }
+  .workspace-accent-9 { --workspace-accent: var(--workspace-9); }
+  .workspace-accent-10 { --workspace-accent: var(--workspace-10); }
+  .workspace-accent-11 { --workspace-accent: var(--workspace-11); }
+  .workspace-accent-12 { --workspace-accent: var(--workspace-12); }
 
   .timeline-grid {
     display: grid;

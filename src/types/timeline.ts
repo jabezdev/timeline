@@ -15,6 +15,7 @@ export interface Milestone {
   date: string;
   projectId: string;
   content?: string;
+  color?: string;
 }
 
 export interface SubProject {

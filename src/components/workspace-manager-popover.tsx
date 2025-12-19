@@ -45,7 +45,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const COLORS = [1, 2, 3, 4, 5];
+const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 interface SortableWorkspaceItemProps {
   workspace: Workspace;
@@ -425,7 +425,7 @@ export function WorkspaceManagerPopover() {
             </div>
             <div className="space-y-2">
               <Label>Color</Label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-6 gap-2 justify-items-center">
                 {COLORS.map((c) => (
                   <button
                     key={c}
@@ -469,7 +469,7 @@ export function WorkspaceManagerPopover() {
             </div>
             <div className="space-y-2">
               <Label>Color</Label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-6 gap-2 justify-items-center">
                 {COLORS.map((c) => (
                   <button
                     key={c}

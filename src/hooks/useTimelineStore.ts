@@ -16,16 +16,16 @@ interface TimelineStore {
   updateMilestoneDate: (milestoneId: string, newDate: string) => void;
   updateMilestone: (milestoneId: string, updates: Partial<Milestone>) => void;
   toggleItemComplete: (itemId: string) => void;
-  addItem: (projectId: string, title: string, date: string, subProjectId?: string) => void;
+  addItem: (projectId: string, title: string, date: string, subProjectId?: string, color?: number) => void;
   updateItem: (itemId: string, updates: Partial<TimelineItem>) => void;
   addWorkspace: (name: string, color: number) => void;
   addProject: (workspaceId: string, name: string) => void;
   expandAllWorkspaces: () => void;
-  addSubProject: (projectId: string, title: string, startDate: string, endDate: string) => void;
+  addSubProject: (projectId: string, title: string, startDate: string, endDate: string, color?: number) => void;
   updateSubProjectDate: (subProjectId: string, newStartDate: string) => void;
   updateSubProject: (subProjectId: string, updates: Partial<SubProject>) => void;
   setProjectHeight: (projectId: string, height: number) => void;
-  addMilestone: (projectId: string, title: string, date: string) => void;
+  addMilestone: (projectId: string, title: string, date: string, color?: number) => void;
   reorderWorkspaces: (workspaceIds: string[]) => void;
   reorderProjects: (workspaceId: string, projectIds: string[]) => void;
   updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
@@ -135,7 +135,7 @@ export const useTimelineStore = create<TimelineStore>()(
         }))
       })),
 
-      addItem: (projectId, title, date, subProjectId) => set((state) => {
+      addItem: (projectId, title, date, subProjectId, color) => set((state) => {
         const newItem: TimelineItem = {
           id: `item-${Date.now()}`,
           title,
@@ -144,6 +144,7 @@ export const useTimelineStore = create<TimelineStore>()(
           completed: false,
           projectId,
           subProjectId,
+          color: color ? `hsl(var(--workspace-${color}))` : undefined,
         };
         return {
           workspaces: state.workspaces.map(ws => ({
@@ -200,13 +201,14 @@ export const useTimelineStore = create<TimelineStore>()(
         };
       }),
 
-      addSubProject: (projectId, title, startDate, endDate) => set((state) => {
+      addSubProject: (projectId, title, startDate, endDate, color) => set((state) => {
         const newSubProject: SubProject = {
             id: `sub-${Date.now()}`,
             title,
             startDate,
             endDate,
-            projectId
+            projectId,
+            color: color ? `hsl(var(--workspace-${color}))` : undefined,
         };
         return {
             workspaces: state.workspaces.map(ws => ({
@@ -341,12 +343,13 @@ export const useTimelineStore = create<TimelineStore>()(
         };
       }),
 
-      addMilestone: (projectId, title, date) => set((state) => {
+      addMilestone: (projectId, title, date, color) => set((state) => {
         const newMilestone: Milestone = {
           id: `ms-${Date.now()}`,
           title,
           date,
           projectId,
+          color: color ? `hsl(var(--workspace-${color}))` : undefined,
         };
         return {
           workspaces: state.workspaces.map(ws => ({

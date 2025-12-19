@@ -10,6 +10,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
+const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
 interface Project {
   id: string;
   name: string;
@@ -25,9 +27,9 @@ interface SubProjectOption {
 interface AddItemDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddItem: (title: string, date: string, projectId: string, subProjectId?: string) => void;
-  onAddMilestone: (projectId: string, title: string, date: string) => void;
-  onAddSubProject: (projectId: string, title: string, startDate: string, endDate: string) => void;
+  onAddItem: (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => void;
+  onAddMilestone: (projectId: string, title: string, date: string, color?: number) => void;
+  onAddSubProject: (projectId: string, title: string, startDate: string, endDate: string, color?: number) => void;
   projects: Project[];
   subProjects: SubProjectOption[];
   activeProjectId?: string;
@@ -51,6 +53,7 @@ export function AddItemDialog({
   const [endDate, setEndDate] = useState(format(addDays(new Date(), 5), 'yyyy-MM-dd'));
   const [projectId, setProjectId] = useState(projects[0]?.id || '');
   const [subProjectId, setSubProjectId] = useState<string>('');
+  const [color, setColor] = useState<number>(3);
 
   // Get sub-projects for the selected project
   const availableSubProjects = subProjects.filter(sp => sp.projectId === projectId);
@@ -68,6 +71,7 @@ export function AddItemDialog({
         : projects[0]?.id || '';
       setProjectId(defaultProjectId);
       setSubProjectId('');
+      setColor(3);
     }
   }, [isOpen, projects, activeProjectId]);
 
@@ -81,11 +85,11 @@ export function AddItemDialog({
     if (!title.trim() || !projectId) return;
     
     if (type === 'task') {
-      onAddItem(title.trim(), date, projectId, subProjectId || undefined);
+      onAddItem(title.trim(), date, projectId, subProjectId || undefined, color);
     } else if (type === 'milestone') {
-      onAddMilestone(projectId, title.trim(), date);
+      onAddMilestone(projectId, title.trim(), date, color);
     } else if (type === 'sub-project') {
-      onAddSubProject(projectId, title.trim(), date, endDate);
+      onAddSubProject(projectId, title.trim(), date, endDate, color);
     }
     
     setTitle('');
@@ -222,6 +226,24 @@ export function AddItemDialog({
                 />
               </div>
             )}
+          </div>
+          
+          {/* Color picker */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Color</Label>
+            <div className="grid grid-cols-6 gap-2 justify-items-center">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-6 h-6 rounded-full transition-all ${
+                    color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
+                  }`}
+                  style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                />
+              ))}
+            </div>
           </div>
           
           {/* Actions */}

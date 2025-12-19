@@ -7,13 +7,15 @@ import { Calendar, ChevronsDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { SIDEBAR_WIDTH } from './TimelineHeader';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMemo } from 'react';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useMemo } from 'react';
 import { 
   HEADER_HEIGHT, 
   WORKSPACE_HEADER_HEIGHT, 
   PROJECT_HEADER_HEIGHT,
-  calculateProjectExpandedHeight 
+  EXPAND_ANIMATION,
+  COLLAPSE_ANIMATION,
+  calculateProjectExpandedHeight
 } from '@/lib/timelineUtils';
 
 // Re-export for backwards compatibility
@@ -118,7 +120,10 @@ export function SidebarWorkspace({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            transition={{
+              height: { duration: EXPAND_ANIMATION.duration, ease: EXPAND_ANIMATION.ease },
+              opacity: { duration: EXPAND_ANIMATION.duration * 0.6, ease: 'easeOut' }
+            }}
           >
             {workspace.projects.map(project => (
               <SidebarProject
@@ -147,11 +152,21 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
   const itemCount = project.items.length;
   const completedCount = project.items.filter(t => t.completed).length;
   
-  // Use calculated height directly for synchronized animation with timeline
-  const { totalHeight } = useMemo(() => 
-    calculateProjectExpandedHeight(project), 
-    [project]
-  );
+  // Compute the expected height based on project structure
+  // This provides a stable, predictable value that doesn't depend on DOM measurement timing
+  const computedHeight = useMemo(() => {
+    const { totalHeight } = calculateProjectExpandedHeight(project);
+    return totalHeight;
+  }, [project]);
+  
+  // Also read measured height from store as a fallback for edge cases
+  const measuredHeight = useTimelineStore((state) => state.projectHeights.get(project.id) || 0);
+  
+  // Use the computed height, but if measured height is significantly different (>10px),
+  // use measured height to account for dynamic content we may not have calculated
+  const projectHeight = Math.abs(computedHeight - measuredHeight) > 10 && measuredHeight > 0 
+    ? measuredHeight 
+    : computedHeight;
 
   return (
     <div className="border-b border-border/50">
@@ -181,9 +196,14 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
         {isOpen && (
           <motion.div
             initial={{ height: 0 }}
-            animate={{ height: totalHeight }}
+            animate={{ height: projectHeight }}
             exit={{ height: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            transition={{
+              height: { 
+                duration: EXPAND_ANIMATION.duration, 
+                ease: EXPAND_ANIMATION.ease
+              }
+            }}
             className="overflow-hidden"
           />
         )}

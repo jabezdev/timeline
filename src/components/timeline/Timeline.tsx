@@ -13,8 +13,9 @@ import { SIDEBAR_WIDTH, CELL_WIDTH } from './TimelineHeader';
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
+import { DropAnimationProvider, useDropAnimation } from './DropAnimationContext';
 
-export function Timeline() {
+function TimelineContent() {
   const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
@@ -23,7 +24,10 @@ export function Timeline() {
   const [dragOffsetDays, setDragOffsetDays] = useState(0);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const pendingScrollRef = useRef<{ type: 'instant' | 'smooth'; value: number } | null>(null);
+  const dragOverlayRef = useRef<HTMLDivElement>(null);
   const visibleDays = 21;
+  
+  const { registerDrop } = useDropAnimation();
   
   const { 
     workspaces, 
@@ -149,8 +153,15 @@ export function Timeline() {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    setActiveDragItem(null);
     const { active, over } = event;
+    
+    // Register the drop position before clearing the drag item
+    if (dragOverlayRef.current && active.id) {
+      const rect = dragOverlayRef.current.getBoundingClientRect();
+      registerDrop(String(active.id), rect);
+    }
+    
+    setActiveDragItem(null);
     
     if (!over) return;
     
@@ -191,12 +202,16 @@ export function Timeline() {
     };
   }, [dragOffset]);
 
-  const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string) => {
-    addItem(projectId, title, date, subProjectId);
+  const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
+    addItem(projectId, title, date, subProjectId, color);
   };
 
-  const handleAddMilestone = (projectId: string, title: string, date: string) => {
-    addMilestone(projectId, title, date);
+  const handleAddMilestone = (projectId: string, title: string, date: string, color?: number) => {
+    addMilestone(projectId, title, date, color);
+  };
+
+  const handleAddSubProject = (projectId: string, title: string, startDate: string, endDate: string, color?: number) => {
+    addSubProject(projectId, title, startDate, endDate, color);
   };
 
   const handleItemClick = (item: TimelineItem | Milestone | SubProject) => {
@@ -351,7 +366,7 @@ export function Timeline() {
         onClose={() => setIsAddDialogOpen(false)}
         onAddItem={handleAddItem}
         onAddMilestone={handleAddMilestone}
-        onAddSubProject={addSubProject}
+        onAddSubProject={handleAddSubProject}
         projects={allProjects}
         subProjects={allSubProjects}
         activeProjectId={Array.from(openProjectIds)[0]}
@@ -366,38 +381,48 @@ export function Timeline() {
 
       <DragOverlay modifiers={[adjustTranslate]} dropAnimation={null}>
         {activeDragItem ? (
-          activeDragItem.type === 'subProject' ? (
-             (() => {
-                const subProject = activeDragItem.item as SubProject;
-                const subProjectStart = parseISO(subProject.startDate);
-                const subProjectEnd = parseISO(subProject.endDate);
-                const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
-                const width = durationDays * CELL_WIDTH;
-                const height = activeDragItem.rowHeight || 64;
-                return (
-                    <SubProjectBar 
-                        subProject={subProject} 
-                        width={width}
-                        height={height - 8} // Account for top-1 bottom-1 margins
-                        style={{ cursor: 'grabbing' }}
-                    />
-                );
-             })()
-          ) :
-          activeDragItem.type === 'item' ? (
-            <UnifiedItemView 
-                item={activeDragItem.item as TimelineItem} 
-                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
-            />
-          ) :
-          activeDragItem.type === 'milestone' ? (
-            <MilestoneItemView 
-                milestone={activeDragItem.item as Milestone} 
-                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
-            />
-          ) : null
+          <div ref={dragOverlayRef}>
+            {activeDragItem.type === 'subProject' ? (
+               (() => {
+                  const subProject = activeDragItem.item as SubProject;
+                  const subProjectStart = parseISO(subProject.startDate);
+                  const subProjectEnd = parseISO(subProject.endDate);
+                  const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
+                  const width = durationDays * CELL_WIDTH;
+                  const height = activeDragItem.rowHeight || 64;
+                  return (
+                      <SubProjectBar 
+                          subProject={subProject} 
+                          width={width}
+                          height={height - 8} // Account for top-1 bottom-1 margins
+                          style={{ cursor: 'grabbing' }}
+                      />
+                  );
+               })()
+            ) :
+            activeDragItem.type === 'item' ? (
+              <UnifiedItemView 
+                  item={activeDragItem.item as TimelineItem} 
+                  style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
+              />
+            ) :
+            activeDragItem.type === 'milestone' ? (
+              <MilestoneItemView 
+                  milestone={activeDragItem.item as Milestone} 
+                  style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
+              />
+            ) : null}
+          </div>
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+export function Timeline() {
+  return (
+    <DropAnimationProvider>
+      <TimelineContent />
+    </DropAnimationProvider>
   );
 }

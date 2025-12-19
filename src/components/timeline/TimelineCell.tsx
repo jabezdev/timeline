@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { TimelineItem, Milestone } from '@/types/timeline';
 import { UnifiedItem } from './UnifiedItem';
 import { MilestoneItem } from './MilestoneItem';
+import { LayoutGroup, motion } from 'framer-motion';
 
 interface TimelineCellProps {
   date: Date;
@@ -53,27 +54,33 @@ export function TimelineCell({
       className={`px-1 py-1 shrink-0 transition-colors duration-150 ${
         showBorder ? 'border-r border-border last:border-r-0' : ''
       } ${isOver ? 'bg-primary/10' : ''}`}
-      style={{ width: cellWidth, minWidth: cellWidth, minHeight: rowHeight }}
+      style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
     >
-      <div className="flex flex-col gap-1">
-        {milestones.map(milestone => (
-          <MilestoneItem
-            key={milestone.id} 
-            milestone={milestone}
-            workspaceColor={workspaceColor}
-          />
-        ))}
-        
-        {items.map(item => (
-          <UnifiedItem 
-            key={item.id} 
-            item={item} 
-            onToggleComplete={onToggleItemComplete}
-            onClick={onItemClick}
-            workspaceColor={workspaceColor}
-          />
-        ))}
-      </div>
+      <LayoutGroup id={`cell-${droppableId}`}>
+        <motion.div 
+          className="flex flex-col gap-1"
+          layout
+          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {milestones.map(milestone => (
+            <MilestoneItem
+              key={milestone.id} 
+              milestone={milestone}
+              workspaceColor={workspaceColor}
+            />
+          ))}
+          
+          {items.map(item => (
+            <UnifiedItem 
+              key={item.id} 
+              item={item} 
+              onToggleComplete={onToggleItemComplete}
+              onClick={onItemClick}
+              workspaceColor={workspaceColor}
+            />
+          ))}
+        </motion.div>
+      </LayoutGroup>
     </div>
   );
 }

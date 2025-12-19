@@ -1,6 +1,9 @@
 import { useDraggable } from '@dnd-kit/core';
 import { TimelineItem } from '@/types/timeline';
 import { Check } from 'lucide-react';
+import { motion, LayoutGroup } from 'framer-motion';
+import { useRef, useLayoutEffect, useState } from 'react';
+import { useDropAnimation } from './DropAnimationContext';
 
 interface UnifiedItemProps {
   item: TimelineItem;
@@ -73,16 +76,48 @@ export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }:
     id: item.id,
     data: { type: 'item', item: item },
   });
+  
+  const { consumeDropInfo } = useDropAnimation();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [animateFrom, setAnimateFrom] = useState<{ x: number; y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const dropInfo = consumeDropInfo(item.id);
+    if (dropInfo && containerRef.current) {
+      const currentRect = containerRef.current.getBoundingClientRect();
+      const offsetX = dropInfo.rect.left - currentRect.left;
+      const offsetY = dropInfo.rect.top - currentRect.top;
+      setAnimateFrom({ x: offsetX, y: offsetY });
+      // Clear the animation state after it completes
+      const timer = setTimeout(() => setAnimateFrom(null), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [item.id, item.date, consumeDropInfo]);
 
   return (
-    <div ref={setNodeRef}>
-        <UnifiedItemView 
-            item={item}
-            onToggleComplete={onToggleComplete}
-            onClick={onClick}
-            isDragging={isDragging}
-            dragHandleProps={{ ...attributes, ...listeners }}
-        />
-    </div>
+    <motion.div 
+        ref={containerRef}
+        layout
+        layoutId={`item-${item.id}`}
+        initial={animateFrom ? { x: animateFrom.x, y: animateFrom.y, opacity: 0.8 } : false}
+        animate={{ x: 0, y: 0, opacity: isDragging ? 0.3 : 1 }}
+        transition={{ 
+          layout: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+          x: { duration: 0.25, ease: 'easeOut' },
+          y: { duration: 0.25, ease: 'easeOut' },
+          opacity: { duration: 0.15 }
+        }}
+    >
+      <div ref={setNodeRef}>
+          <UnifiedItemView 
+              item={item}
+              onToggleComplete={onToggleComplete}
+              onClick={onClick}
+              isDragging={isDragging}
+              dragHandleProps={{ ...attributes, ...listeners }}
+          />
+      </div>
+    </motion.div>
   );
 }
+

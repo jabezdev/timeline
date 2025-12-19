@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
@@ -7,7 +7,8 @@ import { MilestoneItem } from './MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CELL_WIDTH } from './TimelineHeader';
-import { PROJECT_HEADER_HEIGHT, calculateProjectExpandedHeight, packSubProjects } from '@/lib/timelineUtils';
+import { PROJECT_HEADER_HEIGHT, packSubProjects, EXPAND_ANIMATION } from '@/lib/timelineUtils';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 // Droppable cell for milestones in the header row
 function MilestoneDropCell({ 
@@ -133,14 +134,35 @@ export function ProjectRow({
       return packSubProjects(project.subProjects || []);
   }, [project.subProjects]);
 
-  // Use shared height calculation for consistency with sidebar
-  const { mainRowHeight, subProjectRowHeights, totalHeight } = useMemo(() => 
-    calculateProjectExpandedHeight(project),
-    [project]
-  );
-
   // Ref for the expanded content
   const expandedContentRef = useRef<HTMLDivElement>(null);
+  const setProjectHeight = useTimelineStore((state) => state.setProjectHeight);
+
+  // Measure and report height to store for sidebar sync
+  // Use useLayoutEffect to measure before paint for smoother sync
+  useLayoutEffect(() => {
+    if (!isOpen) {
+      setProjectHeight(project.id, 0);
+      return;
+    }
+
+    const measureHeight = () => {
+      if (expandedContentRef.current) {
+        const height = expandedContentRef.current.scrollHeight;
+        setProjectHeight(project.id, height);
+      }
+    };
+
+    // Measure immediately for initial sync
+    measureHeight();
+
+    // Also use ResizeObserver for dynamic content changes
+    if (expandedContentRef.current) {
+      const resizeObserver = new ResizeObserver(measureHeight);
+      resizeObserver.observe(expandedContentRef.current);
+      return () => resizeObserver.disconnect();
+    }
+  }, [isOpen, project.id, project.items, project.subProjects, setProjectHeight]);
 
   return (
     <div className="flex flex-col border-b border-border/50">
@@ -172,15 +194,19 @@ export function ProjectRow({
           <motion.div
             ref={expandedContentRef}
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: totalHeight, opacity: 1 }}
+            animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="overflow-hidden flex flex-col"
+            transition={{
+              height: { duration: EXPAND_ANIMATION.duration, ease: EXPAND_ANIMATION.ease },
+              opacity: { duration: EXPAND_ANIMATION.duration * 0.6, ease: 'easeOut' }
+            }}
+            className="flex flex-col overflow-hidden"
           >
-            {/* Main Items Row */}
-            <div 
-              className="flex border-b border-border/30"
-              style={{ minHeight: mainRowHeight }}
+            {/* Main Items Row - uses layout animation for smooth height changes */}
+            <motion.div 
+              className="flex border-b border-border/30 items-stretch"
+              layout
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             >
               {days.map((day) => {
                 const dateStr = format(day, 'yyyy-MM-dd');
@@ -195,17 +221,15 @@ export function ProjectRow({
                     onToggleItemComplete={onToggleItemComplete}
                     onItemClick={onItemClick}
                     cellWidth={CELL_WIDTH}
-                    rowHeight={mainRowHeight}
                   />
                 );
               })}
-            </div>
+            </motion.div>
 
             {/* SubProjects Section - unified droppable zone spanning all lanes */}
             <SubProjectSection
               projectId={project.id}
               subProjectLanes={subProjectLanes}
-              subProjectRowHeights={subProjectRowHeights}
               itemsBySubProject={subProjectItems}
               days={days}
               workspaceColor={workspaceColor}

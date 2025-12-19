@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { Workspace, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CELL_WIDTH } from './TimelineHeader';
-import { WORKSPACE_HEADER_HEIGHT } from '@/lib/timelineUtils';
+import { WORKSPACE_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/timelineUtils';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
@@ -24,8 +23,6 @@ export function WorkspaceSection({
   onItemClick,
   onSubProjectClick
 }: WorkspaceSectionProps) {
-  const [isAnimating, setIsAnimating] = useState(false);
-
   return (
     <div className="border-b border-border">
       {/* Workspace header - filler row for timeline side */}
@@ -38,16 +35,17 @@ export function WorkspaceSection({
       />
       
       {/* Projects */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {!workspace.isCollapsed && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className={isAnimating ? "overflow-hidden" : ""}
-            onAnimationStart={() => setIsAnimating(true)}
-            onAnimationComplete={() => setIsAnimating(false)}
+            transition={{
+              height: { duration: EXPAND_ANIMATION.duration, ease: EXPAND_ANIMATION.ease },
+              opacity: { duration: EXPAND_ANIMATION.duration * 0.6, ease: 'easeOut' }
+            }}
+            className="overflow-hidden"
           >
             {workspace.projects.map(project => (
               <ProjectRow

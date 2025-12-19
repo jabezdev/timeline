@@ -4,11 +4,23 @@ import { Project, TimelineItem, SubProject } from '@/types/timeline';
 export const HEADER_HEIGHT = 48;
 export const WORKSPACE_HEADER_HEIGHT = 36;
 export const PROJECT_HEADER_HEIGHT = 40;
+
+// Shared animation configuration for synchronized Timeline/Sidebar animations
+export const EXPAND_ANIMATION = {
+  duration: 0.25,
+  ease: [0.4, 0, 0.2, 1] as const, // CSS ease-out equivalent for smooth deceleration
+} as const;
+
+export const COLLAPSE_ANIMATION = {
+  duration: 0.2,
+  ease: [0.4, 0, 1, 1] as const, // Faster ease-in for snappy collapse
+} as const;
 export const ITEM_HEIGHT = 32; // Height of a single item (py-1.5 = 12px + content ~20px)
 export const ITEM_GAP = 4; // gap-1 = 4px
 export const ROW_PADDING = 8; // py-1 = 4px top + 4px bottom
 export const SUBPROJECT_HEADER_HEIGHT = 24; // Height of the subproject title bar
 export const ROW_BORDER_HEIGHT = 1; // Border between rows
+export const SUBPROJECT_MIN_HEIGHT = 64; // min-h-[64px] on SubProjectLane
 
 // Calculate minimum row height based on number of items
 export function calculateRowHeight(maxItemCount: number, baseHeight: number = 40): number {
@@ -75,21 +87,26 @@ export function calculateProjectExpandedHeight(project: Project): {
 } {
   const subProjectLanes = packSubProjects(project.subProjects || []);
   
+  // Main row height based on item count
   const mainRowHeight = calculateRowHeight(getMaxItemsPerDay(project.items));
   
+  // SubProject lane heights - each lane has a minimum height of SUBPROJECT_MIN_HEIGHT
   const subProjectRowHeights = subProjectLanes.map(lane => {
     let maxItems = 0;
     lane.forEach(subProject => {
       const subProjectMaxItems = getMaxItemsPerDayForSubProject(project.items, subProject.id);
       maxItems = Math.max(maxItems, subProjectMaxItems);
     });
-    return SUBPROJECT_HEADER_HEIGHT + calculateRowHeight(maxItems, 40);
+    // Lane height = header + items area, with a minimum total of SUBPROJECT_MIN_HEIGHT
+    const calculatedHeight = SUBPROJECT_HEADER_HEIGHT + calculateRowHeight(maxItems, 40);
+    return Math.max(calculatedHeight, SUBPROJECT_MIN_HEIGHT);
   });
   
-  // Total height = main row + all subproject rows + 1 border (between main row and subprojects)
+  // Total height = main row + border + all subproject rows
+  // The main row has a border-b (ROW_BORDER_HEIGHT) when there's expanded content
   const totalHeight = mainRowHeight + 
-                      subProjectRowHeights.reduce((sum, h) => sum + h, 0) + 
-                      (subProjectRowHeights.length > 0 ? ROW_BORDER_HEIGHT : 0);
+                      ROW_BORDER_HEIGHT + // border-b on main items row
+                      subProjectRowHeights.reduce((sum, h) => sum + h, 0);
   
   return { mainRowHeight, subProjectRowHeights, totalHeight };
 }
