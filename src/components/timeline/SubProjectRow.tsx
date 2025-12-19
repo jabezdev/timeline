@@ -35,41 +35,45 @@ interface SubProjectSectionProps {
 export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     subProject: SubProject;
     width?: number;
+    height?: number;
     left?: number;
     isDragging?: boolean;
     onClick?: (subProject: SubProject) => void;
     dragHandleProps?: any;
     style?: React.CSSProperties;
     className?: string;
+    children?: React.ReactNode;
 }>(({
     subProject,
     width,
+    height,
     left,
     isDragging,
     onClick,
     dragHandleProps,
     style,
-    className
+    className,
+    children
 }, ref) => {
     return (
         <div 
             ref={ref}
-            className={`rounded-md border border-dashed transition-colors flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+            className={`rounded-md border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
             style={{
                 left: left !== undefined ? `${left}px` : undefined,
                 width: width !== undefined ? `${width}px` : undefined,
+                height: height !== undefined ? `${height}px` : undefined,
                 borderColor: subProject.color ? `${subProject.color}50` : 'hsl(var(--primary) / 0.2)',
                 backgroundColor: subProject.color ? `${subProject.color}10` : 'hsl(var(--primary) / 0.05)',
                 ...style
             }}
         >
             {/* Header with Drag Handle and Title */}
-            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto"
-            >
+            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto">
                 {/* Drag Handle - Left */}
                 <div 
                     {...dragHandleProps}
-                    className="h-full px-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-black/10 dark:hover:bg-white/10 rounded-tl-md transition-colors"
+                    className="h-full px-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-black/10 dark:hover:bg-white/10 rounded-tl-md"
                 >
                     <GripVertical className="w-3.5 h-3.5 opacity-50" />
                 </div>
@@ -82,7 +86,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
                             onClick(subProject);
                         }
                     }}
-                    className="flex-1 h-full flex items-center px-2 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-tr-md min-w-0 transition-colors"
+                    className="flex-1 h-full flex items-center px-2 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-tr-md min-w-0"
                 >
                     <span 
                         className="text-xs font-medium truncate"
@@ -93,8 +97,10 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
                 </div>
             </div>
 
-            {/* Content area - Pass through clicks */}
-            <div className="flex-1 rounded-b-md overflow-hidden pointer-events-none" />
+            {/* Content area - Render children or placeholder */}
+            <div className="flex-1 rounded-b-md overflow-hidden pointer-events-none">
+                {children}
+            </div>
         </div>
     );
 });
@@ -102,15 +108,17 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
 function DraggableSubProjectBar({ 
     subProject, 
     timelineStartDate,
-    onClick
+    onClick,
+    rowHeight
 }: { 
     subProject: SubProject; 
     timelineStartDate: Date;
     onClick: (subProject: SubProject) => void;
+    rowHeight: number;
 }) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
         id: subProject.id,
-        data: { type: 'subProject', item: subProject },
+        data: { type: 'subProject', item: subProject, rowHeight },
     });
 
     const subProjectStart = parseISO(subProject.startDate);
@@ -164,7 +172,7 @@ function SubProjectLaneDropCell({
   return (
     <div
       ref={setNodeRef}
-      className={`shrink-0 transition-colors ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
+      className={`shrink-0 transition-colors duration-150 ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: rowHeight }}
     />
   );
@@ -229,6 +237,7 @@ export function SubProjectLane({
             subProject={sub} 
             timelineStartDate={timelineStartDate}
             onClick={onSubProjectClick}
+            rowHeight={rowHeight}
           />
         ))}
       </div>

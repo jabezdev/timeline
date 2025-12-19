@@ -1,8 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { TimelineItem } from '@/types/timeline';
 import { Check } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 interface UnifiedItemProps {
   item: TimelineItem;
@@ -77,11 +75,7 @@ export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }:
   });
 
   return (
-    <motion.div
-      ref={setNodeRef}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-    >
+    <div ref={setNodeRef}>
         <UnifiedItemView 
             item={item}
             onToggleComplete={onToggleComplete}
@@ -89,6 +83,6 @@ export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }:
             isDragging={isDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
         />
-    </motion.div>
+    </div>
   );
 }

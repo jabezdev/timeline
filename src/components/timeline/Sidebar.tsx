@@ -1,5 +1,5 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
-import { ChevronDown, ChevronRight, Building2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
 import { PreferencesPopover } from '../preferences-popover';
 import { Button } from '../ui/button';
 import { Calendar, ChevronsDown } from 'lucide-react';
@@ -37,27 +37,23 @@ export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll
           <span className="sr-only">Expand All Workspaces</span>
         </Button>
         <PreferencesPopover />
-        <Button variant="outline" size="icon" onClick={onTodayClick} title="Go to Today">
-          <Calendar className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Go to Today</span>
-        </Button>
       </div>
-      <div className="flex items-center gap-2">
-        <button 
-          onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }}
-          className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
-        >
-          ←
-        </button>
-        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onNavigate('prev')} title="Previous Month">
+          <ChevronLeft className="h-4 w-4" />
+          <span className="sr-only">Previous Month</span>
+        </Button>
+        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap min-w-[60px] text-center">
           {format(startDate, 'MMM yyyy')}
         </span>
-        <button 
-          onClick={(e) => { e.stopPropagation(); onNavigate('next'); }}
-          className="p-1 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground text-sm"
-        >
-          →
-        </button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onNavigate('next')} title="Next Month">
+          <ChevronRight className="h-4 w-4" />
+          <span className="sr-only">Next Month</span>
+        </Button>
+        <Button variant="outline" size="icon" className="h-7 w-7" onClick={onTodayClick} title="Go to Today">
+          <Calendar className="h-4 w-4" />
+          <span className="sr-only">Go to Today</span>
+        </Button>
       </div>
     </div>
   );
@@ -110,13 +106,13 @@ export function SidebarWorkspace({
       </div>
       
       {/* Projects */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {!workspace.isCollapsed && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
           >
             {workspace.projects.map(project => (
               <SidebarProject
@@ -145,15 +141,11 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
   const itemCount = project.items.length;
   const completedCount = project.items.filter(t => t.completed).length;
   
-  // Get the actual rendered height from the store, fallback to calculated height
-  const projectHeights = useTimelineStore(state => state.projectHeights);
-  const { totalHeight: calculatedHeight } = useMemo(() => 
+  // Use calculated height directly for synchronized animation with timeline
+  const { totalHeight } = useMemo(() => 
     calculateProjectExpandedHeight(project), 
     [project]
   );
-  
-  // Use actual height from timeline if available, otherwise use calculated
-  const totalHeight = projectHeights.get(project.id) ?? calculatedHeight;
 
   return (
     <div className="border-b border-border/50">
@@ -179,17 +171,15 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
       </div>
 
       {/* Expanded content spacer - single blank area matching timeline height */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ height: 0 }}
+            animate={{ height: totalHeight }}
+            exit={{ height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden"
-          >
-            <div style={{ minHeight: totalHeight }} />
-          </motion.div>
+          />
         )}
       </AnimatePresence>
     </div>

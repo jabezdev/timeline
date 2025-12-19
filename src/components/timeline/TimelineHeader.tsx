@@ -6,7 +6,7 @@ interface TimelineHeaderProps {
   visibleDays: number;
 }
 
-export const SIDEBAR_WIDTH = 260;
+export const SIDEBAR_WIDTH = 300;
 export const CELL_WIDTH = 180;
 
 export function TimelineHeader({ startDate, visibleDays }: TimelineHeaderProps) {

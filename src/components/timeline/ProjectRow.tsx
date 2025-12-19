@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
@@ -8,7 +8,6 @@ import { SubProjectSection } from './SubProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CELL_WIDTH } from './TimelineHeader';
 import { PROJECT_HEADER_HEIGHT, calculateProjectExpandedHeight, packSubProjects } from '@/lib/timelineUtils';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 // Droppable cell for milestones in the header row
 function MilestoneDropCell({ 
@@ -126,28 +125,13 @@ export function ProjectRow({
   }, [project.subProjects]);
 
   // Use shared height calculation for consistency with sidebar
-  const { mainRowHeight, subProjectRowHeights } = useMemo(() => 
+  const { mainRowHeight, subProjectRowHeights, totalHeight } = useMemo(() => 
     calculateProjectExpandedHeight(project),
     [project]
   );
 
-  // Measure actual rendered height and report to store
+  // Ref for the expanded content
   const expandedContentRef = useRef<HTMLDivElement>(null);
-  const setProjectHeight = useTimelineStore(state => state.setProjectHeight);
-
-  useEffect(() => {
-    if (!isOpen || !expandedContentRef.current) return;
-    
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const height = entry.contentRect.height;
-        setProjectHeight(project.id, height);
-      }
-    });
-    
-    observer.observe(expandedContentRef.current);
-    return () => observer.disconnect();
-  }, [isOpen, project.id, setProjectHeight]);
 
   return (
     <div className="flex flex-col border-b border-border/50">
@@ -174,18 +158,21 @@ export function ProjectRow({
       </div>
 
       {/* EXPANDED CONTENT */}
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
             ref={expandedContentRef}
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: totalHeight, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
             className="overflow-hidden flex flex-col"
           >
             {/* Main Items Row */}
-            <div className="flex border-b border-border/30">
+            <div 
+              className="flex border-b border-border/30"
+              style={{ minHeight: mainRowHeight }}
+            >
               {days.map((day) => {
                 const dateStr = format(day, 'yyyy-MM-dd');
                 return (

@@ -1,8 +1,6 @@
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Milestone } from '@/types/timeline';
 import { Flag } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 interface MilestoneItemProps {
   milestone: Milestone;
@@ -55,17 +53,13 @@ export function MilestoneItem({ milestone, workspaceColor, onClick }: MilestoneI
   });
 
   return (
-    <motion.div
-      ref={setNodeRef}
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
+    <div ref={setNodeRef}>
         <MilestoneItemView
             milestone={milestone}
             onClick={onClick}
             isDragging={isDragging}
             dragHandleProps={{ ...attributes, ...listeners }}
         />
-    </motion.div>
+    </div>
   );
 }

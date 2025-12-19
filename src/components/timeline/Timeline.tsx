@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, useSensor, useSensors, PointerSensor, pointerWithin, Modifier } from '@dnd-kit/core';
 import { addDays, subDays, startOfWeek, differenceInDays, parseISO, format } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
@@ -22,6 +22,7 @@ export function Timeline() {
   const [activeDragItem, setActiveDragItem] = useState<{ type: string; item: any } | null>(null);
   const [dragOffsetDays, setDragOffsetDays] = useState(0);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const pendingScrollRef = useRef<{ type: 'instant' | 'smooth'; value: number } | null>(null);
   const visibleDays = 21;
   
   const { 
@@ -52,28 +53,71 @@ export function Timeline() {
   );
 
   const handleNavigate = (direction: 'prev' | 'next') => {
-    setStartDate(prev => 
-      direction === 'next' 
-        ? addDays(prev, 7) 
-        : subDays(prev, 7)
-    );
+    if (!timelineRef.current) {
+      // Fallback to original behavior if ref not available
+      setStartDate(prev => 
+        direction === 'next' 
+          ? addDays(prev, 7) 
+          : subDays(prev, 7)
+      );
+      return;
+    }
+
+    const currentScrollLeft = timelineRef.current.scrollLeft;
+    
+    if (direction === 'prev') {
+      // Store the target scroll position to be applied before paint
+      pendingScrollRef.current = { type: 'instant', value: currentScrollLeft + (7 * CELL_WIDTH) };
+      // Add 7 days to the left by shifting startDate back
+      setStartDate(prev => subDays(prev, 7));
+    } else {
+      // Store the target scroll position to be applied before paint
+      pendingScrollRef.current = { type: 'instant', value: Math.max(0, currentScrollLeft - (7 * CELL_WIDTH)) };
+      // Add 7 days to the right by shifting startDate forward
+      setStartDate(prev => addDays(prev, 7));
+    }
   };
 
   const handleTodayClick = () => {
-    setStartDate(startOfWeek(new Date(), { weekStartsOn: 1 }));
-    // Scroll to today's date after state update
-    setTimeout(() => {
+    const today = new Date();
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const daysSinceCurrentStart = differenceInDays(today, startDate);
+    
+    // Check if today is already within the current visible range (with some buffer)
+    if (daysSinceCurrentStart >= 0 && daysSinceCurrentStart < visibleDays) {
+      // Today is in the current range, just smooth scroll to it
       if (timelineRef.current) {
-        const today = new Date();
-        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const daysSinceStart = differenceInDays(today, weekStart);
-        if (daysSinceStart >= 0 && daysSinceStart < visibleDays) {
-          const scrollOffset = daysSinceStart * CELL_WIDTH;
-          timelineRef.current.scrollLeft = scrollOffset;
-        }
+        const scrollOffset = daysSinceCurrentStart * CELL_WIDTH;
+        timelineRef.current.scrollTo({
+          left: scrollOffset,
+          behavior: 'smooth'
+        });
       }
-    }, 0);
+    } else {
+      // Today is outside current range, update startDate and then scroll
+      const newDaysSinceStart = differenceInDays(today, weekStart);
+      if (newDaysSinceStart >= 0 && newDaysSinceStart < visibleDays) {
+        pendingScrollRef.current = { type: 'smooth', value: newDaysSinceStart * CELL_WIDTH };
+      }
+      setStartDate(weekStart);
+    }
   };
+
+  // Apply pending scroll adjustments before browser paint to avoid visual flash
+  useLayoutEffect(() => {
+    if (pendingScrollRef.current && timelineRef.current) {
+      const { type, value } = pendingScrollRef.current;
+      if (type === 'instant') {
+        timelineRef.current.scrollLeft = value;
+      } else {
+        timelineRef.current.scrollTo({
+          left: value,
+          behavior: 'smooth'
+        });
+      }
+      pendingScrollRef.current = null;
+    }
+  }, [startDate]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragItem(event.active.data.current as any);
@@ -305,7 +349,7 @@ export function Timeline() {
         onSave={handleItemSave}
       />
 
-      <DragOverlay modifiers={[adjustTranslate]}>
+      <DragOverlay modifiers={[adjustTranslate]} dropAnimation={null}>
         {activeDragItem ? (
           activeDragItem.type === 'subProject' ? (
              (() => {
@@ -314,10 +358,12 @@ export function Timeline() {
                 const subProjectEnd = parseISO(subProject.endDate);
                 const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
                 const width = durationDays * CELL_WIDTH;
+                const height = activeDragItem.rowHeight || 64;
                 return (
                     <SubProjectBar 
                         subProject={subProject} 
                         width={width}
+                        height={height - 8} // Account for top-1 bottom-1 margins
                         style={{ cursor: 'grabbing' }}
                     />
                 );
@@ -326,13 +372,13 @@ export function Timeline() {
           activeDragItem.type === 'item' ? (
             <UnifiedItemView 
                 item={activeDragItem.item as TimelineItem} 
-                style={{ cursor: 'grabbing', width: CELL_WIDTH }}
+                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
             />
           ) :
           activeDragItem.type === 'milestone' ? (
             <MilestoneItemView 
                 milestone={activeDragItem.item as Milestone} 
-                style={{ cursor: 'grabbing', width: CELL_WIDTH }}
+                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
             />
           ) : null
         ) : null}

@@ -50,7 +50,7 @@ export function TimelineCell({
   return (
     <div
       ref={setNodeRef}
-      className={`px-1 py-1 transition-colors shrink-0 ${
+      className={`px-1 py-1 shrink-0 transition-colors duration-150 ${
         showBorder ? 'border-r border-border last:border-r-0' : ''
       } ${isOver ? 'bg-primary/10' : ''}`}
       style={{ width: cellWidth, minWidth: cellWidth, minHeight: rowHeight }}
