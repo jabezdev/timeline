@@ -296,7 +296,7 @@ export function Timeline() {
         {/* SCROLLABLE TIMELINE CONTENT */}
         <div 
           ref={timelineRef}
-          className="flex-1 overflow-auto"
+          className="flex-1 overflow-y-auto overflow-x-scroll scrollbar-hide"
           onScroll={handleTimelineScroll}
         >
           <div className="min-w-fit">

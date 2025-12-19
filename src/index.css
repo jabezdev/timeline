@@ -138,6 +138,16 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
+  /* Hide scrollbar but keep scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+
   .workspace-accent-1 { --workspace-accent: var(--workspace-1); }
   .workspace-accent-2 { --workspace-accent: var(--workspace-2); }
   .workspace-accent-3 { --workspace-accent: var(--workspace-3); }
