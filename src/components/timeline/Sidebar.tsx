@@ -1,6 +1,7 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
 import { ChevronDown, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
 import { PreferencesPopover } from '../preferences-popover';
+import { WorkspaceManagerPopover } from '../workspace-manager-popover';
 import { Button } from '../ui/button';
 import { Calendar, ChevronsDown } from 'lucide-react';
 import { format } from 'date-fns';
@@ -31,28 +32,33 @@ export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll
       className="shrink-0 flex items-center justify-between px-2 border-r border-b border-border bg-background"
       style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH, height: HEADER_HEIGHT }}
     >
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={onExpandAll} title="Expand All Workspaces">
-          <ChevronsDown className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Expand All Workspaces</span>
-        </Button>
-        <PreferencesPopover />
-      </div>
+      {/* Left group: Preferences & Workspaces */}
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onNavigate('prev')} title="Previous Month">
-          <ChevronLeft className="h-4 w-4" />
-          <span className="sr-only">Previous Month</span>
+        <PreferencesPopover />
+        <WorkspaceManagerPopover />
+      </div>
+      
+      {/* Right group: Date navigation, Today & Expand */}
+      <div className="flex items-center">
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onNavigate('prev')} title="Previous Week">
+          <ChevronLeft className="h-3.5 w-3.5" />
+          <span className="sr-only">Previous Week</span>
         </Button>
-        <span className="text-xs font-medium text-muted-foreground whitespace-nowrap min-w-[60px] text-center">
-          {format(startDate, 'MMM yyyy')}
+        <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap w-[52px] text-center">
+          {format(startDate, 'MMM yy')}
         </span>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onNavigate('next')} title="Next Month">
-          <ChevronRight className="h-4 w-4" />
-          <span className="sr-only">Next Month</span>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onNavigate('next')} title="Next Week">
+          <ChevronRight className="h-3.5 w-3.5" />
+          <span className="sr-only">Next Week</span>
         </Button>
-        <Button variant="outline" size="icon" className="h-7 w-7" onClick={onTodayClick} title="Go to Today">
-          <Calendar className="h-4 w-4" />
+        <div className="w-px h-4 bg-border mx-1" />
+        <Button variant="outline" size="icon" className="h-6 w-6" onClick={onTodayClick} title="Go to Today">
+          <Calendar className="h-3.5 w-3.5" />
           <span className="sr-only">Go to Today</span>
+        </Button>
+        <Button variant="outline" size="icon" className="h-6 w-6 ml-1" onClick={onExpandAll} title="Expand All Workspaces">
+          <ChevronsDown className="h-3.5 w-3.5" />
+          <span className="sr-only">Expand All Workspaces</span>
         </Button>
       </div>
     </div>

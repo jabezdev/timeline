@@ -68,14 +68,14 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
                 ...style
             }}
         >
-            {/* Header with Drag Handle and Title */}
-            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto">
-                {/* Drag Handle - Left */}
+            {/* Header with Drag Handle and Title - aligned with items (px-2, gap-1.5, checkbox w-3) */}
+            <div className="h-6 shrink-0 w-full flex items-center rounded-t-md z-20 pointer-events-auto pl-2.5 pr-2 gap-1.5">
+                {/* Drag Handle - aligned with checkbox (w-3 to match checkbox width) */}
                 <div 
                     {...dragHandleProps}
-                    className="h-full px-1.5 flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-black/10 dark:hover:bg-white/10 rounded-tl-md"
+                    className="w-3 h-3 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0"
                 >
-                    <GripVertical className="w-3.5 h-3.5 opacity-50" />
+                    <GripVertical className="w-3 h-3 opacity-50" />
                 </div>
 
                 {/* Title - Clickable to Edit */}
@@ -86,7 +86,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
                             onClick(subProject);
                         }
                     }}
-                    className="flex-1 h-full flex items-center px-2 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-tr-md min-w-0"
+                    className="flex-1 h-full flex items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-tr-md min-w-0"
                 >
                     <span 
                         className="text-xs font-medium truncate"

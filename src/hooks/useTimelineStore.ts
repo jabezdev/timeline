@@ -25,6 +25,13 @@ interface TimelineStore {
   updateSubProjectDate: (subProjectId: string, newStartDate: string) => void;
   updateSubProject: (subProjectId: string, updates: Partial<SubProject>) => void;
   setProjectHeight: (projectId: string, height: number) => void;
+  addMilestone: (projectId: string, title: string, date: string) => void;
+  reorderWorkspaces: (workspaceIds: string[]) => void;
+  reorderProjects: (workspaceId: string, projectIds: string[]) => void;
+  updateWorkspace: (workspaceId: string, updates: Partial<Workspace>) => void;
+  updateProject: (projectId: string, updates: Partial<Project>) => void;
+  deleteWorkspace: (workspaceId: string) => void;
+  deleteProject: (projectId: string) => void;
 }
 
 export const useTimelineStore = create<TimelineStore>()(
@@ -333,6 +340,70 @@ export const useTimelineStore = create<TimelineStore>()(
             }))
         };
       }),
+
+      addMilestone: (projectId, title, date) => set((state) => {
+        const newMilestone: Milestone = {
+          id: `ms-${Date.now()}`,
+          title,
+          date,
+          projectId,
+        };
+        return {
+          workspaces: state.workspaces.map(ws => ({
+            ...ws,
+            projects: ws.projects.map(proj =>
+              proj.id === projectId
+                ? { ...proj, milestones: [...proj.milestones, newMilestone] }
+                : proj
+            )
+          }))
+        };
+      }),
+
+      reorderWorkspaces: (workspaceIds) => set((state) => {
+        const workspaceMap = new Map(state.workspaces.map(ws => [ws.id, ws]));
+        const reordered = workspaceIds
+          .map(id => workspaceMap.get(id))
+          .filter((ws): ws is Workspace => ws !== undefined);
+        return { workspaces: reordered };
+      }),
+
+      reorderProjects: (workspaceId, projectIds) => set((state) => ({
+        workspaces: state.workspaces.map(ws => {
+          if (ws.id !== workspaceId) return ws;
+          const projectMap = new Map(ws.projects.map(p => [p.id, p]));
+          const reordered = projectIds
+            .map(id => projectMap.get(id))
+            .filter((p): p is Project => p !== undefined);
+          return { ...ws, projects: reordered };
+        })
+      })),
+
+      updateWorkspace: (workspaceId, updates) => set((state) => ({
+        workspaces: state.workspaces.map(ws =>
+          ws.id === workspaceId ? { ...ws, ...updates } : ws
+        )
+      })),
+
+      updateProject: (projectId, updates) => set((state) => ({
+        workspaces: state.workspaces.map(ws => ({
+          ...ws,
+          projects: ws.projects.map(proj =>
+            proj.id === projectId ? { ...proj, ...updates } : proj
+          )
+        }))
+      })),
+
+      deleteWorkspace: (workspaceId) => set((state) => ({
+        workspaces: state.workspaces.filter(ws => ws.id !== workspaceId)
+      })),
+
+      deleteProject: (projectId) => set((state) => ({
+        workspaces: state.workspaces.map(ws => ({
+          ...ws,
+          projects: ws.projects.filter(p => p.id !== projectId)
+        }))
+      })),
     }),
     {
       name: 'timeline-storage',

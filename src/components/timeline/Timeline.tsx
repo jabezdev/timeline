@@ -42,6 +42,7 @@ export function Timeline() {
     updateSubProjectDate,
     addSubProject,
     updateSubProject,
+    addMilestone,
   } = useTimelineStore();
 
   const sensors = useSensors(
@@ -190,8 +191,12 @@ export function Timeline() {
     };
   }, [dragOffset]);
 
-  const handleAddItem = (title: string, date: string, projectId: string) => {
-    addItem(projectId, title, date);
+  const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string) => {
+    addItem(projectId, title, date, subProjectId);
+  };
+
+  const handleAddMilestone = (projectId: string, title: string, date: string) => {
+    addMilestone(projectId, title, date);
   };
 
   const handleItemClick = (item: TimelineItem | Milestone | SubProject) => {
@@ -211,6 +216,16 @@ export function Timeline() {
 
   const allProjects = workspaces.flatMap(ws => 
     ws.projects.map(p => ({ ...p, workspaceName: ws.name }))
+  );
+
+  const allSubProjects = workspaces.flatMap(ws =>
+    ws.projects.flatMap(p =>
+      (p.subProjects || []).map(sp => ({
+        id: sp.id,
+        title: sp.title,
+        projectId: sp.projectId,
+      }))
+    )
   );
 
   // Sort: active workspaces (with open projects) first, then expanded, then collapsed
@@ -335,11 +350,11 @@ export function Timeline() {
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
         onAddItem={handleAddItem}
-        onAddWorkspace={addWorkspace}
-        onAddProject={addProject}
+        onAddMilestone={handleAddMilestone}
         onAddSubProject={addSubProject}
         projects={allProjects}
-        workspaces={workspaces}
+        subProjects={allSubProjects}
+        activeProjectId={Array.from(openProjectIds)[0]}
       />
 
       <ItemDialog

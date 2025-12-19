@@ -16,7 +16,7 @@ function MilestoneDropCell({
   milestones, 
   workspaceColor, 
   onItemClick,
-  hasItem,
+  items,
   isOpen
 }: { 
   date: Date; 
@@ -24,7 +24,7 @@ function MilestoneDropCell({
   milestones: Milestone[]; 
   workspaceColor: number;
   onItemClick: (item: Milestone) => void;
-  hasItem: boolean;
+  items: TimelineItem[];
   isOpen: boolean;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
@@ -33,6 +33,9 @@ function MilestoneDropCell({
     id: `milestone-${projectId}-${dateStr}`,
     data: { projectId, date: dateStr, type: 'milestone' },
   });
+
+  // Filter out completed items for collapsed view
+  const uncompletedItems = items.filter(item => !item.completed);
 
   return (
     <div 
@@ -54,10 +57,16 @@ function MilestoneDropCell({
         ))}
       </div>
 
-      {/* If collapsed and has items, show dot */}
-      {!isOpen && hasItem && milestones.length === 0 && (
-        <div className="flex justify-center">
-          <div className="w-1.5 h-1.5 rounded-full bg-task" />
+      {/* If collapsed and has uncompleted items, show dots for each */}
+      {!isOpen && uncompletedItems.length > 0 && milestones.length === 0 && (
+        <div className="flex justify-center gap-0.5 flex-wrap">
+          {uncompletedItems.map(item => (
+            <div 
+              key={item.id}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: item.color || 'hsl(var(--task))' }}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -140,7 +149,7 @@ export function ProjectRow({
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayMilestones = milestones.get(dateStr) || [];
-          const hasItem = allItems.has(dateStr);
+          const dayItems = allItems.get(dateStr) || [];
           
           return (
             <MilestoneDropCell
@@ -150,7 +159,7 @@ export function ProjectRow({
               milestones={dayMilestones}
               workspaceColor={workspaceColor}
               onItemClick={onItemClick}
-              hasItem={hasItem}
+              items={dayItems}
               isOpen={isOpen}
             />
           );
