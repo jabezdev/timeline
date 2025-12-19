@@ -137,6 +137,7 @@ export function ProjectRow({
   // Ref for the expanded content
   const expandedContentRef = useRef<HTMLDivElement>(null);
   const setProjectHeight = useTimelineStore((state) => state.setProjectHeight);
+  const measureTimeoutRef = useRef<number | null>(null);
 
   // Measure and report height to store for sidebar sync
   // Use useLayoutEffect to measure before paint for smoother sync
@@ -153,15 +154,30 @@ export function ProjectRow({
       }
     };
 
+    // Debounced measurement to avoid multiple updates during animations
+    const debouncedMeasure = () => {
+      if (measureTimeoutRef.current) {
+        clearTimeout(measureTimeoutRef.current);
+      }
+      measureTimeoutRef.current = window.setTimeout(measureHeight, 50);
+    };
+
     // Measure immediately for initial sync
     measureHeight();
 
-    // Also use ResizeObserver for dynamic content changes
+    // Use ResizeObserver with debouncing for dynamic content changes
+    let resizeObserver: ResizeObserver | null = null;
     if (expandedContentRef.current) {
-      const resizeObserver = new ResizeObserver(measureHeight);
+      resizeObserver = new ResizeObserver(debouncedMeasure);
       resizeObserver.observe(expandedContentRef.current);
-      return () => resizeObserver.disconnect();
     }
+    
+    return () => {
+      if (measureTimeoutRef.current) {
+        clearTimeout(measureTimeoutRef.current);
+      }
+      resizeObserver?.disconnect();
+    };
   }, [isOpen, project.id, project.items, project.subProjects, setProjectHeight]);
 
   return (

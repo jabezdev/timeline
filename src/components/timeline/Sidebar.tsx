@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { SIDEBAR_WIDTH } from './TimelineHeader';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { 
   HEADER_HEIGHT, 
   WORKSPACE_HEADER_HEIGHT, 
@@ -159,14 +159,19 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
     return totalHeight;
   }, [project]);
   
-  // Also read measured height from store as a fallback for edge cases
+  // Also read measured height from store for dynamic content sync
   const measuredHeight = useTimelineStore((state) => state.projectHeights.get(project.id) || 0);
   
-  // Use the computed height, but if measured height is significantly different (>10px),
-  // use measured height to account for dynamic content we may not have calculated
-  const projectHeight = Math.abs(computedHeight - measuredHeight) > 10 && measuredHeight > 0 
-    ? measuredHeight 
-    : computedHeight;
+  // Prefer measured height when available (it reflects actual DOM state after animations),
+  // fall back to computed height for initial render or when measured height is 0
+  const projectHeight = measuredHeight > 0 ? measuredHeight : computedHeight;
+
+  // Track previous isOpen state to detect expand/collapse vs content changes
+  const wasOpenRef = useRef(isOpen);
+  const isExpandCollapse = wasOpenRef.current !== isOpen;
+  useEffect(() => {
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
 
   return (
     <div className="border-b border-border/50">
@@ -200,9 +205,14 @@ function SidebarProject({ project, isOpen, onToggle, workspaceColor }: SidebarPr
             exit={{ height: 0 }}
             transition={{
               height: { 
-                duration: EXPAND_ANIMATION.duration, 
-                ease: EXPAND_ANIMATION.ease
+                // Use animation for expand/collapse, very fast for content changes
+                duration: isExpandCollapse ? 0.25 : 0, 
+                ease: [0.4, 0, 0.2, 1]
               }
+            }}
+            style={{
+              // CSS transition handles smooth height changes during drag operations
+              transition: isExpandCollapse ? undefined : 'height 0.15s ease-out'
             }}
             className="overflow-hidden"
           />
