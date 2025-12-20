@@ -67,6 +67,7 @@ function TimelineContent() {
     deleteItem,
     deleteMilestone,
     deleteSubProject,
+    fetchRange,
   } = useTimelineStore();
 
   const openProjectIds = useMemo(() => new Set(openProjectIdsArray), [openProjectIdsArray]);
@@ -206,6 +207,13 @@ function TimelineContent() {
       pendingScrollRef.current = null;
     }
   }, [startDate]);
+
+  // Fetch data when startDate changes
+  useEffect(() => {
+    const startStr = format(startDate, 'yyyy-MM-dd');
+    const endStr = format(addDays(startDate, visibleDays), 'yyyy-MM-dd');
+    fetchRange(startStr, endStr);
+  }, [startDate, fetchRange, visibleDays]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveDragItem(event.active.data.current as any);

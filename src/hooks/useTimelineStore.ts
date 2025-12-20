@@ -33,6 +33,7 @@ interface TimelineActions {
   deleteMilestone: (milestoneId: string) => void;
   deleteItem: (itemId: string) => void;
   sync: () => Promise<void>;
+  fetchRange: (startDate: string, endDate: string) => Promise<void>;
   loadFromLocal: () => Promise<void>;
 }
 
@@ -618,35 +619,23 @@ export const useTimelineStore = create<TimelineStore>()(
     sync: async () => {
       set({ isSyncing: true });
       try {
-        const remoteState = await api.fetchFullState();
+        const remoteState = await api.fetchStructure();
         if (remoteState && Object.keys(remoteState.workspaces || {}).length > 0) {
           set({
             workspaces: remoteState.workspaces || {},
             workspaceOrder: remoteState.workspaceOrder || [],
             projects: remoteState.projects || {},
-            subProjects: remoteState.subProjects || {},
-            milestones: remoteState.milestones || {},
-            items: remoteState.items || {},
             openProjectIds: remoteState.openProjectIds || [],
             isSyncing: false
           });
 
-          // Update Dexie with fresh data
-          await db.transaction('rw', [db.workspaces, db.projects, db.subProjects, db.milestones, db.items, db.userSettings], async () => {
+          // Update Dexie with fresh data (Structure only)
+          await db.transaction('rw', [db.workspaces, db.projects, db.userSettings], async () => {
             await db.workspaces.clear();
             await db.workspaces.bulkPut(Object.values(remoteState.workspaces || {}));
 
             await db.projects.clear();
             await db.projects.bulkPut(Object.values(remoteState.projects || {}));
-
-            await db.subProjects.clear();
-            await db.subProjects.bulkPut(Object.values(remoteState.subProjects || {}));
-
-            await db.milestones.clear();
-            await db.milestones.bulkPut(Object.values(remoteState.milestones || {}));
-
-            await db.items.clear();
-            await db.items.bulkPut(Object.values(remoteState.items || {}));
 
             await db.userSettings.put({
               userId: 'current',
@@ -656,12 +645,38 @@ export const useTimelineStore = create<TimelineStore>()(
           });
 
         } else {
-          // If remote is empty, we keep local (or empty if it was reset). 
-          // But since we just reset local, this means empty.
           set({ isSyncing: false });
         }
       } catch (e) {
         console.error("Sync failed:", e);
+        set({ isSyncing: false });
+      }
+    },
+
+    fetchRange: async (startDate: string, endDate: string) => {
+      set({ isSyncing: true });
+      try {
+        const rangeData = await api.fetchTimelineData(startDate, endDate);
+
+        set(state => ({
+          subProjects: { ...state.subProjects, ...(rangeData.subProjects || {}) },
+          milestones: { ...state.milestones, ...(rangeData.milestones || {}) },
+          items: { ...state.items, ...(rangeData.items || {}) },
+          isSyncing: false
+        }));
+
+        // Upsert into Dexie (don't clear, just add/update what we fetched)
+        await db.transaction('rw', [db.subProjects, db.milestones, db.items], async () => {
+          if (Object.keys(rangeData.subProjects || {}).length > 0)
+            await db.subProjects.bulkPut(Object.values(rangeData.subProjects || {}));
+          if (Object.keys(rangeData.milestones || {}).length > 0)
+            await db.milestones.bulkPut(Object.values(rangeData.milestones || {}));
+          if (Object.keys(rangeData.items || {}).length > 0)
+            await db.items.bulkPut(Object.values(rangeData.items || {}));
+        });
+
+      } catch (e) {
+        console.error("Fetch range failed:", e);
         set({ isSyncing: false });
       }
     },

@@ -55,20 +55,14 @@ const transformItem = (db: any): TimelineItem => ({
 
 export const api = {
     // --- READ ---
-    async fetchFullState(): Promise<Partial<TimelineState>> {
+    async fetchStructure(): Promise<Partial<TimelineState>> {
         const { data: workspaces } = await supabase.from('workspaces').select('*');
         const { data: projects } = await supabase.from('projects').select('*');
-        const { data: subProjects } = await supabase.from('sub_projects').select('*');
-        const { data: milestones } = await supabase.from('milestones').select('*');
-        const { data: items } = await supabase.from('items').select('*');
         const { data: settings } = await supabase.from('user_settings').select('*').maybeSingle();
 
         const state: Partial<TimelineState> = {
             workspaces: {},
             projects: {},
-            subProjects: {},
-            milestones: {},
-            items: {},
             workspaceOrder: settings?.workspace_order || [],
             openProjectIds: settings?.open_project_ids || [],
         };
@@ -78,6 +72,38 @@ export const api = {
         // Sort projects by position
         const sortedProjects = (projects || []).sort((a, b) => (a.position || 0) - (b.position || 0));
         sortedProjects.forEach(p => state.projects![p.id] = transformProject(p));
+
+        return state;
+    },
+
+    async fetchTimelineData(startDate: string, endDate: string): Promise<Partial<TimelineState>> {
+        // Items: date within range
+        const { data: items } = await supabase
+            .from('items')
+            .select('*')
+            .gte('date', startDate)
+            .lte('date', endDate);
+
+        // Milestones: date within range
+        const { data: milestones } = await supabase
+            .from('milestones')
+            .select('*')
+            .gte('date', startDate)
+            .lte('date', endDate);
+
+        // SubProjects: Overlapping range
+        // logic: start <= range_end AND end >= range_start
+        const { data: subProjects } = await supabase
+            .from('sub_projects')
+            .select('*')
+            .lte('start_date', endDate)
+            .gte('end_date', startDate);
+
+        const state: Partial<TimelineState> = {
+            subProjects: {},
+            milestones: {},
+            items: {},
+        };
 
         subProjects?.forEach(s => state.subProjects![s.id] = transformSubProject(s));
         milestones?.forEach(m => state.milestones![m.id] = transformMilestone(m));
