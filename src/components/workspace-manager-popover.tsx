@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, FolderKanban, GripVertical, Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Building2, FolderKanban, GripVertical, Plus, Pencil, Trash2, ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Popover,
@@ -45,6 +45,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/lib/utils';
 
 const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -55,9 +56,11 @@ interface SortableWorkspaceItemProps {
   onToggleExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleHidden: () => void;
   onAddProject: () => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
+  onToggleProjectHidden: (project: Project) => void;
   onReorderProjects: (projectIds: string[]) => void;
 }
 
@@ -68,9 +71,11 @@ function SortableWorkspaceItem({
   onToggleExpand,
   onEdit,
   onDelete,
+  onToggleHidden,
   onAddProject,
   onEditProject,
   onDeleteProject,
+  onToggleProjectHidden,
   onReorderProjects,
 }: SortableWorkspaceItemProps) {
   const {
@@ -132,10 +137,17 @@ function SortableWorkspaceItem({
           />
         </div>
 
-        <span className="flex-1 text-sm font-medium truncate">{workspace.name}</span>
+        <span className={cn("flex-1 text-sm font-medium truncate", workspace.isHidden && "text-muted-foreground/50 italic")}>{workspace.name}</span>
 
         <button onClick={onEdit} className="p-1 hover:bg-secondary rounded">
           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+        <button onClick={onToggleHidden} className="p-1 hover:bg-secondary rounded" title={workspace.isHidden ? "Show Workspace" : "Hide Workspace"}>
+          {workspace.isHidden ? (
+            <EyeOff className="w-3.5 h-3.5 text-muted-foreground/70" />
+          ) : (
+            <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+          )}
         </button>
         <button onClick={onDelete} className="p-1 hover:bg-destructive/10 rounded">
           <Trash2 className="w-3.5 h-3.5 text-destructive" />
@@ -160,6 +172,7 @@ function SortableWorkspaceItem({
                   workspaceColor={workspace.color}
                   onEdit={() => onEditProject(project)}
                   onDelete={() => onDeleteProject(project)}
+                  onToggleHidden={() => onToggleProjectHidden(project)}
                 />
               ))}
             </SortableContext>
@@ -183,9 +196,10 @@ interface SortableProjectItemProps {
   workspaceColor: number;
   onEdit: () => void;
   onDelete: () => void;
+  onToggleHidden: () => void;
 }
 
-function SortableProjectItem({ project, workspaceColor, onEdit, onDelete }: SortableProjectItemProps) {
+function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onToggleHidden }: SortableProjectItemProps) {
   const {
     attributes,
     listeners,
@@ -205,7 +219,7 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete }: Sort
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 p-2 ml-6 rounded hover:bg-secondary/50"
+      className="group flex items-center gap-2 p-2 ml-6 rounded hover:bg-secondary/50"
     >
       <button
         {...attributes}
@@ -220,10 +234,17 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete }: Sort
         style={{ color: `hsl(var(--workspace-${workspaceColor}))` }}
       />
 
-      <span className="flex-1 text-xs truncate">{project.name}</span>
+      <span className={cn("flex-1 text-xs truncate", project.isHidden && "text-muted-foreground/50 italic")}>{project.name}</span>
 
       <button onClick={onEdit} className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity">
         <Pencil className="w-3 h-3 text-muted-foreground" />
+      </button>
+      <button onClick={onToggleHidden} className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity" title={project.isHidden ? "Show Project" : "Hide Project"}>
+        {project.isHidden ? (
+          <EyeOff className="w-3 h-3 text-muted-foreground/70" />
+        ) : (
+          <Eye className="w-3 h-3 text-muted-foreground" />
+        )}
       </button>
       <button onClick={onDelete} className="p-0.5 hover:bg-destructive/10 rounded opacity-0 group-hover:opacity-100 transition-opacity">
         <Trash2 className="w-3 h-3 text-destructive" />
@@ -408,9 +429,11 @@ export function WorkspaceManagerPopover() {
                         onToggleExpand={() => toggleExpand(workspace.id)}
                         onEdit={() => openEditWorkspace(workspace)}
                         onDelete={() => setDeletingWorkspace(workspace)}
+                        onToggleHidden={() => updateWorkspace(workspace.id, { isHidden: !workspace.isHidden })}
                         onAddProject={() => openAddProject(workspace.id)}
                         onEditProject={openEditProject}
                         onDeleteProject={(p) => setDeletingProject(p)}
+                        onToggleProjectHidden={(p) => updateProject(p.id, { isHidden: !p.isHidden })}
                         onReorderProjects={(ids) => reorderProjects(workspace.id, ids)}
                       />
                     );

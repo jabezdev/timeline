@@ -35,6 +35,7 @@ export interface Project {
   workspaceId: string;
   color: number;
   position: number;
+  isHidden?: boolean;
 }
 
 export interface Workspace {
@@ -42,6 +43,7 @@ export interface Workspace {
   name: string;
   color: number;
   isCollapsed: boolean;
+  isHidden?: boolean;
 }
 
 export interface TimelineState {

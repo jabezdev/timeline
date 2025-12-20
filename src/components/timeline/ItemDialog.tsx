@@ -19,15 +19,18 @@ import {
     Italic,
     List,
     ListOrdered,
-    CheckSquare
+    CheckSquare,
+    Trash2
 } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 interface ItemDialogProps {
     item: TimelineItem | Milestone | SubProject | null;
+
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSave: (item: TimelineItem | Milestone | SubProject) => void;
+    onDelete?: (item: TimelineItem | Milestone | SubProject) => void;
 }
 
 const COLORS = [
@@ -35,7 +38,7 @@ const COLORS = [
     "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#f43f5e", "#64748b"
 ];
 
-export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps) {
+export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemDialogProps) {
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [completed, setCompleted] = useState(false);
@@ -306,6 +309,23 @@ export function ItemDialog({ item, open, onOpenChange, onSave }: ItemDialogProps
                                     </PopoverContent>
                                 </Popover>
                             </>
+
+
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0 h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => {
+                                    if (item && onDelete) {
+                                        if (confirm("Are you sure you want to delete this item?")) {
+                                            onDelete(item);
+                                            onOpenChange(false);
+                                        }
+                                    }
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
 
                             <Button
                                 variant="outline"

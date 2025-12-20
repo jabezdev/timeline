@@ -7,6 +7,7 @@ const transformWorkspace = (db: any): Workspace => ({
     name: db.name,
     color: db.color,
     isCollapsed: db.is_collapsed,
+    isHidden: db.is_hidden,
 });
 
 // Helper to transform Project (DB -> App)
@@ -16,6 +17,7 @@ const transformProject = (db: any): Project => ({
     workspaceId: db.workspace_id,
     color: db.color,
     position: db.position || 0,
+    isHidden: db.is_hidden,
 });
 
 // Helper to transform SubProject (DB -> App)
@@ -91,6 +93,7 @@ export const api = {
             id: w.id,
             name: w.name,
             color: w.color,
+            is_hidden: w.isHidden,
             // is_collapsed: w.isCollapsed, // Local only
         });
     },
@@ -99,6 +102,7 @@ export const api = {
         const dbUpdates: any = {};
         if ('name' in updates) dbUpdates.name = updates.name;
         if ('color' in updates) dbUpdates.color = updates.color;
+        if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
         // if ('isCollapsed' in updates) dbUpdates.is_collapsed = updates.isCollapsed; // Local only
 
         return supabase.from('workspaces').update(dbUpdates).eq('id', id);
@@ -115,6 +119,7 @@ export const api = {
             workspace_id: p.workspaceId,
             color: p.color,
             position: p.position,
+            is_hidden: p.isHidden,
         });
     },
 
@@ -124,6 +129,7 @@ export const api = {
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('position' in updates) dbUpdates.position = updates.position;
         if ('workspaceId' in updates) dbUpdates.workspace_id = updates.workspaceId;
+        if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
 
         return supabase.from('projects').update(dbUpdates).eq('id', id);
     },
@@ -172,6 +178,10 @@ export const api = {
         return supabase.from('sub_projects').update(dbUpdates).eq('id', id);
     },
 
+    async deleteSubProject(id: string) {
+        return supabase.from('sub_projects').delete().eq('id', id);
+    },
+
     async createMilestone(m: Milestone) {
         return supabase.from('milestones').upsert({
             id: m.id,
@@ -190,6 +200,10 @@ export const api = {
         if ('content' in updates) dbUpdates.content = updates.content;
         if ('color' in updates) dbUpdates.color = updates.color;
         return supabase.from('milestones').update(dbUpdates).eq('id', id);
+    },
+
+    async deleteMilestone(id: string) {
+        return supabase.from('milestones').delete().eq('id', id);
     },
 
     async createItem(i: TimelineItem) {
@@ -214,6 +228,10 @@ export const api = {
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
         if ('color' in updates) dbUpdates.color = updates.color;
         return supabase.from('items').update(dbUpdates).eq('id', id);
+    },
+
+    async deleteItem(id: string) {
+        return supabase.from('items').delete().eq('id', id);
     },
 
     // User Settings (for order only now)

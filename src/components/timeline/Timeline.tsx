@@ -1,4 +1,14 @@
 import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, useSensor, useSensors, PointerSensor, pointerWithin, Modifier } from '@dnd-kit/core';
 import { addDays, subDays, startOfWeek, differenceInDays, parseISO, format } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
@@ -21,6 +31,7 @@ function TimelineContent() {
   const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState<{ type: string; item: any } | null>(null);
+  const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
   const [dragOffsetDays, setDragOffsetDays] = useState(0);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const pendingScrollRef = useRef<{ type: 'instant' | 'smooth'; value: number } | null>(null);
@@ -53,6 +64,9 @@ function TimelineContent() {
     addSubProject,
     updateSubProject,
     addMilestone,
+    deleteItem,
+    deleteMilestone,
+    deleteSubProject,
   } = useTimelineStore();
 
   const openProjectIds = useMemo(() => new Set(openProjectIdsArray), [openProjectIdsArray]);
@@ -106,7 +120,7 @@ function TimelineContent() {
 
     // Distribute projects
     Object.values(projectsMap).forEach(p => {
-      if (map.has(p.workspaceId)) {
+      if (map.has(p.workspaceId) && !p.isHidden) {
         map.get(p.workspaceId)?.push(p);
       }
     });
@@ -285,6 +299,21 @@ function TimelineContent() {
     setIsItemDialogOpen(true);
   };
 
+  const handleItemDelete = (item: TimelineItem | Milestone | SubProject) => {
+    if ('completed' in item) {
+      deleteItem(item.id);
+    } else if ('startDate' in item) {
+      // Trigger custom dialog
+      setSubProjectToDelete(item as SubProject);
+      setIsItemDialogOpen(false); // Close the detail view
+      return;
+    } else {
+      deleteMilestone(item.id);
+    }
+    setSelectedItem(null);
+    setIsItemDialogOpen(false);
+  };
+
   const handleItemSave = (updatedItem: TimelineItem | Milestone | SubProject) => {
     if ('completed' in updatedItem) {
       updateItem(updatedItem.id, updatedItem as TimelineItem);
@@ -309,7 +338,7 @@ function TimelineContent() {
 
     workspaceOrder.forEach(id => {
       const ws = workspacesMap[id];
-      if (!ws) return;
+      if (!ws || ws.isHidden) return;
 
       if (!ws.isCollapsed && hasOpenProject(id)) {
         activeIds.push(id);
@@ -444,7 +473,44 @@ function TimelineContent() {
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}
         onSave={handleItemSave}
+        onDelete={handleItemDelete}
       />
+
+      <AlertDialog open={!!subProjectToDelete} onOpenChange={(open) => !open && setSubProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Sub-Project</AlertDialogTitle>
+            <AlertDialogDescription>
+              How do you want to handle the items inside this sub-project?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (subProjectToDelete) {
+                  deleteSubProject(subProjectToDelete.id, false);
+                  setSubProjectToDelete(null);
+                }
+              }}
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            >
+              Keep Items (Unlink)
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                if (subProjectToDelete) {
+                  deleteSubProject(subProjectToDelete.id, true);
+                  setSubProjectToDelete(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Everything
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <DragOverlay modifiers={[adjustTranslate]} dropAnimation={null}>
         {activeDragItem ? (

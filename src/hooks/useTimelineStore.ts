@@ -29,6 +29,9 @@ interface TimelineActions {
   updateProject: (projectId: string, updates: Partial<Project>) => void;
   deleteWorkspace: (workspaceId: string) => void;
   deleteProject: (projectId: string) => void;
+  deleteSubProject: (subProjectId: string, deleteItems: boolean) => void;
+  deleteMilestone: (milestoneId: string) => void;
+  deleteItem: (itemId: string) => void;
   sync: () => Promise<void>;
   loadFromLocal: () => Promise<void>;
 }
@@ -414,6 +417,9 @@ export const useTimelineStore = create<TimelineStore>()(
       if (!ws) return state;
       // Don't allow overwriting projectIds via generic update unless careful, 
       // but Typescript Partial handles it.
+      api.updateWorkspace(workspaceId, updates).catch(e => console.error(e));
+      db.workspaces.update(workspaceId, updates).catch(e => console.error(e));
+
       return {
         workspaces: {
           ...state.workspaces,
@@ -446,13 +452,60 @@ export const useTimelineStore = create<TimelineStore>()(
 
       const newWorkspaceOrder = state.workspaceOrder.filter(id => id !== workspaceId);
 
-      // Use a more holistic approach to cleanup if needed, but for now just orphans are fine 
-      // or we iterate to delete children. Ideally we delete children to prevent memory leaks.
-      // For simplicity in this step, I'll validly remove children refs.
+      // Cascade delete projects
+      const projectsToDelete = Object.values(state.projects).filter(p => p.workspaceId === workspaceId);
+      projectsToDelete.forEach(p => {
+        // We can re-use deleteProject logic or just clean up directly. 
+        // Re-using deleteProject logic locally is cleaner but we can't call internal actions easily from here without `get().deleteProject`.
+        // Let's do it manually for bulk efficiency and safety.
+
+        // 1. Delete SubProjects
+        const subsToDelete = Object.values(state.subProjects).filter(sp => sp.projectId === p.id);
+        subsToDelete.forEach(sp => {
+          delete state.subProjects[sp.id];
+          api.deleteSubProject(sp.id).catch(console.error);
+        });
+
+        // 2. Delete Milestones
+        const milestonesToDelete = Object.values(state.milestones).filter(m => m.projectId === p.id);
+        milestonesToDelete.forEach(m => {
+          delete state.milestones[m.id];
+          api.deleteMilestone(m.id).catch(console.error);
+        });
+
+        // 3. Delete Items
+        const itemsToDelete = Object.values(state.items).filter(i => i.projectId === p.id);
+        itemsToDelete.forEach(i => {
+          delete state.items[i.id];
+          api.deleteItem(i.id).catch(console.error);
+        });
+
+        // 4. Delete Project
+        delete newWorkspaces[workspaceId]; // Actually we need to delete from projects map
+        // Note: We are mutating `state.projects` via delete? No, we need to return new object.
+      });
+
+      // Clean up maps properly
+      const newProjects = { ...state.projects };
+      projectsToDelete.forEach(p => {
+        delete newProjects[p.id];
+        api.deleteProject(p.id).catch(console.error);
+      });
+
+      // Filter out deleted children from maps
+      const newSubProjects = Object.fromEntries(Object.entries(state.subProjects).filter(([, sp]) => !projectsToDelete.some(p => p.id === sp.projectId)));
+      const newMilestones = Object.fromEntries(Object.entries(state.milestones).filter(([, m]) => !projectsToDelete.some(p => p.id === m.projectId)));
+      const newItems = Object.fromEntries(Object.entries(state.items).filter(([, i]) => !projectsToDelete.some(p => p.id === i.projectId)));
+
+      api.deleteWorkspace(workspaceId).catch(e => console.error(e));
 
       return {
         workspaces: newWorkspaces,
-        workspaceOrder: newWorkspaceOrder
+        workspaceOrder: newWorkspaceOrder,
+        projects: newProjects,
+        subProjects: newSubProjects,
+        milestones: newMilestones,
+        items: newItems
       };
     }),
 
@@ -463,11 +516,103 @@ export const useTimelineStore = create<TimelineStore>()(
       const newProjects = { ...state.projects };
       delete newProjects[projectId];
 
+      // Cascade Delete Children
+      const newSubProjects = Object.fromEntries(Object.entries(state.subProjects).filter(([, sp]) => {
+        if (sp.projectId === projectId) {
+          api.deleteSubProject(sp.id).catch(console.error);
+          return false;
+        }
+        return true;
+      }));
+
+      const newMilestones = Object.fromEntries(Object.entries(state.milestones).filter(([, m]) => {
+        if (m.projectId === projectId) {
+          api.deleteMilestone(m.id).catch(console.error);
+          return false;
+        }
+        return true;
+      }));
+
+      const newItems = Object.fromEntries(Object.entries(state.items).filter(([, i]) => {
+        if (i.projectId === projectId) {
+          api.deleteItem(i.id).catch(console.error);
+          return false;
+        }
+        return true;
+      }));
+
       api.deleteProject(projectId).catch(e => console.error(e));
 
       return {
-        projects: newProjects
+        projects: newProjects,
+        subProjects: newSubProjects,
+        milestones: newMilestones,
+        items: newItems
       };
+    }),
+
+    deleteSubProject: (subProjectId, deleteItems) => set((state) => {
+      const sub = state.subProjects[subProjectId];
+      if (!sub) return state;
+
+      const newSubProjects = { ...state.subProjects };
+      delete newSubProjects[subProjectId];
+
+      let newItems = { ...state.items };
+
+      if (deleteItems) {
+        // Delete items in this subproject
+        newItems = Object.fromEntries(Object.entries(state.items).filter(([, i]) => {
+          if (i.subProjectId === subProjectId) {
+            api.deleteItem(i.id).catch(console.error);
+            return false;
+          }
+          return true;
+        }));
+      } else {
+        // Unlink items
+        Object.values(newItems).forEach(item => {
+          if (item.subProjectId === subProjectId) {
+            const updated = { ...item, subProjectId: undefined };
+            newItems[item.id] = updated;
+            api.updateItem(item.id, { subProjectId: null as any }).catch(console.error); // Allow null for optional
+          }
+        });
+      }
+
+      api.deleteSubProject(subProjectId).catch(e => console.error(e));
+      db.subProjects.delete(subProjectId).catch(e => console.error(e));
+
+      return {
+        subProjects: newSubProjects,
+        items: newItems
+      };
+    }),
+
+    deleteMilestone: (milestoneId) => set((state) => {
+      const ms = state.milestones[milestoneId];
+      if (!ms) return state;
+
+      const newMilestones = { ...state.milestones };
+      delete newMilestones[milestoneId];
+
+      api.deleteMilestone(milestoneId).catch(e => console.error(e));
+      db.milestones.delete(milestoneId).catch(e => console.error(e));
+
+      return { milestones: newMilestones };
+    }),
+
+    deleteItem: (itemId) => set((state) => {
+      const item = state.items[itemId];
+      if (!item) return state;
+
+      const newItems = { ...state.items };
+      delete newItems[itemId];
+
+      api.deleteItem(itemId).catch(e => console.error(e));
+      db.items.delete(itemId).catch(e => console.error(e));
+
+      return { items: newItems };
     }),
 
     sync: async () => {
