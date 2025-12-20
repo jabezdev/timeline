@@ -7,7 +7,6 @@ const transformWorkspace = (db: any): Workspace => ({
     name: db.name,
     color: db.color,
     isCollapsed: db.is_collapsed,
-    projectIds: db.project_ids || [],
 });
 
 // Helper to transform Project (DB -> App)
@@ -16,6 +15,7 @@ const transformProject = (db: any): Project => ({
     name: db.name,
     workspaceId: db.workspace_id,
     color: db.color,
+    position: db.position || 0,
 });
 
 // Helper to transform SubProject (DB -> App)
@@ -59,7 +59,7 @@ export const api = {
         const { data: subProjects } = await supabase.from('sub_projects').select('*');
         const { data: milestones } = await supabase.from('milestones').select('*');
         const { data: items } = await supabase.from('items').select('*');
-        const { data: settings } = await supabase.from('user_settings').select('*').single();
+        const { data: settings } = await supabase.from('user_settings').select('*').maybeSingle();
 
         const state: Partial<TimelineState> = {
             workspaces: {},
@@ -72,7 +72,11 @@ export const api = {
         };
 
         workspaces?.forEach(w => state.workspaces![w.id] = transformWorkspace(w));
-        projects?.forEach(p => state.projects![p.id] = transformProject(p));
+
+        // Sort projects by position
+        const sortedProjects = (projects || []).sort((a, b) => (a.position || 0) - (b.position || 0));
+        sortedProjects.forEach(p => state.projects![p.id] = transformProject(p));
+
         subProjects?.forEach(s => state.subProjects![s.id] = transformSubProject(s));
         milestones?.forEach(m => state.milestones![m.id] = transformMilestone(m));
         items?.forEach(i => state.items![i.id] = transformItem(i));
@@ -87,18 +91,15 @@ export const api = {
             id: w.id,
             name: w.name,
             color: w.color,
-            is_collapsed: w.isCollapsed,
-            project_ids: w.projectIds,
+            // is_collapsed: w.isCollapsed, // Local only
         });
     },
 
     async updateWorkspace(id: string, updates: Partial<Workspace>) {
-        // Map updates to snake_case
         const dbUpdates: any = {};
         if ('name' in updates) dbUpdates.name = updates.name;
         if ('color' in updates) dbUpdates.color = updates.color;
-        if ('isCollapsed' in updates) dbUpdates.is_collapsed = updates.isCollapsed;
-        if ('projectIds' in updates) dbUpdates.project_ids = updates.projectIds;
+        // if ('isCollapsed' in updates) dbUpdates.is_collapsed = updates.isCollapsed; // Local only
 
         return supabase.from('workspaces').update(dbUpdates).eq('id', id);
     },
@@ -113,6 +114,7 @@ export const api = {
             name: p.name,
             workspace_id: p.workspaceId,
             color: p.color,
+            position: p.position,
         });
     },
 
@@ -120,8 +122,27 @@ export const api = {
         const dbUpdates: any = {};
         if ('name' in updates) dbUpdates.name = updates.name;
         if ('color' in updates) dbUpdates.color = updates.color;
-        // workspaceId usually doesn't change
+        if ('position' in updates) dbUpdates.position = updates.position;
+        if ('workspaceId' in updates) dbUpdates.workspace_id = updates.workspaceId;
+
         return supabase.from('projects').update(dbUpdates).eq('id', id);
+    },
+
+    async reorderProjects(projects: Partial<Project>[]) {
+        const updates = projects.map(p => ({
+            id: p.id,
+            position: p.position,
+            // We need to include other required fields if Upserting, but for update we can just loop
+            // Supabase JS doesn't support bulk update easily without upsert.
+            // Let's use upsert with minimal data if possible, or just loop updates.
+            // Better: Upsert requires all non-null fields. 
+            // Loop calls is safest for now for reliability, though slower.
+        }));
+
+        // Parallelize updates
+        return Promise.all(updates.map(u =>
+            supabase.from('projects').update({ position: u.position }).eq('id', u.id)
+        ));
     },
 
     async deleteProject(id: string) {
@@ -195,15 +216,15 @@ export const api = {
         return supabase.from('items').update(dbUpdates).eq('id', id);
     },
 
-    // User Settings (for order and open state)
-    async saveSettings(workspaceOrder: string[], openProjectIds: string[]) {
+    // User Settings (for order only now)
+    async saveSettings(workspaceOrder: string[]) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         return supabase.from('user_settings').upsert({
             user_id: user.id,
             workspace_order: workspaceOrder,
-            open_project_ids: openProjectIds
+            // open_project_ids: openProjectIds // Local only
         });
     }
 };

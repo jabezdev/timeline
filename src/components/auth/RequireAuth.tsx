@@ -7,12 +7,13 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
     const location = useLocation();
     const sync = useTimelineStore(state => state.sync);
+    const loadFromLocal = useTimelineStore(state => state.loadFromLocal);
 
     useEffect(() => {
         if (user && !loading) {
-            sync();
+            loadFromLocal().then(() => sync());
         }
-    }, [user, loading, sync]);
+    }, [user, loading, sync, loadFromLocal]);
 
     if (loading) {
         return <div className="h-screen w-screen flex items-center justify-center bg-background">Loading...</div>;

@@ -34,14 +34,13 @@ export interface Project {
   name: string;
   workspaceId: string;
   color: number;
-  // Normalized: references are now computed or stored in state.projectOrder
+  position: number;
 }
 
 export interface Workspace {
   id: string;
   name: string;
   color: number;
-  projectIds: string[]; // Order of projects
   isCollapsed: boolean;
 }
 

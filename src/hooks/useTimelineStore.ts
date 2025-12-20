@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+// persist middleware removed in favor of manual Dexie sync
 import { Workspace, Project, TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 import { differenceInDays, parseISO, addDays, format, startOfWeek } from 'date-fns';
 import { api } from '@/lib/api';
+import { db } from '@/lib/db';
 
 interface TimelineActions {
   // Actions
@@ -29,6 +30,7 @@ interface TimelineActions {
   deleteWorkspace: (workspaceId: string) => void;
   deleteProject: (projectId: string) => void;
   sync: () => Promise<void>;
+  loadFromLocal: () => Promise<void>;
 }
 
 type TimelineStore = TimelineState & TimelineActions & {
@@ -37,447 +39,511 @@ type TimelineStore = TimelineState & TimelineActions & {
 };
 
 export const useTimelineStore = create<TimelineStore>()(
-  persist(
-    (set, get) => ({
-      workspaces: {},
-      workspaceOrder: [],
-      projects: {},
-      subProjects: {},
-      milestones: {},
-      items: {},
-      openProjectIds: [],
-      visibleDays: 14,
-      currentDate: new Date().toISOString().split('T')[0],
-      isSyncing: false,
+  (set, get) => ({
+    workspaces: {},
+    workspaceOrder: [],
+    projects: {},
+    subProjects: {},
+    milestones: {},
+    items: {},
+    openProjectIds: [],
+    visibleDays: 14,
+    currentDate: new Date().toISOString().split('T')[0],
+    isSyncing: false,
 
-      projectHeights: new Map<string, number>(),
+    projectHeights: new Map<string, number>(),
 
-      setProjectHeight: (projectId, height) => set((state) => {
-        const newHeights = new Map(state.projectHeights);
-        if (newHeights.get(projectId) !== height) {
-          newHeights.set(projectId, height);
-          return { projectHeights: newHeights };
+    setProjectHeight: (projectId, height) => set((state) => {
+      const newHeights = new Map(state.projectHeights);
+      if (newHeights.get(projectId) !== height) {
+        newHeights.set(projectId, height);
+        return { projectHeights: newHeights };
+      }
+      return state;
+    }),
+
+    expandAllWorkspaces: () => set((state) => {
+      const newWorkspaces = { ...state.workspaces };
+      Object.keys(newWorkspaces).forEach(id => {
+        newWorkspaces[id] = { ...newWorkspaces[id], isCollapsed: false };
+      });
+      return { workspaces: newWorkspaces };
+    }),
+
+    toggleWorkspace: (id) => set((state) => {
+      const ws = state.workspaces[id];
+      if (!ws) return state;
+      // Local only - do not sync isCollapsed to server
+      db.workspaces.update(id, { isCollapsed: !ws.isCollapsed }).catch(e => console.error(e));
+      return {
+        workspaces: {
+          ...state.workspaces,
+          [id]: { ...ws, isCollapsed: !ws.isCollapsed }
         }
-        return state;
-      }),
+      };
+    }),
 
-      expandAllWorkspaces: () => set((state) => {
+    toggleProject: (projectId, workspaceId) => set((state) => {
+      const isOpen = state.openProjectIds.includes(projectId);
+      let newOpenProjectIds = [...state.openProjectIds];
+
+      if (isOpen) {
+        newOpenProjectIds = newOpenProjectIds.filter(id => id !== projectId);
+        return { openProjectIds: newOpenProjectIds };
+      } else {
+        newOpenProjectIds.push(projectId);
+
+        // Auto-collapse other workspaces logic (optional, keeping consistent with old behavior)
         const newWorkspaces = { ...state.workspaces };
         Object.keys(newWorkspaces).forEach(id => {
-          newWorkspaces[id] = { ...newWorkspaces[id], isCollapsed: false };
+          newWorkspaces[id] = {
+            ...newWorkspaces[id],
+            isCollapsed: id !== workspaceId
+          };
         });
-        return { workspaces: newWorkspaces };
-      }),
 
-      toggleWorkspace: (id) => set((state) => {
-        const ws = state.workspaces[id];
-        if (!ws) return state;
-        api.updateWorkspace(id, { isCollapsed: !ws.isCollapsed }).catch(e => console.error(e));
         return {
-          workspaces: {
-            ...state.workspaces,
-            [id]: { ...ws, isCollapsed: !ws.isCollapsed }
-          }
+          openProjectIds: newOpenProjectIds,
+          workspaces: newWorkspaces
         };
-      }),
+      }
+    }),
 
-      toggleProject: (projectId, workspaceId) => set((state) => {
-        const isOpen = state.openProjectIds.includes(projectId);
-        let newOpenProjectIds = [...state.openProjectIds];
+    updateItemDate: (itemId, newDate) => set((state) => {
+      const item = state.items[itemId];
+      if (!item) return state;
+      api.updateItem(itemId, { date: newDate }).catch(e => console.error(e));
+      db.items.update(itemId, { date: newDate }).catch(e => console.error(e));
+      return {
+        items: {
+          ...state.items,
+          [itemId]: { ...item, date: newDate }
+        }
+      };
+    }),
 
-        if (isOpen) {
-          newOpenProjectIds = newOpenProjectIds.filter(id => id !== projectId);
-          return { openProjectIds: newOpenProjectIds };
-        } else {
-          newOpenProjectIds.push(projectId);
+    updateMilestoneDate: (milestoneId, newDate) => set((state) => {
+      const ms = state.milestones[milestoneId];
+      if (!ms) return state;
+      api.updateMilestone(milestoneId, { date: newDate }).catch(e => console.error(e));
+      return {
+        milestones: {
+          ...state.milestones,
+          [milestoneId]: { ...ms, date: newDate }
+        }
+      };
+    }),
 
-          // Auto-collapse other workspaces logic (optional, keeping consistent with old behavior)
-          const newWorkspaces = { ...state.workspaces };
-          Object.keys(newWorkspaces).forEach(id => {
-            newWorkspaces[id] = {
-              ...newWorkspaces[id],
-              isCollapsed: id !== workspaceId
-            };
+    updateMilestone: (milestoneId, updates) => set((state) => {
+      const ms = state.milestones[milestoneId];
+      if (!ms) return state;
+      api.updateMilestone(milestoneId, updates).catch(e => console.error(e));
+      db.milestones.update(milestoneId, updates).catch(e => console.error(e));
+      return {
+        milestones: {
+          ...state.milestones,
+          [milestoneId]: { ...ms, ...updates }
+        }
+      };
+    }),
+
+    toggleItemComplete: (itemId) => set((state) => {
+      const item = state.items[itemId];
+      if (!item) return state;
+      api.updateItem(itemId, { completed: !item.completed }).catch(e => console.error(e));
+      db.items.update(itemId, { completed: !item.completed }).catch(e => console.error(e));
+      return {
+        items: {
+          ...state.items,
+          [itemId]: { ...item, completed: !item.completed }
+        }
+      };
+    }),
+
+    addItem: (projectId, title, date, subProjectId, color) => set((state) => {
+      const id = `item-${Date.now()}`;
+      const newItem: TimelineItem = {
+        id,
+        title,
+        content: '',
+        date,
+        completed: false,
+        projectId,
+        subProjectId,
+        color: color ? String(color) : undefined,
+      };
+      api.createItem(newItem).catch(e => console.error(e));
+      db.items.add(newItem).catch(e => console.error(e));
+      return {
+        items: { ...state.items, [id]: newItem }
+      };
+    }),
+
+    updateItem: (itemId, updates) => set((state) => {
+      const item = state.items[itemId];
+      if (!item) return state;
+      api.updateItem(itemId, updates).catch(e => console.error(e));
+      db.items.update(itemId, updates).catch(e => console.error(e));
+      return {
+        items: {
+          ...state.items,
+          [itemId]: { ...item, ...updates }
+        }
+      };
+    }),
+
+    addWorkspace: (name, color) => set((state) => {
+      const id = `ws-${Date.now()}`;
+      const newWorkspace: Workspace = {
+        id,
+        name,
+        color,
+        isCollapsed: false,
+      };
+
+      api.createWorkspace(newWorkspace).catch(e => console.error("Create Workspace Failed:", e));
+      db.workspaces.add(newWorkspace).catch(e => console.error(e));
+
+      // Also update order (only workspaceOrder is synced now)
+      const newOrder = [...state.workspaceOrder, id];
+      api.saveSettings(newOrder).catch(e => console.error("Save Settings Failed:", e));
+      db.userSettings.put({ userId: 'current', workspaceOrder: newOrder, openProjectIds: state.openProjectIds }).catch(e => console.error(e));
+
+      return {
+        workspaces: { ...state.workspaces, [id]: newWorkspace },
+        workspaceOrder: newOrder
+      };
+    }),
+
+    addProject: (workspaceId, name) => set((state) => {
+      const workspace = state.workspaces[workspaceId];
+      if (!workspace) return state;
+
+      const id = `proj-${crypto.randomUUID()}`;
+
+      // Calculate position: max current position + 1000
+      const workspaceProjects = Object.values(state.projects).filter(p => p.workspaceId === workspaceId);
+      const maxPos = workspaceProjects.reduce((max, p) => Math.max(max, p.position || 0), 0);
+
+      const newProject: Project = {
+        id,
+        name,
+        workspaceId,
+        color: workspace.color,
+        position: maxPos + 10000, // Large gap for easier interleaving if we ever do float math, but integer matches DB.
+      };
+
+      api.createProject(newProject).catch(e => console.error("Create Project Failed", e));
+
+      return {
+        projects: { ...state.projects, [id]: newProject },
+      };
+    }),
+
+    addSubProject: (projectId, title, startDate, endDate, color) => set((state) => {
+      const id = `sub-${Date.now()}`;
+      const newSub: SubProject = {
+        id,
+        title,
+        startDate,
+        endDate,
+        projectId,
+        color: color ? String(color) : undefined,
+      };
+      api.createSubProject(newSub).catch(e => console.error(e));
+      db.subProjects.add(newSub).catch(e => console.error(e));
+      return {
+        subProjects: { ...state.subProjects, [id]: newSub }
+      };
+    }),
+
+    updateSubProject: (subProjectId, updates) => set((state) => {
+      const sub = state.subProjects[subProjectId];
+      if (!sub) return state;
+
+      const newStartDate = updates.startDate || sub.startDate;
+      const newEndDate = updates.endDate || sub.endDate;
+      const oldStartDate = sub.startDate;
+
+      const startDateChanged = newStartDate !== oldStartDate;
+      const endDateChanged = updates.endDate && updates.endDate !== sub.endDate;
+      const daysDiff = startDateChanged
+        ? differenceInDays(parseISO(newStartDate), parseISO(oldStartDate))
+        : 0;
+
+      // Update the subproject itself
+      const updatedSubProjects = {
+        ...state.subProjects,
+        [subProjectId]: { ...sub, ...updates }
+      };
+
+      api.updateSubProject(subProjectId, updates).catch(e => console.error(e));
+      db.subProjects.update(subProjectId, updates).catch(e => console.error(e));
+
+      // If dates didn't change, just return updated subprojects
+
+      // If dates didn't change, just return updated subprojects
+      if (!startDateChanged && !endDateChanged) {
+        return { subProjects: updatedSubProjects };
+      }
+
+      // Shift/Clamp Items
+      const updatedItems = { ...state.items };
+      const newSubStart = parseISO(newStartDate);
+      const newSubEnd = parseISO(newEndDate);
+
+      // Iterate only items belonging to this subproject
+      // In a real DB we'd query. In normalized state, we iterate Object.values or entries.
+      Object.values(updatedItems).forEach(item => {
+        if (item.subProjectId !== subProjectId) return;
+
+        const itemDate = parseISO(item.date);
+        let newItemDateStr = item.date;
+
+        if (startDateChanged && daysDiff !== 0) {
+          // Shift item date
+          let newItemDate = addDays(itemDate, daysDiff);
+          // Clamp
+          if (newItemDate < newSubStart) newItemDate = newSubStart;
+          if (newItemDate > newSubEnd) newItemDate = newSubEnd;
+          newItemDateStr = format(newItemDate, 'yyyy-MM-dd');
+        } else if (endDateChanged) {
+          // Only end date changed - clamp
+          if (itemDate > newSubEnd) {
+            newItemDateStr = format(newSubEnd, 'yyyy-MM-dd');
+          }
+        }
+
+        if (newItemDateStr !== item.date) {
+          const newItem = { ...item, date: newItemDateStr };
+          updatedItems[item.id] = newItem;
+          // SYNC ITEM CHANGE
+          api.updateItem(item.id, { date: newItemDateStr }).catch(e => console.error(e));
+          db.items.update(item.id, { date: newItemDateStr }).catch(e => console.error(e));
+        }
+      });
+
+      return {
+        subProjects: updatedSubProjects,
+        items: updatedItems
+      };
+    }),
+
+    updateSubProjectDate: (subProjectId, newStartDate) => set((state) => {
+      const sub = state.subProjects[subProjectId];
+      if (!sub) return state;
+
+      const oldStartDate = sub.startDate;
+      const daysDiff = differenceInDays(parseISO(newStartDate), parseISO(oldStartDate));
+      const newEndDate = format(addDays(parseISO(sub.endDate), daysDiff), 'yyyy-MM-dd');
+
+      const updatedSub = { ...sub, startDate: newStartDate, endDate: newEndDate };
+      const updatedSubProjects = { ...state.subProjects, [subProjectId]: updatedSub };
+
+      // Shift items
+      const updatedItems = { ...state.items };
+      Object.values(updatedItems).forEach(item => {
+        if (item.subProjectId !== subProjectId) return;
+        const newItemDate = format(addDays(parseISO(item.date), daysDiff), 'yyyy-MM-dd');
+        updatedItems[item.id] = { ...item, date: newItemDate };
+
+        // SYNC ITEM CHANGE
+        api.updateItem(item.id, { date: newItemDate }).catch(e => console.error(e));
+        db.items.update(item.id, { date: newItemDate }).catch(e => console.error(e));
+      });
+
+      // SYNC SUBPROJECT ITSELF (Important: Update start/end date on server)
+      api.updateSubProject(subProjectId, { startDate: newStartDate, endDate: newEndDate }).catch(e => console.error(e));
+      db.subProjects.update(subProjectId, { startDate: newStartDate, endDate: newEndDate }).catch(e => console.error(e));
+
+      return {
+        subProjects: updatedSubProjects,
+        items: updatedItems
+      };
+    }),
+
+    addMilestone: (projectId, title, date, color) => set((state) => {
+      const id = `ms-${Date.now()}`;
+      const newMilestone: Milestone = {
+        id,
+        title,
+        date,
+        projectId,
+        color: color ? String(color) : undefined,
+      };
+      api.createMilestone(newMilestone).catch(e => console.error(e));
+      db.milestones.add(newMilestone).catch(e => console.error(e));
+      return {
+        milestones: { ...state.milestones, [id]: newMilestone }
+      };
+    }),
+
+
+
+    reorderWorkspaces: (workspaceIds) => set((state) => {
+      return { workspaceOrder: workspaceIds };
+    }),
+
+    reorderProjects: (workspaceId, projectIds) => set((state) => {
+      // projectIds is the ordered list of IDs
+      const newProjects = { ...state.projects };
+      const updates: Partial<Project>[] = [];
+
+      projectIds.forEach((pid, index) => {
+        if (newProjects[pid]) {
+          const newPos = index * 10000;
+          newProjects[pid] = { ...newProjects[pid], position: newPos };
+          updates.push({ id: pid, position: newPos, workspaceId }); // workspaceId safety
+        }
+      });
+
+      api.reorderProjects(updates).catch(e => console.error("Reorder Projects Failed", e));
+
+      // Batch update local DB
+      db.transaction('rw', db.projects, async () => {
+        await Promise.all(updates.map(u => db.projects.update(u.id as string, { position: u.position })));
+      }).catch(e => console.error(e));
+
+      return {
+        projects: newProjects
+      };
+    }),
+
+    updateWorkspace: (workspaceId, updates) => set((state) => {
+      const ws = state.workspaces[workspaceId];
+      if (!ws) return state;
+      // Don't allow overwriting projectIds via generic update unless careful, 
+      // but Typescript Partial handles it.
+      return {
+        workspaces: {
+          ...state.workspaces,
+          [workspaceId]: { ...ws, ...updates }
+        }
+      };
+    }),
+
+    updateProject: (projectId, updates) => set((state) => {
+      const proj = state.projects[projectId];
+      if (!proj) return state;
+
+      api.updateProject(projectId, updates).catch(e => console.error(e));
+      db.projects.update(projectId, updates).catch(e => console.error(e));
+
+      return {
+        projects: {
+          ...state.projects,
+          [projectId]: { ...proj, ...updates }
+        }
+      };
+    }),
+
+    deleteWorkspace: (workspaceId) => set((state) => {
+      const ws = state.workspaces[workspaceId];
+      if (!ws) return state;
+
+      const newWorkspaces = { ...state.workspaces };
+      delete newWorkspaces[workspaceId];
+
+      const newWorkspaceOrder = state.workspaceOrder.filter(id => id !== workspaceId);
+
+      // Use a more holistic approach to cleanup if needed, but for now just orphans are fine 
+      // or we iterate to delete children. Ideally we delete children to prevent memory leaks.
+      // For simplicity in this step, I'll validly remove children refs.
+
+      return {
+        workspaces: newWorkspaces,
+        workspaceOrder: newWorkspaceOrder
+      };
+    }),
+
+    deleteProject: (projectId) => set((state) => {
+      const project = state.projects[projectId];
+      if (!project) return state;
+
+      const newProjects = { ...state.projects };
+      delete newProjects[projectId];
+
+      api.deleteProject(projectId).catch(e => console.error(e));
+
+      return {
+        projects: newProjects
+      };
+    }),
+
+    sync: async () => {
+      set({ isSyncing: true });
+      try {
+        const remoteState = await api.fetchFullState();
+        if (remoteState && Object.keys(remoteState.workspaces || {}).length > 0) {
+          set({
+            workspaces: remoteState.workspaces || {},
+            workspaceOrder: remoteState.workspaceOrder || [],
+            projects: remoteState.projects || {},
+            subProjects: remoteState.subProjects || {},
+            milestones: remoteState.milestones || {},
+            items: remoteState.items || {},
+            openProjectIds: remoteState.openProjectIds || [],
+            isSyncing: false
           });
 
-          return {
-            openProjectIds: newOpenProjectIds,
-            workspaces: newWorkspaces
-          };
-        }
-      }),
+          // Update Dexie with fresh data
+          await db.transaction('rw', [db.workspaces, db.projects, db.subProjects, db.milestones, db.items, db.userSettings], async () => {
+            await db.workspaces.clear();
+            await db.workspaces.bulkPut(Object.values(remoteState.workspaces || {}));
 
-      updateItemDate: (itemId, newDate) => set((state) => {
-        const item = state.items[itemId];
-        if (!item) return state;
-        api.updateItem(itemId, { date: newDate }).catch(e => console.error(e));
-        return {
-          items: {
-            ...state.items,
-            [itemId]: { ...item, date: newDate }
-          }
-        };
-      }),
+            await db.projects.clear();
+            await db.projects.bulkPut(Object.values(remoteState.projects || {}));
 
-      updateMilestoneDate: (milestoneId, newDate) => set((state) => {
-        const ms = state.milestones[milestoneId];
-        if (!ms) return state;
-        api.updateMilestone(milestoneId, { date: newDate }).catch(e => console.error(e));
-        return {
-          milestones: {
-            ...state.milestones,
-            [milestoneId]: { ...ms, date: newDate }
-          }
-        };
-      }),
+            await db.subProjects.clear();
+            await db.subProjects.bulkPut(Object.values(remoteState.subProjects || {}));
 
-      updateMilestone: (milestoneId, updates) => set((state) => {
-        const ms = state.milestones[milestoneId];
-        if (!ms) return state;
-        api.updateMilestone(milestoneId, updates).catch(e => console.error(e));
-        return {
-          milestones: {
-            ...state.milestones,
-            [milestoneId]: { ...ms, ...updates }
-          }
-        };
-      }),
+            await db.milestones.clear();
+            await db.milestones.bulkPut(Object.values(remoteState.milestones || {}));
 
-      toggleItemComplete: (itemId) => set((state) => {
-        const item = state.items[itemId];
-        if (!item) return state;
-        api.updateItem(itemId, { completed: !item.completed }).catch(e => console.error(e));
-        return {
-          items: {
-            ...state.items,
-            [itemId]: { ...item, completed: !item.completed }
-          }
-        };
-      }),
+            await db.items.clear();
+            await db.items.bulkPut(Object.values(remoteState.items || {}));
 
-      addItem: (projectId, title, date, subProjectId, color) => set((state) => {
-        const id = `item-${Date.now()}`;
-        const newItem: TimelineItem = {
-          id,
-          title,
-          content: '',
-          date,
-          completed: false,
-          projectId,
-          subProjectId,
-          color: color ? `hsl(var(--workspace-${color}))` : undefined,
-        };
-        api.createItem(newItem).catch(e => console.error(e));
-        return {
-          items: { ...state.items, [id]: newItem }
-        };
-      }),
-
-      updateItem: (itemId, updates) => set((state) => {
-        const item = state.items[itemId];
-        if (!item) return state;
-        api.updateItem(itemId, updates).catch(e => console.error(e));
-        return {
-          items: {
-            ...state.items,
-            [itemId]: { ...item, ...updates }
-          }
-        };
-      }),
-
-      addWorkspace: (name, color) => set((state) => {
-        const id = `ws-${Date.now()}`;
-        const newWorkspace: Workspace = {
-          id,
-          name,
-          color,
-          isCollapsed: false,
-          projectIds: [],
-        };
-
-        api.createWorkspace(newWorkspace).catch(e => console.error("Create Workspace Failed:", e));
-
-        // Also update order
-        const newOrder = [...state.workspaceOrder, id];
-        api.saveSettings(newOrder, state.openProjectIds).catch(e => console.error("Save Settings Failed:", e));
-
-        return {
-          workspaces: { ...state.workspaces, [id]: newWorkspace },
-          workspaceOrder: newOrder
-        };
-      }),
-
-      addProject: (workspaceId, name) => set((state) => {
-        const workspace = state.workspaces[workspaceId];
-        if (!workspace) return state;
-
-        const id = `proj-${Date.now()}`;
-        const newProject: Project = {
-          id,
-          name,
-          workspaceId,
-          color: workspace.color,
-        };
-
-        api.createProject(newProject).catch(e => console.error("Create Project Failed", e));
-        api.updateWorkspace(workspaceId, { projectIds: [...workspace.projectIds, id] }).catch(e => console.error("Update Workspace Proj Ids Failed", e));
-
-        return {
-          projects: { ...state.projects, [id]: newProject },
-          workspaces: {
-            ...state.workspaces,
-            [workspaceId]: {
-              ...workspace,
-              projectIds: [...workspace.projectIds, id]
-            }
-          }
-        };
-      }),
-
-      addSubProject: (projectId, title, startDate, endDate, color) => set((state) => {
-        const id = `sub-${Date.now()}`;
-        const newSub: SubProject = {
-          id,
-          title,
-          startDate,
-          endDate,
-          projectId,
-          color: color ? `hsl(var(--workspace-${color}))` : undefined,
-        };
-        api.createSubProject(newSub).catch(e => console.error(e));
-        return {
-          subProjects: { ...state.subProjects, [id]: newSub }
-        };
-      }),
-
-      updateSubProject: (subProjectId, updates) => set((state) => {
-        const sub = state.subProjects[subProjectId];
-        if (!sub) return state;
-
-        const newStartDate = updates.startDate || sub.startDate;
-        const newEndDate = updates.endDate || sub.endDate;
-        const oldStartDate = sub.startDate;
-
-        const startDateChanged = newStartDate !== oldStartDate;
-        const endDateChanged = updates.endDate && updates.endDate !== sub.endDate;
-        const daysDiff = startDateChanged
-          ? differenceInDays(parseISO(newStartDate), parseISO(oldStartDate))
-          : 0;
-
-        // Update the subproject itself
-        const updatedSubProjects = {
-          ...state.subProjects,
-          [subProjectId]: { ...sub, ...updates }
-        };
-
-        // If dates didn't change, just return updated subprojects
-        if (!startDateChanged && !endDateChanged) {
-          return { subProjects: updatedSubProjects };
-        }
-
-        // Shift/Clamp Items
-        const updatedItems = { ...state.items };
-        const newSubStart = parseISO(newStartDate);
-        const newSubEnd = parseISO(newEndDate);
-
-        // Iterate only items belonging to this subproject
-        // In a real DB we'd query. In normalized state, we iterate Object.values or entries.
-        Object.values(updatedItems).forEach(item => {
-          if (item.subProjectId !== subProjectId) return;
-
-          const itemDate = parseISO(item.date);
-          let newItemDateStr = item.date;
-
-          if (startDateChanged && daysDiff !== 0) {
-            // Shift item date
-            let newItemDate = addDays(itemDate, daysDiff);
-            // Clamp
-            if (newItemDate < newSubStart) newItemDate = newSubStart;
-            if (newItemDate > newSubEnd) newItemDate = newSubEnd;
-            newItemDateStr = format(newItemDate, 'yyyy-MM-dd');
-          } else if (endDateChanged) {
-            // Only end date changed - clamp
-            if (itemDate > newSubEnd) {
-              newItemDateStr = format(newSubEnd, 'yyyy-MM-dd');
-            }
-          }
-
-          if (newItemDateStr !== item.date) {
-            updatedItems[item.id] = { ...item, date: newItemDateStr };
-          }
-        });
-
-        return {
-          subProjects: updatedSubProjects,
-          items: updatedItems
-        };
-      }),
-
-      updateSubProjectDate: (subProjectId, newStartDate) => set((state) => {
-        const sub = state.subProjects[subProjectId];
-        if (!sub) return state;
-
-        const oldStartDate = sub.startDate;
-        const daysDiff = differenceInDays(parseISO(newStartDate), parseISO(oldStartDate));
-        const newEndDate = format(addDays(parseISO(sub.endDate), daysDiff), 'yyyy-MM-dd');
-
-        const updatedSub = { ...sub, startDate: newStartDate, endDate: newEndDate };
-        const updatedSubProjects = { ...state.subProjects, [subProjectId]: updatedSub };
-
-        // Shift items
-        const updatedItems = { ...state.items };
-        Object.values(updatedItems).forEach(item => {
-          if (item.subProjectId !== subProjectId) return;
-          const newItemDate = format(addDays(parseISO(item.date), daysDiff), 'yyyy-MM-dd');
-          updatedItems[item.id] = { ...item, date: newItemDate };
-        });
-
-        return {
-          subProjects: updatedSubProjects,
-          items: updatedItems
-        };
-      }),
-
-      addMilestone: (projectId, title, date, color) => set((state) => {
-        const id = `ms-${Date.now()}`;
-        const newMilestone: Milestone = {
-          id,
-          title,
-          date,
-          projectId,
-          color: color ? `hsl(var(--workspace-${color}))` : undefined,
-        };
-        api.createMilestone(newMilestone).catch(e => console.error(e));
-        return {
-          milestones: { ...state.milestones, [id]: newMilestone }
-        };
-      }),
-
-      reorderWorkspaces: (workspaceIds) => set((state) => {
-        return { workspaceOrder: workspaceIds };
-      }),
-
-      reorderProjects: (workspaceId, projectIds) => set((state) => {
-        const ws = state.workspaces[workspaceId];
-        if (!ws) return state;
-        return {
-          workspaces: {
-            ...state.workspaces,
-            [workspaceId]: { ...ws, projectIds }
-          }
-        };
-      }),
-
-      updateWorkspace: (workspaceId, updates) => set((state) => {
-        const ws = state.workspaces[workspaceId];
-        if (!ws) return state;
-        // Don't allow overwriting projectIds via generic update unless careful, 
-        // but Typescript Partial handles it.
-        return {
-          workspaces: {
-            ...state.workspaces,
-            [workspaceId]: { ...ws, ...updates }
-          }
-        };
-      }),
-
-      updateProject: (projectId, updates) => set((state) => {
-        const proj = state.projects[projectId];
-        if (!proj) return state;
-        return {
-          projects: {
-            ...state.projects,
-            [projectId]: { ...proj, ...updates }
-          }
-        };
-      }),
-
-      deleteWorkspace: (workspaceId) => set((state) => {
-        const ws = state.workspaces[workspaceId];
-        if (!ws) return state;
-
-        const newWorkspaces = { ...state.workspaces };
-        delete newWorkspaces[workspaceId];
-
-        const newWorkspaceOrder = state.workspaceOrder.filter(id => id !== workspaceId);
-
-        // Use a more holistic approach to cleanup if needed, but for now just orphans are fine 
-        // or we iterate to delete children. Ideally we delete children to prevent memory leaks.
-        // For simplicity in this step, I'll validly remove children refs.
-
-        return {
-          workspaces: newWorkspaces,
-          workspaceOrder: newWorkspaceOrder
-        };
-      }),
-
-      deleteProject: (projectId) => set((state) => {
-        // Identify workspace
-        const project = state.projects[projectId];
-        if (!project) return state;
-
-        const wsId = project.workspaceId;
-        const ws = state.workspaces[wsId];
-
-        const newWorkspaces = { ...state.workspaces };
-        if (ws) {
-          newWorkspaces[wsId] = {
-            ...ws,
-            projectIds: ws.projectIds.filter(id => id !== projectId)
-          };
-        }
-
-        const newProjects = { ...state.projects };
-        delete newProjects[projectId];
-
-        // Should also delete items etc, but for now basic refactor:
-        return {
-          workspaces: newWorkspaces,
-          projects: newProjects
-        };
-      }),
-
-      sync: async () => {
-        set({ isSyncing: true });
-        try {
-          const remoteState = await api.fetchFullState();
-          if (remoteState && Object.keys(remoteState.workspaces || {}).length > 0) {
-            set({
-              workspaces: remoteState.workspaces || {},
+            await db.userSettings.put({
+              userId: 'current',
               workspaceOrder: remoteState.workspaceOrder || [],
-              projects: remoteState.projects || {},
-              subProjects: remoteState.subProjects || {},
-              milestones: remoteState.milestones || {},
-              items: remoteState.items || {},
-              openProjectIds: remoteState.openProjectIds || [],
-              isSyncing: false
+              openProjectIds: remoteState.openProjectIds || []
             });
-          } else {
-            // If remote is empty, we keep local (or empty if it was reset). 
-            // But since we just reset local, this means empty.
-            set({ isSyncing: false });
-          }
-        } catch (e) {
-          console.error("Sync failed:", e);
+          });
+
+        } else {
+          // If remote is empty, we keep local (or empty if it was reset). 
+          // But since we just reset local, this means empty.
           set({ isSyncing: false });
         }
-      },
-    }),
-    {
-      name: 'timeline-storage-v3',
-      // We persist everything except projectHeights (runtime cache)
-      partialize: (state) => ({
-        workspaces: state.workspaces,
-        workspaceOrder: state.workspaceOrder,
-        projects: state.projects,
-        subProjects: state.subProjects,
-        milestones: state.milestones,
-        items: state.items,
-        openProjectIds: state.openProjectIds,
-        visibleDays: state.visibleDays,
-        currentDate: state.currentDate,
-      }),
-      // Simple localStorage for now - will be replaced by Async Dexie later
+      } catch (e) {
+        console.error("Sync failed:", e);
+        set({ isSyncing: false });
+      }
+    },
+
+    loadFromLocal: async () => {
+      try {
+        const workspaces = await db.workspaces.toArray();
+        const projects = await db.projects.toArray();
+        const subProjects = await db.subProjects.toArray();
+        const milestones = await db.milestones.toArray();
+        const items = await db.items.toArray();
+        const settings = await db.userSettings.get({ userId: 'current' });
+
+        const state: Partial<TimelineState> = {
+          workspaces: workspaces.reduce((acc, w) => ({ ...acc, [w.id]: w }), {}),
+          projects: projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {}),
+          subProjects: subProjects.reduce((acc, s) => ({ ...acc, [s.id]: s }), {}),
+          milestones: milestones.reduce((acc, m) => ({ ...acc, [m.id]: m }), {}),
+          items: items.reduce((acc, i) => ({ ...acc, [i.id]: i }), {}),
+          workspaceOrder: settings?.workspaceOrder || [],
+          openProjectIds: settings?.openProjectIds || [],
+        };
+
+        set(state as any); // Simple set for now
+      } catch (e) {
+        console.error("Load from local failed", e);
+      }
     }
-  )
+  })
 );

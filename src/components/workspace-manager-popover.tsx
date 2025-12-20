@@ -395,9 +395,9 @@ export function WorkspaceManagerPopover() {
                   strategy={verticalListSortingStrategy}
                 >
                   {sortedWorkspaces.map((workspace) => {
-                    const workspaceProjects = (workspace.projectIds || [])
-                      .map(pid => projects[pid])
-                      .filter((p): p is Project => !!p);
+                    const workspaceProjects = Object.values(projects)
+                      .filter(p => p.workspaceId === workspace.id)
+                      .sort((a, b) => (a.position || 0) - (b.position || 0));
 
                     return (
                       <SortableWorkspaceItem

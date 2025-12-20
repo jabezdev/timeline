@@ -97,14 +97,25 @@ function TimelineContent() {
   }, [workspacesMap, projectsMap, itemsMap, milestonesMap, subProjectsMap]);
 
   // Derived State: Workspace -> Projects list (ordered)
+  // Create a map of workspaceId -> Projects (Sorted by position)
   const workspaceProjects = useMemo(() => {
     const map = new Map<string, Project[]>();
-    Object.values(workspacesMap).forEach(ws => {
-      const projs = (ws.projectIds || []) // Safety check
-        .map(pid => projectsMap[pid])
-        .filter((p): p is Project => !!p);
-      map.set(ws.id, projs);
+
+    // Initialize buckets
+    Object.keys(workspacesMap).forEach(wsId => map.set(wsId, []));
+
+    // Distribute projects
+    Object.values(projectsMap).forEach(p => {
+      if (map.has(p.workspaceId)) {
+        map.get(p.workspaceId)?.push(p);
+      }
     });
+
+    // Sort each bucket
+    map.forEach(projs => {
+      projs.sort((a, b) => (a.position || 0) - (b.position || 0));
+    });
+
     return map;
   }, [workspacesMap, projectsMap]);
 
@@ -292,8 +303,8 @@ function TimelineContent() {
 
     // Helper to check if a workspace has an open project
     const hasOpenProject = (wsId: string) => {
-      const projIds = workspacesMap[wsId]?.projectIds || [];
-      return projIds.some(pid => openProjectIds.has(pid));
+      const projs = workspaceProjects.get(wsId) || [];
+      return projs.some(p => openProjectIds.has(p.id));
     };
 
     workspaceOrder.forEach(id => {
@@ -448,7 +459,7 @@ function TimelineContent() {
                 const subProjectEnd = parseISO(subProject.endDate);
                 const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
                 const width = durationDays * CELL_WIDTH;
-                const height = activeDragItem.rowHeight || 64;
+                const height = (activeDragItem as any).rowHeight || 64;
                 return (
                   <SubProjectBar
                     subProject={subProject}
