@@ -1,6 +1,7 @@
-import { Settings } from "lucide-react"
+import { Settings, LogOut } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { useAuth } from "@/components/auth/AuthProvider"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 
 const FONTS = [
   { name: "Inter", value: "inter", family: "'Inter', sans-serif" },
@@ -25,6 +27,7 @@ const FONTS = [
 
 export function PreferencesPopover() {
   const { theme, setTheme } = useTheme()
+  const { signOut } = useAuth()
   const [font, setFont] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('font-family') || 'inter'
@@ -45,20 +48,22 @@ export function PreferencesPopover() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" title="Preferences">
+        <Button variant="outline" size="icon" title="Settings">
           <Settings className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Preferences</span>
+          <span className="sr-only">Settings</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start">
         <div className="grid gap-4">
           <div className="space-y-2">
-            <h4 className="font-medium leading-none">Preferences</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium leading-none">Settings</h4>
+            </div>
             <p className="text-sm text-muted-foreground">
               Customize the appearance of the app.
             </p>
           </div>
-          
+
           {/* Theme */}
           <div className="grid gap-2">
             <Label htmlFor="theme">Theme</Label>
@@ -90,6 +95,18 @@ export function PreferencesPopover() {
               </SelectContent>
             </Select>
           </div>
+
+          <Separator className="my-2" />
+
+          {/* Logout */}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
+            onClick={() => signOut()}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Log out
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
