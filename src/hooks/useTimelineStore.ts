@@ -427,6 +427,15 @@ export const useTimelineStore = create<TimelineStore>()(
 
 
     reorderWorkspaces: (workspaceIds) => set((state) => {
+      api.saveSettings(workspaceIds).catch(e => console.error("Save Settings Failed:", e));
+
+      // Update local settings as well
+      db.userSettings.put({
+        userId: 'current',
+        workspaceOrder: workspaceIds,
+        openProjectIds: state.openProjectIds
+      }).catch(e => console.error(e));
+
       return { workspaceOrder: workspaceIds };
     }),
 
