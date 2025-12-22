@@ -9,6 +9,7 @@ interface MilestoneItemProps {
   milestone: Milestone;
   workspaceColor: number;
   onClick?: (milestone: Milestone) => void;
+  isCompact?: boolean;
 }
 
 export function MilestoneItemView({
@@ -17,7 +18,8 @@ export function MilestoneItemView({
   isDragging,
   dragHandleProps,
   style,
-  className
+  className,
+  isCompact
 }: {
   milestone: Milestone;
   onClick?: (milestone: Milestone) => void;
@@ -25,6 +27,7 @@ export function MilestoneItemView({
   dragHandleProps?: any;
   style?: React.CSSProperties;
   className?: string;
+  isCompact?: boolean;
 }) {
   const isHex = milestone.color?.startsWith('#');
   const bgColor = isHex
@@ -55,7 +58,7 @@ export function MilestoneItemView({
           onClick(milestone);
         }
       }}
-      className={`group relative flex items-center gap-1.5 px-2 py-1.5 rounded-md border transition-all cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''
+      className={`group relative flex items-center gap-1.5 px-2 ${isCompact ? 'py-0.5 text-[10px]' : 'py-1.5'} rounded-sm border cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''
         } ${className || ''}`}
       style={{
         ...style,
@@ -64,12 +67,12 @@ export function MilestoneItemView({
       }}
     >
       <Flag
-        className="w-3 h-3 shrink-0"
+        className={`${isCompact ? 'w-2.5 h-2.5' : 'w-3 h-3'} shrink-0`}
         style={{ color: textColor }}
       />
 
       <span
-        className="text-xs font-medium truncate"
+        className={`${isCompact ? 'text-[10px]' : 'text-xs'} font-medium truncate`}
         style={{ color: textColor }}
       >
         {milestone.title}
@@ -78,7 +81,11 @@ export function MilestoneItemView({
   );
 }
 
-export function MilestoneItem({ milestone, workspaceColor, onClick }: MilestoneItemProps) {
+import { QuickEditPopover } from './QuickEditPopover';
+
+// ...
+
+export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }: MilestoneItemProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: milestone.id,
     data: { type: 'milestone', item: milestone },
@@ -107,14 +114,17 @@ export function MilestoneItem({ milestone, workspaceColor, onClick }: MilestoneI
         ref={setNodeRef}
         initial={animateFrom ? { x: animateFrom.x, y: animateFrom.y } : false}
         animate={{ x: 0, y: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
+        transition={{ duration: 0 }}
       >
-        <MilestoneItemView
-          milestone={milestone}
-          onClick={onClick}
-          isDragging={isDragging}
-          dragHandleProps={{ ...attributes, ...listeners }}
-        />
+        <QuickEditPopover item={milestone}>
+          <MilestoneItemView
+            milestone={milestone}
+            onClick={onClick}
+            isDragging={isDragging}
+            dragHandleProps={{ ...attributes, ...listeners }}
+            isCompact={isCompact}
+          />
+        </QuickEditPopover>
       </motion.div>
     </div>
   );

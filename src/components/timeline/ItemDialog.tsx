@@ -33,10 +33,7 @@ interface ItemDialogProps {
     onDelete?: (item: TimelineItem | Milestone | SubProject) => void;
 }
 
-const COLORS = [
-    "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", "#06b6d4",
-    "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", "#f43f5e", "#64748b"
-];
+const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemDialogProps) {
     const [title, setTitle] = useState("");
@@ -77,6 +74,7 @@ export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemD
             } else if (isMilestone) {
                 const mItem = item as Milestone;
                 setContent(mItem.content || "");
+                setColor(mItem.color);
             } else if (isSubProject) {
                 const sItem = item as SubProject;
                 setStartDate(sItem.startDate);
@@ -107,8 +105,10 @@ export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemD
                 updates.content = content;
                 updates.completed = completed;
                 updates.color = color;
+                updates.color = color;
             } else if (isMilestone) {
                 updates.content = content;
+                updates.color = color;
             } else if (isSubProject) {
                 updates.startDate = startDate;
                 updates.endDate = endDate;
@@ -279,7 +279,13 @@ export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemD
                             <>
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" size="icon" className="shrink-0 h-8 w-8" style={{ backgroundColor: color }}>
+                                        <Button variant="outline" size="icon" className="shrink-0 h-8 w-8" style={{
+                                            backgroundColor: color?.startsWith('#')
+                                                ? color
+                                                : color
+                                                    ? `hsl(var(--workspace-${color}))`
+                                                    : undefined
+                                        }}>
                                             <Palette className={cn("h-4 w-4", color ? "text-white" : "text-foreground")} />
                                         </Button>
                                     </PopoverTrigger>
@@ -290,10 +296,10 @@ export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemD
                                                     key={c}
                                                     className={cn(
                                                         "w-8 h-8 rounded-full border border-border transition-all hover:scale-110",
-                                                        color === c ? "ring-2 ring-offset-2 ring-black" : ""
+                                                        color === String(c) ? "ring-2 ring-offset-2 ring-black" : ""
                                                     )}
-                                                    style={{ backgroundColor: c }}
-                                                    onClick={() => setColor(c)}
+                                                    style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                                                    onClick={() => setColor(String(c))}
                                                 />
                                             ))}
                                             <button
@@ -396,6 +402,19 @@ export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemD
                                 </ReactMarkdown>
                             </div>
                         </div>
+                    )}
+                </div>
+
+                {/* Date Metadata Footer */}
+                <div className="flex-shrink-0 px-6 py-2 bg-secondary/5 border-t border-border/50 text-[10px] text-muted-foreground flex items-center gap-4 select-none">
+                    {item.createdAt && (
+                        <span>Created: {new Date(item.createdAt).toLocaleString()}</span>
+                    )}
+                    {item.updatedAt && (
+                        <span>Modified: {new Date(item.updatedAt).toLocaleString()}</span>
+                    )}
+                    {(item as TimelineItem).completedAt && (
+                        <span>Completed: {new Date((item as TimelineItem).completedAt!).toLocaleString()}</span>
                     )}
                 </div>
 

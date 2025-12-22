@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,8 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DndContext, DragEndEvent, DragStartEvent, DragOverlay, useSensor, useSensors, PointerSensor, pointerWithin, Modifier } from '@dnd-kit/core';
-import { addDays, subDays, startOfWeek, differenceInDays, parseISO, format } from 'date-fns';
+import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import { addDays, subDays, parseISO, format, differenceInDays } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
 import { WorkspaceSection } from './WorkspaceSection';
 import { SidebarHeader, SidebarWorkspace } from './Sidebar';
@@ -18,41 +18,64 @@ import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { Plus } from 'lucide-react';
 import { AddItemDialog } from './AddItemDialog';
 import { ItemDialog } from './ItemDialog';
-import { TimelineItem, Milestone, SubProject, Project, Workspace } from '@/types/timeline';
-import { SIDEBAR_WIDTH, CELL_WIDTH } from './TimelineHeader';
+import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
+import { SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS } from '@/lib/constants';
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
-import { DropAnimationProvider, useDropAnimation } from './DropAnimationContext';
+import { DropAnimationProvider } from './DropAnimationContext';
+
+// Hooks
+import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
+import { useTimelineDragDrop } from './hooks/useTimelineDragDrop';
+import { useTimelineScroll } from './hooks/useTimelineScroll';
+import { useTimelineVirtualization } from './hooks/useTimelineVirtualization';
+import { useTimelineDataQuery, useStructureQuery } from '@/hooks/useTimelineQueries';
 
 function TimelineContent() {
-  const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
-  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
-  const [activeDragItem, setActiveDragItem] = useState<{ type: string; item: any } | null>(null);
-  const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
-  const [dragOffsetDays, setDragOffsetDays] = useState(0);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const pendingScrollRef = useRef<{ type: 'instant' | 'smooth'; value: number } | null>(null);
-  const dragOverlayRef = useRef<HTMLDivElement>(null);
-  const visibleDays = 21;
+  const visibleDays = VISIBLE_DAYS;
 
-  const { registerDrop } = useDropAnimation();
+  // 1. Scroll Logic
+  const {
+    startDate,
+    setStartDate,
+    sidebarRef,
+    timelineRef,
+    handleNavigate,
+    handleTodayClick,
+    handleTimelineScroll,
+    handleSidebarScroll
+  } = useTimelineScroll(visibleDays);
 
-  // Select state from store
+  // 2. Data Selectors
+  const {
+    projectsItems,
+    projectsMilestones,
+    projectsSubProjects,
+    allProjects,
+    workspaceProjects,
+    allSubProjects,
+    sortedWorkspaceIds,
+    openProjectIds
+  } = useTimelineSelectors();
+
+  // 3. Drag & Drop Logic
+  const {
+    activeDragItem,
+    dragOffset,
+    dragOverlayRef,
+    sensors,
+    handleDragStart,
+    handleDragEnd,
+    adjustTranslate,
+    setActiveDragItem // Exposed if needed, but mainly used internally by hook
+  } = useTimelineDragDrop();
+
+  // 4. Store Actions & State
   const {
     workspaces: workspacesMap,
-    projects: projectsMap,
-    items: itemsMap,
-    subProjects: subProjectsMap,
-    milestones: milestonesMap,
-    workspaceOrder,
-    openProjectIds: openProjectIdsArray,
     toggleWorkspace,
     toggleProject,
-    updateItemDate,
-    updateMilestoneDate,
     toggleItemComplete,
     addItem,
     updateItem,
@@ -60,235 +83,54 @@ function TimelineContent() {
     addWorkspace,
     addProject,
     expandAllWorkspaces,
-    updateSubProjectDate,
     addSubProject,
     updateSubProject,
     addMilestone,
     deleteItem,
     deleteMilestone,
     deleteSubProject,
-    fetchRange,
+    syncRemoteData,
+    syncRangeData,
   } = useTimelineStore();
 
-  const openProjectIds = useMemo(() => new Set(openProjectIdsArray), [openProjectIdsArray]);
-
-  // Derived State: Grouping
-  const { projectsItems, projectsMilestones, projectsSubProjects, allProjects } = useMemo(() => {
-    const pItems = new Map<string, TimelineItem[]>();
-    const pMilestones = new Map<string, Milestone[]>();
-    const pSubProjects = new Map<string, SubProject[]>();
-    const allProjs: Array<Project & { workspaceName: string }> = [];
-
-    // Initialize maps for all projects
-    Object.values(projectsMap).forEach(p => {
-      const ws = workspacesMap[p.workspaceId];
-      // Only include project if workspace exists (filter orphans)
-      if (ws) {
-        pItems.set(p.id, []);
-        pMilestones.set(p.id, []);
-        pSubProjects.set(p.id, []);
-        allProjs.push({ ...p, workspaceName: ws.name });
-      }
-    });
-
-    Object.values(itemsMap).forEach(i => {
-      if (pItems.has(i.projectId)) pItems.get(i.projectId)!.push(i);
-    });
-
-    Object.values(milestonesMap).forEach(m => {
-      if (pMilestones.has(m.projectId)) pMilestones.get(m.projectId)!.push(m);
-    });
-
-    Object.values(subProjectsMap).forEach(sp => {
-      if (pSubProjects.has(sp.projectId)) pSubProjects.get(sp.projectId)!.push(sp);
-    });
-
-    return {
-      projectsItems: pItems,
-      projectsMilestones: pMilestones,
-      projectsSubProjects: pSubProjects,
-      allProjects: allProjs
-    };
-  }, [workspacesMap, projectsMap, itemsMap, milestonesMap, subProjectsMap]);
-
-  // Derived State: Workspace -> Projects list (ordered)
-  // Create a map of workspaceId -> Projects (Sorted by position)
-  const workspaceProjects = useMemo(() => {
-    const map = new Map<string, Project[]>();
-
-    // Initialize buckets
-    Object.keys(workspacesMap).forEach(wsId => map.set(wsId, []));
-
-    // Distribute projects
-    Object.values(projectsMap).forEach(p => {
-      if (map.has(p.workspaceId) && !p.isHidden) {
-        map.get(p.workspaceId)?.push(p);
-      }
-    });
-
-    // Sort each bucket
-    map.forEach(projs => {
-      projs.sort((a, b) => (a.position || 0) - (b.position || 0));
-    });
-
-    return map;
-  }, [workspacesMap, projectsMap]);
-
-  // Derived State: SubProjects List for Dialog
-  const allSubProjects = useMemo(() => Object.values(subProjectsMap).map(sp => ({
-    id: sp.id,
-    title: sp.title,
-    projectId: sp.projectId
-  })), [subProjectsMap]);
-
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
+  // 5. Virtualization
+  const { rowVirtualizer } = useTimelineVirtualization(
+    sortedWorkspaceIds,
+    workspacesMap,
+    workspaceProjects,
+    projectsItems,
+    projectsSubProjects,
+    openProjectIds,
+    timelineRef
   );
 
-  const handleNavigate = (direction: 'prev' | 'next') => {
-    if (!timelineRef.current) {
-      setStartDate(prev =>
-        direction === 'next'
-          ? addDays(prev, 7)
-          : subDays(prev, 7)
-      );
-      return;
-    }
+  // 6. React Query Integration
+  const startStr = format(startDate, 'yyyy-MM-dd');
+  const endStr = format(addDays(startDate, visibleDays), 'yyyy-MM-dd');
 
-    const currentScrollLeft = timelineRef.current.scrollLeft;
+  const structureQuery = useStructureQuery();
+  const timelineDataQuery = useTimelineDataQuery({ startDate: startStr, endDate: endStr });
 
-    if (direction === 'prev') {
-      pendingScrollRef.current = { type: 'instant', value: currentScrollLeft + (7 * CELL_WIDTH) };
-      setStartDate(prev => subDays(prev, 7));
-    } else {
-      pendingScrollRef.current = { type: 'instant', value: Math.max(0, currentScrollLeft - (7 * CELL_WIDTH)) };
-      setStartDate(prev => addDays(prev, 7));
-    }
-  };
-
-  const handleTodayClick = () => {
-    const today = new Date();
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-    const daysSinceCurrentStart = differenceInDays(today, startDate);
-
-    if (daysSinceCurrentStart >= 0 && daysSinceCurrentStart < visibleDays) {
-      if (timelineRef.current) {
-        const scrollOffset = daysSinceCurrentStart * CELL_WIDTH;
-        timelineRef.current.scrollTo({
-          left: scrollOffset,
-          behavior: 'smooth'
-        });
-      }
-    } else {
-      const newDaysSinceStart = differenceInDays(today, weekStart);
-      if (newDaysSinceStart >= 0 && newDaysSinceStart < visibleDays) {
-        pendingScrollRef.current = { type: 'smooth', value: newDaysSinceStart * CELL_WIDTH };
-      }
-      setStartDate(weekStart);
-    }
-  };
-
-  useLayoutEffect(() => {
-    if (pendingScrollRef.current && timelineRef.current) {
-      const { type, value } = pendingScrollRef.current;
-      if (type === 'instant') {
-        timelineRef.current.scrollLeft = value;
-      } else {
-        timelineRef.current.scrollTo({
-          left: value,
-          behavior: 'smooth'
-        });
-      }
-      pendingScrollRef.current = null;
-    }
-  }, [startDate]);
-
-  // Fetch data when startDate changes
+  // Sync Query Data to Store
   useEffect(() => {
-    const startStr = format(startDate, 'yyyy-MM-dd');
-    const endStr = format(addDays(startDate, visibleDays), 'yyyy-MM-dd');
-    fetchRange(startStr, endStr);
-  }, [startDate, fetchRange, visibleDays]);
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragItem(event.active.data.current as any);
-
-    const rect = event.active.rect.current?.initial;
-    const activatorEvent = event.activatorEvent as any;
-
-    if (rect && activatorEvent) {
-      const clientX = activatorEvent.touches ? activatorEvent.touches[0].clientX : activatorEvent.clientX;
-      const clientY = activatorEvent.touches ? activatorEvent.touches[0].clientY : activatorEvent.clientY;
-
-      if (typeof clientX === 'number' && typeof clientY === 'number') {
-        const offsetX = clientX - rect.left;
-        const offsetY = clientY - rect.top;
-        setDragOffset({ x: offsetX, y: offsetY });
-
-        if (event.active.data.current?.type === 'subProject') {
-          const days = Math.floor(offsetX / CELL_WIDTH);
-          setDragOffsetDays(days);
-        } else {
-          setDragOffsetDays(0);
-        }
-        return;
-      }
+    if (structureQuery.data) {
+      syncRemoteData(structureQuery.data);
     }
-    setDragOffset({ x: 0, y: 0 });
-    setDragOffsetDays(0);
-  };
+  }, [structureQuery.data, syncRemoteData]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (dragOverlayRef.current && active.id) {
-      const rect = dragOverlayRef.current.getBoundingClientRect();
-      registerDrop(String(active.id), rect);
+  useEffect(() => {
+    if (timelineDataQuery.data) {
+      syncRangeData(timelineDataQuery.data, { startDate: startStr, endDate: endStr });
     }
+  }, [timelineDataQuery.data, syncRangeData, startStr, endStr]);
 
-    setActiveDragItem(null);
+  // local UI state
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
-    if (!over) return;
-
-    const dropData = over.data.current as { projectId: string; date: string; subProjectId?: string } | undefined;
-    if (!dropData) return;
-
-    const dragData = active.data.current as { type: string; item: any } | undefined;
-    if (!dragData) return;
-
-    const newDate = dropData.date;
-
-    switch (dragData.type) {
-      case 'item':
-        const item = dragData.item as TimelineItem;
-        if (item.subProjectId !== dropData.subProjectId) {
-          updateItem(item.id, { date: newDate, subProjectId: dropData.subProjectId });
-        } else {
-          updateItemDate(item.id, newDate);
-        }
-        break;
-      case 'milestone':
-        updateMilestoneDate(dragData.item.id, newDate);
-        break;
-      case 'subProject':
-        const adjustedDate = subDays(parseISO(newDate), dragOffsetDays);
-        updateSubProjectDate(dragData.item.id, format(adjustedDate, 'yyyy-MM-dd'));
-        break;
-    }
-  };
-
-  const adjustTranslate: Modifier = useCallback(({ transform }) => {
-    return {
-      ...transform,
-      x: transform.x - dragOffset.x,
-      y: transform.y - dragOffset.y,
-    };
-  }, [dragOffset]);
+  // (Removed old fetchRange useEffect)
 
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
     addItem(projectId, title, date, subProjectId, color);
@@ -332,59 +174,6 @@ function TimelineContent() {
     }
   };
 
-  // Sort workspaces using workspaceOrder
-  const sortedWorkspaceIds = useMemo(() => {
-    const activeIds: string[] = [];
-    const expandedIds: string[] = [];
-    const collapsedIds: string[] = [];
-
-    // Helper to check if a workspace has an open project
-    const hasOpenProject = (wsId: string) => {
-      const projs = workspaceProjects.get(wsId) || [];
-      return projs.some(p => openProjectIds.has(p.id));
-    };
-
-    workspaceOrder.forEach(id => {
-      const ws = workspacesMap[id];
-      if (!ws || ws.isHidden) return;
-
-      if (!ws.isCollapsed && hasOpenProject(id)) {
-        activeIds.push(id);
-      } else if (!ws.isCollapsed && !hasOpenProject(id)) {
-        expandedIds.push(id);
-      } else {
-        collapsedIds.push(id);
-      }
-    });
-
-    return [...activeIds, ...expandedIds, ...collapsedIds];
-  }, [workspaceOrder, workspacesMap, openProjectIds]);
-
-  const sidebarRef = useRef<HTMLDivElement>(null);
-  const timelineRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (timelineRef.current) {
-      const today = new Date();
-      const daysSinceStart = differenceInDays(today, startDate);
-      if (daysSinceStart >= 0 && daysSinceStart < visibleDays) {
-        const scrollOffset = daysSinceStart * CELL_WIDTH;
-        timelineRef.current.scrollLeft = scrollOffset;
-      }
-    }
-  }, []);
-
-  const handleTimelineScroll = () => {
-    if (sidebarRef.current && timelineRef.current) {
-      sidebarRef.current.scrollTop = timelineRef.current.scrollTop;
-    }
-  };
-
-  const handleSidebarScroll = () => {
-    if (sidebarRef.current && timelineRef.current) {
-      timelineRef.current.scrollTop = sidebarRef.current.scrollTop;
-    }
-  };
 
   return (
     <DndContext
@@ -404,25 +193,50 @@ function TimelineContent() {
             onNavigate={handleNavigate}
             onTodayClick={handleTodayClick}
             onExpandAll={expandAllWorkspaces}
+            isAllExpanded={Object.values(workspacesMap).length > 0 && Object.values(workspacesMap).every(ws => !ws.isCollapsed)}
           />
 
           <div
             ref={sidebarRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden"
+            className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide"
             onScroll={handleSidebarScroll}
           >
-            {sortedWorkspaceIds.map(id => workspacesMap[id] && (
-              <SidebarWorkspace
-                key={id}
-                workspace={workspacesMap[id]}
-                projects={workspaceProjects.get(id) || []}
-                projectsItems={projectsItems}
-                projectsSubProjects={projectsSubProjects}
-                openProjectIds={Array.from(openProjectIds)}
-                onToggleWorkspace={() => toggleWorkspace(id)}
-                onToggleProject={toggleProject}
-              />
-            ))}
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const id = sortedWorkspaceIds[virtualRow.index];
+                if (!workspacesMap[id]) return null;
+                return (
+                  <div
+                    key={virtualRow.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <SidebarWorkspace
+                      key={id}
+                      workspace={workspacesMap[id]}
+                      projects={workspaceProjects.get(id) || []}
+                      projectsItems={projectsItems}
+                      projectsSubProjects={projectsSubProjects}
+                      openProjectIds={Array.from(openProjectIds)}
+                      onToggleWorkspace={() => toggleWorkspace(id)}
+                      onToggleProject={toggleProject}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -438,22 +252,47 @@ function TimelineContent() {
               visibleDays={visibleDays}
             />
 
-            {sortedWorkspaceIds.map(id => workspacesMap[id] && (
-              <WorkspaceSection
-                key={id}
-                workspace={workspacesMap[id]}
-                projects={workspaceProjects.get(id) || []}
-                projectsItems={projectsItems}
-                projectsMilestones={projectsMilestones}
-                projectsSubProjects={projectsSubProjects}
-                openProjectIds={openProjectIds}
-                startDate={startDate}
-                visibleDays={visibleDays}
-                onToggleItemComplete={toggleItemComplete}
-                onItemClick={handleItemClick}
-                onSubProjectClick={handleItemClick}
-              />
-            ))}
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                position: 'relative',
+                // Ensure width matches header
+                width: '100%'
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const id = sortedWorkspaceIds[virtualRow.index];
+                if (!workspacesMap[id]) return null;
+                return (
+                  <div
+                    key={virtualRow.key}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    <WorkspaceSection
+                      key={id}
+                      workspace={workspacesMap[id]}
+                      projects={workspaceProjects.get(id) || []}
+                      projectsItems={projectsItems}
+                      projectsMilestones={projectsMilestones}
+                      projectsSubProjects={projectsSubProjects}
+                      openProjectIds={openProjectIds}
+                      startDate={startDate}
+                      visibleDays={visibleDays}
+                      onToggleItemComplete={toggleItemComplete}
+                      onItemClick={handleItemClick}
+                      onSubProjectClick={handleItemClick}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

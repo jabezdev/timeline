@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { format } from 'date-fns';
 import { TimelineItem, Milestone } from '@/types/timeline';
 import { UnifiedItem } from './UnifiedItem';
 import { MilestoneItem } from './MilestoneItem';
 import { LayoutGroup, motion } from 'framer-motion';
+import { QuickCreatePopover } from './QuickCreatePopover';
 
 interface TimelineCellProps {
   date: Date;
@@ -21,14 +23,14 @@ interface TimelineCellProps {
   droppableDisabled?: boolean;
 }
 
-export function TimelineCell({ 
-  date, 
+export function TimelineCell({
+  date,
   projectId,
   subProjectId,
   laneId,
   items,
   milestones,
-  workspaceColor, 
+  workspaceColor,
   onToggleItemComplete,
   onItemClick,
   cellWidth,
@@ -36,51 +38,68 @@ export function TimelineCell({
   showBorder = true,
   droppableDisabled = false
 }: TimelineCellProps) {
+  const [isCreating, setIsCreating] = useState(false);
   const dateStr = format(date, 'yyyy-MM-dd');
   // Use laneId for unique droppable ID, but only pass subProjectId in data for drop handling
-  const droppableId = laneId 
-    ? `${projectId}-${laneId}-${dateStr}` 
+  const droppableId = laneId
+    ? `${projectId}-${laneId}-${dateStr}`
     : `${projectId}-${subProjectId || 'main'}-${dateStr}`;
-  
+
   const { setNodeRef, isOver } = useDroppable({
     id: droppableId,
     data: { projectId: projectId, date: dateStr, subProjectId },
     disabled: droppableDisabled,
   });
 
+  const handleItemClick = (e: React.MouseEvent, item: TimelineItem | Milestone) => {
+    e.stopPropagation();
+    onItemClick(item);
+  };
+
   return (
-    <div
-      ref={setNodeRef}
-      className={`px-1 py-1 shrink-0 transition-colors duration-150 ${
-        showBorder ? 'border-r border-border last:border-r-0' : ''
-      } ${isOver ? 'bg-primary/10' : ''}`}
-      style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
+    <QuickCreatePopover
+      open={isCreating}
+      onOpenChange={setIsCreating}
+      type="item"
+      projectId={projectId}
+      date={dateStr}
+      subProjectId={subProjectId}
+      defaultColor={workspaceColor}
     >
-      <LayoutGroup id={`cell-${droppableId}`}>
-        <motion.div 
-          className="flex flex-col gap-1"
-          layout
-          transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-        >
-          {milestones.map(milestone => (
-            <MilestoneItem
-              key={milestone.id} 
-              milestone={milestone}
-              workspaceColor={workspaceColor}
-            />
-          ))}
-          
-          {items.map(item => (
-            <UnifiedItem 
-              key={item.id} 
-              item={item} 
-              onToggleComplete={onToggleItemComplete}
-              onClick={onItemClick}
-              workspaceColor={workspaceColor}
-            />
-          ))}
-        </motion.div>
-      </LayoutGroup>
-    </div>
+      <div
+        ref={setNodeRef}
+        className={`px-1 py-1 shrink-0 ${showBorder ? 'border-r border-border last:border-r-0' : ''
+          } ${isOver ? 'bg-primary/10' : ''}`}
+        style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
+      >
+        <LayoutGroup id={`cell-${droppableId}`}>
+          <motion.div
+            className="flex flex-col gap-1 h-full"
+            layout
+            transition={{ duration: 0 }}
+          >
+            {milestones.map(milestone => (
+              <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
+                <MilestoneItem
+                  milestone={milestone}
+                  workspaceColor={workspaceColor}
+                />
+              </div>
+            ))}
+
+            {items.map(item => (
+              <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
+                <UnifiedItem
+                  item={item}
+                  onToggleComplete={onToggleItemComplete}
+                  onClick={() => { }} // We handle click in wrapper
+                  workspaceColor={workspaceColor}
+                />
+              </div>
+            ))}
+          </motion.div>
+        </LayoutGroup>
+      </div>
+    </QuickCreatePopover>
   );
 }

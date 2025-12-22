@@ -1,26 +1,18 @@
 import { Project, TimelineItem, SubProject } from '@/types/timeline';
+import {
+    ROW_PADDING,
+    ITEM_HEIGHT,
+    ITEM_GAP,
+    SUBPROJECT_HEADER_HEIGHT,
+    SUBPROJECT_MIN_HEIGHT,
+    ROW_BORDER_HEIGHT,
+    HEADER_HEIGHT,
+    WORKSPACE_HEADER_HEIGHT,
+    PROJECT_HEADER_HEIGHT
+} from '@/lib/constants';
 
-// Sidebar/Timeline layout constants
-export const HEADER_HEIGHT = 48;
-export const WORKSPACE_HEADER_HEIGHT = 36;
-export const PROJECT_HEADER_HEIGHT = 40;
-
-// Shared animation configuration for synchronized Timeline/Sidebar animations
-export const EXPAND_ANIMATION = {
-    duration: 0.25,
-    ease: [0.4, 0, 0.2, 1] as const, // CSS ease-out equivalent for smooth deceleration
-} as const;
-
-export const COLLAPSE_ANIMATION = {
-    duration: 0.2,
-    ease: [0.4, 0, 1, 1] as const, // Faster ease-in for snappy collapse
-} as const;
-export const ITEM_HEIGHT = 32; // Height of a single item (py-1.5 = 12px + content ~20px)
-export const ITEM_GAP = 4; // gap-1 = 4px
-export const ROW_PADDING = 8; // py-1 = 4px top + 4px bottom
-export const SUBPROJECT_HEADER_HEIGHT = 24; // Height of the subproject title bar
-export const ROW_BORDER_HEIGHT = 1; // Border between rows
-export const SUBPROJECT_MIN_HEIGHT = 64; // min-h-[64px] on SubProjectLane
+// Re-export specific constants if needed for backward compat, but better to update consumers.
+// For now, we use them internally here.
 
 // Calculate minimum row height based on number of items
 export function calculateRowHeight(maxItemCount: number, baseHeight: number = 40): number {

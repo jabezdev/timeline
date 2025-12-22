@@ -1,8 +1,7 @@
 import { Workspace, Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CELL_WIDTH } from './TimelineHeader';
-import { WORKSPACE_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/timelineUtils';
+import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/constants';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;

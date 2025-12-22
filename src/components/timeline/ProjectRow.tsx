@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { useMemo, useRef, useEffect, useLayoutEffect, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
@@ -6,9 +6,10 @@ import { TimelineCell } from './TimelineCell';
 import { MilestoneItem } from './MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CELL_WIDTH } from './TimelineHeader';
-import { PROJECT_HEADER_HEIGHT, packSubProjects, EXPAND_ANIMATION } from '@/lib/timelineUtils';
+import { CELL_WIDTH, PROJECT_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/constants';
+import { packSubProjects } from '@/lib/timelineUtils';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { QuickCreatePopover } from './QuickCreatePopover';
 
 // Droppable cell for milestones in the header row
 function MilestoneDropCell({
@@ -28,6 +29,7 @@ function MilestoneDropCell({
   items: TimelineItem[];
   isOpen: boolean;
 }) {
+  const [isCreating, setIsCreating] = useState(false);
   const dateStr = format(date, 'yyyy-MM-dd');
 
   const { setNodeRef, isOver } = useDroppable({
@@ -38,38 +40,57 @@ function MilestoneDropCell({
   // Filter out completed items for collapsed view
   const uncompletedItems = items.filter(item => !item.completed);
 
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex flex-col justify-center px-1 border-r border-border/30 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
-        }`}
-      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
-    >
-      {/* Render Milestones */}
-      <div className="flex flex-col gap-1">
-        {milestones.map(milestone => (
-          <MilestoneItem
-            key={milestone.id}
-            milestone={milestone}
-            workspaceColor={workspaceColor}
-            onClick={onItemClick}
-          />
-        ))}
-      </div>
+  const handleMilestoneClick = (e: React.MouseEvent, m: Milestone) => {
+    e.stopPropagation();
+    onItemClick(m);
+  };
 
-      {/* If collapsed and has uncompleted items, show dots for each */}
-      {!isOpen && uncompletedItems.length > 0 && milestones.length === 0 && (
-        <div className="flex justify-center gap-0.5 flex-wrap">
-          {uncompletedItems.map(item => (
-            <div
-              key={item.id}
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: item.color || 'hsl(var(--task))' }}
-            />
+  return (
+    <QuickCreatePopover
+      open={isCreating}
+      onOpenChange={setIsCreating}
+      type="milestone"
+      projectId={projectId}
+      date={dateStr}
+      defaultColor={workspaceColor}
+    >
+      <div
+        ref={setNodeRef}
+        className={`flex flex-col justify-center px-1 border-r border-border/30 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
+          }`}
+        style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
+      >
+        {/* Render Milestones */}
+        <div className="flex flex-col gap-1">
+          {milestones.map(milestone => (
+            <div key={milestone.id} onClick={(e) => handleMilestoneClick(e, milestone)}>
+              <MilestoneItem
+                milestone={milestone}
+                workspaceColor={workspaceColor}
+                isCompact={!isOpen && uncompletedItems.length > 0}
+              />
+            </div>
           ))}
         </div>
-      )}
-    </div>
+
+        {/* If collapsed and has uncompleted items, show dots for each */}
+        {!isOpen && uncompletedItems.length > 0 && (
+          <div className="flex justify-center gap-0.5 flex-wrap mt-1">
+            {uncompletedItems.map(item => (
+              <div
+                key={item.id}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  backgroundColor: item.color
+                    ? (item.color.startsWith('#') ? item.color : `hsl(var(--workspace-${item.color}))`)
+                    : 'hsl(var(--task))'
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </QuickCreatePopover>
   );
 }
 
@@ -227,7 +248,7 @@ export function ProjectRow({
             <motion.div
               className="flex border-b border-border/30 items-stretch"
               layout
-              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0 }}
             >
               {days.map((day) => {
                 const dateStr = format(day, 'yyyy-MM-dd');

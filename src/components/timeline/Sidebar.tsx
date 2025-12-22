@@ -1,33 +1,35 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
-import { ChevronDown, ChevronRight, ChevronLeft, Building2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp } from 'lucide-react';
 import { PreferencesPopover } from '../preferences-popover';
 import { WorkspaceManagerPopover } from '../workspace-manager-popover';
 import { Button } from '../ui/button';
-import { Calendar, ChevronsDown } from 'lucide-react';
 import { format } from 'date-fns';
-import { SIDEBAR_WIDTH } from './TimelineHeader';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { useMemo, useRef, useEffect } from 'react';
 import {
+  SIDEBAR_WIDTH,
   HEADER_HEIGHT,
   WORKSPACE_HEADER_HEIGHT,
   PROJECT_HEADER_HEIGHT,
-  EXPAND_ANIMATION,
-  calculateProjectExpandedHeight
-} from '@/lib/timelineUtils';
+  SUBPROJECT_HEADER_HEIGHT,
+  EXPAND_ANIMATION
+} from '@/lib/constants';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useMemo, useRef, useEffect } from 'react';
+import { calculateProjectExpandedHeight } from '@/lib/timelineUtils';
 
-// Re-export for backwards compatibility
-export { HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT, SUBPROJECT_HEADER_HEIGHT } from '@/lib/timelineUtils';
+// Re-export for backwards compatibility if really needed, but generally better to removing these re-exports if no one uses them from here.
+// However, to be safe and match previous intent:
+export { HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT, SUBPROJECT_HEADER_HEIGHT } from '@/lib/constants';
 
 interface SidebarHeaderProps {
   startDate: Date;
   onNavigate: (direction: 'prev' | 'next') => void;
   onTodayClick: () => void;
   onExpandAll: () => void;
+  isAllExpanded: boolean;
 }
 
-export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll }: SidebarHeaderProps) {
+export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll, isAllExpanded }: SidebarHeaderProps) {
   return (
     <div
       className="shrink-0 flex items-center justify-between px-2 border-r border-b border-border bg-background"
@@ -57,9 +59,19 @@ export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll
           <Calendar className="h-3.5 w-3.5" />
           <span className="sr-only">Go to Today</span>
         </Button>
-        <Button variant="outline" size="icon" className="h-6 w-6 ml-1" onClick={onExpandAll} title="Expand All Workspaces">
-          <ChevronsDown className="h-3.5 w-3.5" />
-          <span className="sr-only">Expand All Workspaces</span>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-6 w-6 ml-1"
+          onClick={onExpandAll}
+          title={isAllExpanded ? "Collapse All Workspaces" : "Expand All Workspaces"}
+        >
+          {isAllExpanded ? (
+            <ChevronsUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronsDown className="h-3.5 w-3.5" />
+          )}
+          <span className="sr-only">{isAllExpanded ? "Collapse All Workspaces" : "Expand All Workspaces"}</span>
         </Button>
       </div>
     </div>
@@ -211,12 +223,12 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
             exit={{ height: 0 }}
             transition={{
               height: {
-                duration: isExpandCollapse ? 0.25 : 0,
-                ease: [0.4, 0, 0.2, 1]
+                duration: 0,
+                ease: "linear"
               }
             }}
             style={{
-              transition: isExpandCollapse ? undefined : 'height 0.15s ease-out'
+              transition: 'none'
             }}
             className="overflow-hidden"
           />

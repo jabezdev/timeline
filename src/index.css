@@ -194,21 +194,69 @@
     padding-left: 1.5em;
   }
 
-  .prose ul.contains-task-list {
-    list-style-type: none;
-    padding-left: 0;
-  }
-
+  /* Restore bullets for task lists */
+  .prose ul.contains-task-list,
   .prose li[data-task-list-item] {
-    list-style-type: none;
+    list-style-type: disc !important;
+  }
+  
+  .prose li[data-task-list-item] {
     margin-top: 0;
-    margin-bottom: 0;
+    margin-bottom: 0.25em;
+    padding-left: 0.5em;
+    display: flex;
+    align-items: baseline; /* Align bullet with text */
+    position: relative;
   }
 
+  /* We need to cheat a bit to make the bullet appear using ::marker */
+  .prose li[data-task-list-item]::marker {
+    content: "•";
+    color: hsl(var(--foreground));
+    font-size: 1.2em;
+  }
+  
+  /* Reset padding for the UL to allow space for bullets */
+  .prose ul.contains-task-list {
+    padding-left: 1.5em;
+  }
+
+  /* Custom Checkbox Styling */
   .prose input[type="checkbox"] {
-    margin-top: 0;
-    margin-bottom: 0;
-    vertical-align: middle;
-    margin-right: 0.5rem;
+    appearance: none;
+    -webkit-appearance: none;
+    width: 1.1em;
+    height: 1.1em;
+    border: 1.5px solid hsl(var(--muted-foreground));
+    border-radius: 4px;
+    background-color: transparent;
+    cursor: pointer;
+    margin-right: 0.75em;
+    margin-left: 0; /* No negative margin needed if we flex */
+    position: relative;
+    top: 0.2em; /* visual optical adjustment */
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+  }
+
+  .prose input[type="checkbox"]:checked {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+  }
+
+  .prose input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    left: 0.35em;
+    top: 0.1em;
+    width: 0.35em;
+    height: 0.7em;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .prose input[type="checkbox"]:hover {
+    border-color: hsl(var(--primary));
   }
 }

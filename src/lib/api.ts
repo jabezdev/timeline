@@ -29,6 +29,8 @@ const transformSubProject = (db: any): SubProject => ({
     projectId: db.project_id,
     color: db.color,
     description: db.description,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at,
 });
 
 // Helper to transform Milestone (DB -> App)
@@ -39,6 +41,8 @@ const transformMilestone = (db: any): Milestone => ({
     projectId: db.project_id,
     content: db.content,
     color: db.color,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at,
 });
 
 // Helper to transform Item (DB -> App)
@@ -51,6 +55,9 @@ const transformItem = (db: any): TimelineItem => ({
     projectId: db.project_id,
     subProjectId: db.sub_project_id,
     color: db.color,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at,
+    completedAt: db.completed_at,
 });
 
 export const api = {
@@ -253,6 +260,7 @@ export const api = {
         if ('completed' in updates) dbUpdates.completed = updates.completed;
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
         if ('color' in updates) dbUpdates.color = updates.color;
+        if ('completedAt' in updates) dbUpdates.completed_at = updates.completedAt;
         return supabase.from('items').update(dbUpdates).eq('id', id);
     },
 

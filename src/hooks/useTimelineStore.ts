@@ -4,6 +4,7 @@ import { Workspace, Project, TimelineItem, Milestone, SubProject, TimelineState 
 import { differenceInDays, parseISO, addDays, format, startOfWeek } from 'date-fns';
 import { api } from '@/lib/api';
 import { db } from '@/lib/db';
+import { toast } from 'sonner';
 
 interface TimelineActions {
   // Actions
@@ -35,6 +36,8 @@ interface TimelineActions {
   sync: () => Promise<void>;
   fetchRange: (startDate: string, endDate: string) => Promise<void>;
   loadFromLocal: () => Promise<void>;
+  syncRemoteData: (data: Partial<TimelineState>) => void;
+  syncRangeData: (data: Partial<TimelineState>, range: { startDate: string, endDate: string }) => void;
 }
 
 type TimelineStore = TimelineState & TimelineActions & {
@@ -67,18 +70,25 @@ export const useTimelineStore = create<TimelineStore>()(
     }),
 
     expandAllWorkspaces: () => set((state) => {
+      const allExpanded = Object.values(state.workspaces).every(ws => !ws.isCollapsed);
+
       const newWorkspaces = { ...state.workspaces };
       Object.keys(newWorkspaces).forEach(id => {
-        newWorkspaces[id] = { ...newWorkspaces[id], isCollapsed: false };
+        newWorkspaces[id] = { ...newWorkspaces[id], isCollapsed: allExpanded };
       });
-      return { workspaces: newWorkspaces };
+
+      // "When the button is pressed, the active project should be closed."
+      return {
+        workspaces: newWorkspaces,
+        openProjectIds: []
+      };
     }),
 
     toggleWorkspace: (id) => set((state) => {
       const ws = state.workspaces[id];
       if (!ws) return state;
       // Local only - do not sync isCollapsed to server
-      db.workspaces.update(id, { isCollapsed: !ws.isCollapsed }).catch(e => console.error(e));
+      db.workspaces.update(id, { isCollapsed: !ws.isCollapsed }).catch(e => toast.error("Failed to save state", { description: e.message }));
       return {
         workspaces: {
           ...state.workspaces,
@@ -89,17 +99,18 @@ export const useTimelineStore = create<TimelineStore>()(
 
     toggleProject: (projectId, workspaceId) => set((state) => {
       const isOpen = state.openProjectIds.includes(projectId);
-      let newOpenProjectIds = [...state.openProjectIds];
 
       if (isOpen) {
-        newOpenProjectIds = newOpenProjectIds.filter(id => id !== projectId);
-        return { openProjectIds: newOpenProjectIds };
+        // Closing the project
+        return { openProjectIds: [] };
       } else {
-        newOpenProjectIds.push(projectId);
+        // Opening a project
+        // "When a project is pressed all the other workspaces should be collapsed."
+        // "make sure that only 1 project is open at a time"
 
-        // Auto-collapse other workspaces logic (optional, keeping consistent with old behavior)
         const newWorkspaces = { ...state.workspaces };
         Object.keys(newWorkspaces).forEach(id => {
+          // Collapse all workspaces except the one containing this project
           newWorkspaces[id] = {
             ...newWorkspaces[id],
             isCollapsed: id !== workspaceId
@@ -107,7 +118,7 @@ export const useTimelineStore = create<TimelineStore>()(
         });
 
         return {
-          openProjectIds: newOpenProjectIds,
+          openProjectIds: [projectId],
           workspaces: newWorkspaces
         };
       }
@@ -116,12 +127,13 @@ export const useTimelineStore = create<TimelineStore>()(
     updateItemDate: (itemId, newDate) => set((state) => {
       const item = state.items[itemId];
       if (!item) return state;
-      api.updateItem(itemId, { date: newDate }).catch(e => console.error(e));
-      db.items.update(itemId, { date: newDate }).catch(e => console.error(e));
+      const updates = { date: newDate, updatedAt: new Date().toISOString() };
+      api.updateItem(itemId, updates).catch(e => toast.error("Failed to update item date", { description: e.message }));
+      db.items.update(itemId, updates).catch(e => console.error(e));
       return {
         items: {
           ...state.items,
-          [itemId]: { ...item, date: newDate }
+          [itemId]: { ...item, ...updates }
         }
       };
     }),
@@ -129,20 +141,8 @@ export const useTimelineStore = create<TimelineStore>()(
     updateMilestoneDate: (milestoneId, newDate) => set((state) => {
       const ms = state.milestones[milestoneId];
       if (!ms) return state;
-      api.updateMilestone(milestoneId, { date: newDate }).catch(e => console.error(e));
-      return {
-        milestones: {
-          ...state.milestones,
-          [milestoneId]: { ...ms, date: newDate }
-        }
-      };
-    }),
-
-    updateMilestone: (milestoneId, updates) => set((state) => {
-      const ms = state.milestones[milestoneId];
-      if (!ms) return state;
-      api.updateMilestone(milestoneId, updates).catch(e => console.error(e));
-      db.milestones.update(milestoneId, updates).catch(e => console.error(e));
+      const updates = { date: newDate, updatedAt: new Date().toISOString() };
+      api.updateMilestone(milestoneId, updates).catch(e => toast.error("Failed to update milestone date", { description: e.message }));
       return {
         milestones: {
           ...state.milestones,
@@ -151,15 +151,36 @@ export const useTimelineStore = create<TimelineStore>()(
       };
     }),
 
+    updateMilestone: (milestoneId, updates) => set((state) => {
+      const ms = state.milestones[milestoneId];
+      if (!ms) return state;
+      const fullUpdates = { ...updates, updatedAt: new Date().toISOString() };
+      api.updateMilestone(milestoneId, fullUpdates).catch(e => toast.error("Failed to update milestone", { description: e.message }));
+      db.milestones.update(milestoneId, fullUpdates).catch(e => console.error(e));
+      return {
+        milestones: {
+          ...state.milestones,
+          [milestoneId]: { ...ms, ...fullUpdates }
+        }
+      };
+    }),
+
     toggleItemComplete: (itemId) => set((state) => {
       const item = state.items[itemId];
       if (!item) return state;
-      api.updateItem(itemId, { completed: !item.completed }).catch(e => console.error(e));
-      db.items.update(itemId, { completed: !item.completed }).catch(e => console.error(e));
+      const newCompleted = !item.completed;
+      const updates: Partial<TimelineItem> = {
+        completed: newCompleted,
+        completedAt: newCompleted ? new Date().toISOString() : undefined,
+        updatedAt: new Date().toISOString()
+      };
+
+      api.updateItem(itemId, updates).catch(e => toast.error("Failed to toggle completion", { description: e.message }));
+      db.items.update(itemId, updates).catch(e => console.error(e));
       return {
         items: {
           ...state.items,
-          [itemId]: { ...item, completed: !item.completed }
+          [itemId]: { ...item, ...updates }
         }
       };
     }),
@@ -175,8 +196,10 @@ export const useTimelineStore = create<TimelineStore>()(
         projectId,
         subProjectId,
         color: color ? String(color) : undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      api.createItem(newItem).catch(e => console.error(e));
+      api.createItem(newItem).then(() => toast.success("Item created")).catch(e => toast.error("Failed to create item", { description: e.message }));
       db.items.add(newItem).catch(e => console.error(e));
       return {
         items: { ...state.items, [id]: newItem }
@@ -186,12 +209,26 @@ export const useTimelineStore = create<TimelineStore>()(
     updateItem: (itemId, updates) => set((state) => {
       const item = state.items[itemId];
       if (!item) return state;
-      api.updateItem(itemId, updates).catch(e => console.error(e));
-      db.items.update(itemId, updates).catch(e => console.error(e));
+
+      const fullUpdates = { ...updates, updatedAt: new Date().toISOString() };
+
+      // Handle completedAt logic logic if 'completed' status is changing
+      if ('completed' in updates) {
+        if (updates.completed && !item.completed) {
+          // Marking as complete
+          (fullUpdates as any).completedAt = new Date().toISOString();
+        } else if (updates.completed === false && item.completed) {
+          // Unmarking
+          (fullUpdates as any).completedAt = null;
+        }
+      }
+
+      api.updateItem(itemId, fullUpdates).catch(e => toast.error("Failed to update item", { description: e.message }));
+      db.items.update(itemId, fullUpdates).catch(e => console.error(e));
       return {
         items: {
           ...state.items,
-          [itemId]: { ...item, ...updates }
+          [itemId]: { ...item, ...fullUpdates }
         }
       };
     }),
@@ -205,7 +242,7 @@ export const useTimelineStore = create<TimelineStore>()(
         isCollapsed: false,
       };
 
-      api.createWorkspace(newWorkspace).catch(e => console.error("Create Workspace Failed:", e));
+      api.createWorkspace(newWorkspace).then(() => toast.success("Workspace created")).catch(e => toast.error("Failed to create workspace", { description: e.message }));
       db.workspaces.add(newWorkspace).catch(e => console.error(e));
 
       // Also update order (only workspaceOrder is synced now)
@@ -237,7 +274,7 @@ export const useTimelineStore = create<TimelineStore>()(
         position: maxPos + 10000, // Large gap for easier interleaving if we ever do float math, but integer matches DB.
       };
 
-      api.createProject(newProject).catch(e => console.error("Create Project Failed", e));
+      api.createProject(newProject).then(() => toast.success("Project created")).catch(e => toast.error("Failed to create project", { description: e.message }));
 
       return {
         projects: { ...state.projects, [id]: newProject },
@@ -253,8 +290,10 @@ export const useTimelineStore = create<TimelineStore>()(
         endDate,
         projectId,
         color: color ? String(color) : undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      api.createSubProject(newSub).catch(e => console.error(e));
+      api.createSubProject(newSub).then(() => toast.success("Sub-project created")).catch(e => toast.error("Failed to create sub-project", { description: e.message }));
       db.subProjects.add(newSub).catch(e => console.error(e));
       return {
         subProjects: { ...state.subProjects, [id]: newSub }
@@ -276,13 +315,14 @@ export const useTimelineStore = create<TimelineStore>()(
         : 0;
 
       // Update the subproject itself
+      const fullUpdates = { ...updates, updatedAt: new Date().toISOString() };
       const updatedSubProjects = {
         ...state.subProjects,
-        [subProjectId]: { ...sub, ...updates }
+        [subProjectId]: { ...sub, ...fullUpdates }
       };
 
-      api.updateSubProject(subProjectId, updates).catch(e => console.error(e));
-      db.subProjects.update(subProjectId, updates).catch(e => console.error(e));
+      api.updateSubProject(subProjectId, fullUpdates).catch(e => toast.error("Failed to update sub-project", { description: e.message }));
+      db.subProjects.update(subProjectId, fullUpdates).catch(e => console.error(e));
 
       // If dates didn't change, just return updated subprojects
 
@@ -341,7 +381,7 @@ export const useTimelineStore = create<TimelineStore>()(
       const daysDiff = differenceInDays(parseISO(newStartDate), parseISO(oldStartDate));
       const newEndDate = format(addDays(parseISO(sub.endDate), daysDiff), 'yyyy-MM-dd');
 
-      const updatedSub = { ...sub, startDate: newStartDate, endDate: newEndDate };
+      const updatedSub = { ...sub, startDate: newStartDate, endDate: newEndDate, updatedAt: new Date().toISOString() };
       const updatedSubProjects = { ...state.subProjects, [subProjectId]: updatedSub };
 
       // Shift items
@@ -349,16 +389,16 @@ export const useTimelineStore = create<TimelineStore>()(
       Object.values(updatedItems).forEach(item => {
         if (item.subProjectId !== subProjectId) return;
         const newItemDate = format(addDays(parseISO(item.date), daysDiff), 'yyyy-MM-dd');
-        updatedItems[item.id] = { ...item, date: newItemDate };
+        updatedItems[item.id] = { ...item, date: newItemDate, updatedAt: new Date().toISOString() };
 
         // SYNC ITEM CHANGE
-        api.updateItem(item.id, { date: newItemDate }).catch(e => console.error(e));
-        db.items.update(item.id, { date: newItemDate }).catch(e => console.error(e));
+        api.updateItem(item.id, { date: newItemDate, updatedAt: new Date().toISOString() }).catch(e => console.error(e));
+        db.items.update(item.id, { date: newItemDate, updatedAt: new Date().toISOString() }).catch(e => console.error(e));
       });
 
       // SYNC SUBPROJECT ITSELF (Important: Update start/end date on server)
-      api.updateSubProject(subProjectId, { startDate: newStartDate, endDate: newEndDate }).catch(e => console.error(e));
-      db.subProjects.update(subProjectId, { startDate: newStartDate, endDate: newEndDate }).catch(e => console.error(e));
+      api.updateSubProject(subProjectId, { startDate: newStartDate, endDate: newEndDate, updatedAt: new Date().toISOString() }).catch(e => toast.error("Failed to update date", { description: e.message }));
+      db.subProjects.update(subProjectId, { startDate: newStartDate, endDate: newEndDate, updatedAt: new Date().toISOString() }).catch(e => console.error(e));
 
       return {
         subProjects: updatedSubProjects,
@@ -374,8 +414,10 @@ export const useTimelineStore = create<TimelineStore>()(
         date,
         projectId,
         color: color ? String(color) : undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
-      api.createMilestone(newMilestone).catch(e => console.error(e));
+      api.createMilestone(newMilestone).then(() => toast.success("Milestone created")).catch(e => toast.error("Failed to create milestone", { description: e.message }));
       db.milestones.add(newMilestone).catch(e => console.error(e));
       return {
         milestones: { ...state.milestones, [id]: newMilestone }
@@ -401,7 +443,7 @@ export const useTimelineStore = create<TimelineStore>()(
         }
       });
 
-      api.reorderProjects(updates).catch(e => console.error("Reorder Projects Failed", e));
+      api.reorderProjects(updates).catch(e => toast.error("Failed to reorder projects", { description: e.message }));
 
       // Batch update local DB
       db.transaction('rw', db.projects, async () => {
@@ -418,7 +460,7 @@ export const useTimelineStore = create<TimelineStore>()(
       if (!ws) return state;
       // Don't allow overwriting projectIds via generic update unless careful, 
       // but Typescript Partial handles it.
-      api.updateWorkspace(workspaceId, updates).catch(e => console.error(e));
+      api.updateWorkspace(workspaceId, updates).catch(e => toast.error("Failed to update workspace", { description: e.message }));
       db.workspaces.update(workspaceId, updates).catch(e => console.error(e));
 
       return {
@@ -433,7 +475,7 @@ export const useTimelineStore = create<TimelineStore>()(
       const proj = state.projects[projectId];
       if (!proj) return state;
 
-      api.updateProject(projectId, updates).catch(e => console.error(e));
+      api.updateProject(projectId, updates).catch(e => toast.error("Failed to update project", { description: e.message }));
       db.projects.update(projectId, updates).catch(e => console.error(e));
 
       return {
@@ -498,7 +540,7 @@ export const useTimelineStore = create<TimelineStore>()(
       const newMilestones = Object.fromEntries(Object.entries(state.milestones).filter(([, m]) => !projectsToDelete.some(p => p.id === m.projectId)));
       const newItems = Object.fromEntries(Object.entries(state.items).filter(([, i]) => !projectsToDelete.some(p => p.id === i.projectId)));
 
-      api.deleteWorkspace(workspaceId).catch(e => console.error(e));
+      api.deleteWorkspace(workspaceId).then(() => toast.success("Workspace deleted")).catch(e => toast.error("Failed to delete workspace", { description: e.message }));
 
       return {
         workspaces: newWorkspaces,
@@ -542,7 +584,7 @@ export const useTimelineStore = create<TimelineStore>()(
         return true;
       }));
 
-      api.deleteProject(projectId).catch(e => console.error(e));
+      api.deleteProject(projectId).then(() => toast.success("Project deleted")).catch(e => toast.error("Failed to delete project", { description: e.message }));
 
       return {
         projects: newProjects,
@@ -581,7 +623,7 @@ export const useTimelineStore = create<TimelineStore>()(
         });
       }
 
-      api.deleteSubProject(subProjectId).catch(e => console.error(e));
+      api.deleteSubProject(subProjectId).then(() => toast.success("Sub-project deleted")).catch(e => toast.error("Failed to delete sub-project", { description: e.message }));
       db.subProjects.delete(subProjectId).catch(e => console.error(e));
 
       return {
@@ -597,7 +639,7 @@ export const useTimelineStore = create<TimelineStore>()(
       const newMilestones = { ...state.milestones };
       delete newMilestones[milestoneId];
 
-      api.deleteMilestone(milestoneId).catch(e => console.error(e));
+      api.deleteMilestone(milestoneId).then(() => toast.success("Milestone deleted")).catch(e => toast.error("Failed to delete milestone", { description: e.message }));
       db.milestones.delete(milestoneId).catch(e => console.error(e));
 
       return { milestones: newMilestones };
@@ -610,7 +652,7 @@ export const useTimelineStore = create<TimelineStore>()(
       const newItems = { ...state.items };
       delete newItems[itemId];
 
-      api.deleteItem(itemId).catch(e => console.error(e));
+      api.deleteItem(itemId).then(() => toast.success("Item deleted")).catch(e => toast.error("Failed to delete item", { description: e.message }));
       db.items.delete(itemId).catch(e => console.error(e));
 
       return { items: newItems };
@@ -649,6 +691,7 @@ export const useTimelineStore = create<TimelineStore>()(
         }
       } catch (e) {
         console.error("Sync failed:", e);
+        toast.error("Sync failed", { description: (e as any).message });
         set({ isSyncing: false });
       }
     },
@@ -703,7 +746,86 @@ export const useTimelineStore = create<TimelineStore>()(
         set(state as any); // Simple set for now
       } catch (e) {
         console.error("Load from local failed", e);
+        toast.error("Failed to load local data");
       }
+    },
+
+    syncRemoteData: (data: Partial<TimelineState>) => {
+      set((state) => ({
+        ...state,
+        ...data,
+        workspaces: { ...state.workspaces, ...(data.workspaces || {}) },
+        projects: { ...state.projects, ...(data.projects || {}) },
+        subProjects: { ...state.subProjects, ...(data.subProjects || {}) },
+        milestones: { ...state.milestones, ...(data.milestones || {}) },
+        items: { ...state.items, ...(data.items || {}) },
+      }));
+    },
+
+    syncRangeData: (data: Partial<TimelineState>, range: { startDate: string, endDate: string }) => {
+      set((state) => {
+        const { startDate, endDate } = range;
+
+        // 1. Merge new data (updates/creates)
+        const newItems = { ...state.items, ...(data.items || {}) };
+        const newMilestones = { ...state.milestones, ...(data.milestones || {}) };
+        const newSubProjects = { ...state.subProjects, ...(data.subProjects || {}) };
+
+        const deletedItemIds: string[] = [];
+        const deletedMilestoneIds: string[] = [];
+        const deletedSubProjectIds: string[] = [];
+
+        // 2. Remove deleted Items (in range but missing from data)
+        Object.values(state.items).forEach(item => {
+          if (item.date >= startDate && item.date <= endDate) {
+            // If item is in this range safely, but not in the incoming data packet, it's deleted.
+            // Note: data.items only contains items in this range.
+            if (!data.items?.[item.id]) {
+              delete newItems[item.id];
+              deletedItemIds.push(item.id);
+            }
+          }
+        });
+
+        // 3. Remove deleted Milestones
+        Object.values(state.milestones).forEach(ms => {
+          if (ms.date >= startDate && ms.date <= endDate) {
+            if (!data.milestones?.[ms.id]) {
+              delete newMilestones[ms.id];
+              deletedMilestoneIds.push(ms.id);
+            }
+          }
+        });
+
+        // 4. Remove deleted SubProjects (overlapping range but missing)
+        // Logic: if subProject overlaps the range, api would have returned it.
+        Object.values(state.subProjects).forEach(sp => {
+          // Overlap check: start <= end AND end >= start
+          const overlaps = sp.startDate <= endDate && sp.endDate >= startDate;
+          if (overlaps) {
+            if (!data.subProjects?.[sp.id]) {
+              delete newSubProjects[sp.id];
+              deletedSubProjectIds.push(sp.id);
+            }
+          }
+        });
+
+        // Clean up local DB (Dexie) to prevent ghost items on reload
+        if (deletedItemIds.length > 0) db.items.bulkDelete(deletedItemIds).catch(console.error);
+        if (deletedMilestoneIds.length > 0) db.milestones.bulkDelete(deletedMilestoneIds).catch(console.error);
+        if (deletedSubProjectIds.length > 0) db.subProjects.bulkDelete(deletedSubProjectIds).catch(console.error);
+
+        return {
+          ...state,
+          items: newItems,
+          milestones: newMilestones,
+          subProjects: newSubProjects,
+          // Workspaces/Projects are global, typically handled by sync structure or separate logic, 
+          // but we can merge them if provided.
+          workspaces: { ...state.workspaces, ...(data.workspaces || {}) },
+          projects: { ...state.projects, ...(data.projects || {}) },
+        };
+      });
     }
   })
 );
