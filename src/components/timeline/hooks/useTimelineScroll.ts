@@ -1,11 +1,10 @@
-import { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { startOfWeek, addDays, subDays, differenceInDays } from 'date-fns';
 import { CELL_WIDTH } from '@/lib/constants';
 
 export function useTimelineScroll(visibleDays: number = 21) {
     const [startDate, setStartDate] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
     const pendingScrollRef = useRef<{ type: 'instant' | 'smooth'; value: number } | null>(null);
-    const sidebarRef = useRef<HTMLDivElement>(null);
     const timelineRef = useRef<HTMLDivElement>(null);
 
     const handleNavigate = (direction: 'prev' | 'next') => {
@@ -77,26 +76,11 @@ export function useTimelineScroll(visibleDays: number = 21) {
         }
     }, []);
 
-    const handleTimelineScroll = () => {
-        if (sidebarRef.current && timelineRef.current) {
-            sidebarRef.current.scrollTop = timelineRef.current.scrollTop;
-        }
-    };
-
-    const handleSidebarScroll = () => {
-        if (sidebarRef.current && timelineRef.current) {
-            timelineRef.current.scrollTop = sidebarRef.current.scrollTop;
-        }
-    };
-
     return {
         startDate,
         setStartDate,
-        sidebarRef,
         timelineRef,
         handleNavigate,
-        handleTodayClick,
-        handleTimelineScroll,
-        handleSidebarScroll
+        handleTodayClick
     };
 }

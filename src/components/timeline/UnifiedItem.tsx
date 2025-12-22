@@ -1,9 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { TimelineItem } from '@/types/timeline';
 import { Check } from 'lucide-react';
-import { motion, LayoutGroup } from 'framer-motion';
-import { useRef, useLayoutEffect, useState } from 'react';
-import { useDropAnimation } from './DropAnimationContext';
+import { QuickEditPopover } from './QuickEditPopover';
 
 interface UnifiedItemProps {
     item: TimelineItem;
@@ -76,11 +74,7 @@ export function UnifiedItemView({
         </div>
     );
 }
-import { QuickEditPopover } from './QuickEditPopover';
 
-// ... (imports)
-
-// ... (UnifiedItemView component)
 
 export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }: UnifiedItemProps) {
     const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -88,49 +82,18 @@ export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }:
         data: { type: 'item', item: item },
     });
 
-    const { consumeDropInfo } = useDropAnimation();
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [animateFrom, setAnimateFrom] = useState<{ x: number; y: number } | null>(null);
-
-    useLayoutEffect(() => {
-        const dropInfo = consumeDropInfo(item.id);
-        if (dropInfo && containerRef.current) {
-            const currentRect = containerRef.current.getBoundingClientRect();
-            const offsetX = dropInfo.rect.left - currentRect.left;
-            const offsetY = dropInfo.rect.top - currentRect.top;
-            setAnimateFrom({ x: offsetX, y: offsetY });
-            // Clear the animation state after it completes
-            const timer = setTimeout(() => setAnimateFrom(null), 250);
-            return () => clearTimeout(timer);
-        }
-    }, [item.id, item.date, consumeDropInfo]);
-
     return (
-        <motion.div
-            ref={containerRef}
-            layout
-            layoutId={`item-${item.id}`}
-            initial={animateFrom ? { x: animateFrom.x, y: animateFrom.y, opacity: 0.8 } : false}
-            animate={{ x: 0, y: 0, opacity: isDragging ? 0.3 : 1 }}
-            transition={{
-                layout: { duration: 0 },
-                x: { duration: 0 },
-                y: { duration: 0 },
-                opacity: { duration: 0 }
-            }}
-        >
-            <div ref={setNodeRef}>
-                <QuickEditPopover item={item} className="h-full">
-                    <UnifiedItemView
-                        item={item}
-                        onToggleComplete={onToggleComplete}
-                        onClick={onClick}
-                        isDragging={isDragging}
-                        dragHandleProps={{ ...attributes, ...listeners }}
-                    />
-                </QuickEditPopover>
-            </div>
-        </motion.div>
+        <div ref={setNodeRef} style={{ opacity: isDragging ? 0.3 : 1 }}>
+            <QuickEditPopover item={item} className="h-full">
+                <UnifiedItemView
+                    item={item}
+                    onToggleComplete={onToggleComplete}
+                    onClick={onClick}
+                    isDragging={isDragging}
+                    dragHandleProps={{ ...attributes, ...listeners }}
+                />
+            </QuickEditPopover>
+        </div>
     );
 }
 

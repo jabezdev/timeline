@@ -15,15 +15,15 @@ import { TimelineHeader } from './TimelineHeader';
 import { WorkspaceSection } from './WorkspaceSection';
 import { SidebarHeader, SidebarWorkspace } from './Sidebar';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { Plus } from 'lucide-react';
+import { Plus, PanelLeftOpen } from 'lucide-react';
 import { AddItemDialog } from './AddItemDialog';
 import { ItemDialog } from './ItemDialog';
 import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
-import { SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS } from '@/lib/constants';
+import { SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT } from '@/lib/constants';
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
-import { DropAnimationProvider } from './DropAnimationContext';
+
 
 // Hooks
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
@@ -35,16 +35,13 @@ import { useTimelineDataQuery, useStructureQuery } from '@/hooks/useTimelineQuer
 function TimelineContent() {
   const visibleDays = VISIBLE_DAYS;
 
-  // 1. Scroll Logic
+  // 1. Scroll Logic (Simplified: We only use startDate logic here, mostly)
+  // We don't need handleTimelineScroll/handleSidebarScroll anymore as we are using a single container.
   const {
     startDate,
-    setStartDate,
-    sidebarRef,
-    timelineRef,
+    timelineRef, // Reuse this ref for the main container
     handleNavigate,
     handleTodayClick,
-    handleTimelineScroll,
-    handleSidebarScroll
   } = useTimelineScroll(visibleDays);
 
   // 2. Data Selectors
@@ -62,13 +59,11 @@ function TimelineContent() {
   // 3. Drag & Drop Logic
   const {
     activeDragItem,
-    dragOffset,
     dragOverlayRef,
     sensors,
     handleDragStart,
     handleDragEnd,
     adjustTranslate,
-    setActiveDragItem // Exposed if needed, but mainly used internally by hook
   } = useTimelineDragDrop();
 
   // 4. Store Actions & State
@@ -111,7 +106,6 @@ function TimelineContent() {
   const structureQuery = useStructureQuery();
   const timelineDataQuery = useTimelineDataQuery({ startDate: startStr, endDate: endStr });
 
-  // Sync Query Data to Store
   useEffect(() => {
     if (structureQuery.data) {
       syncRemoteData(structureQuery.data);
@@ -130,7 +124,8 @@ function TimelineContent() {
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
-  // (Removed old fetchRange useEffect)
+  // Sidebar Collapse State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
     addItem(projectId, title, date, subProjectId, color);
@@ -143,6 +138,8 @@ function TimelineContent() {
   const handleAddSubProject = (projectId: string, title: string, startDate: string, endDate: string, color?: number) => {
     addSubProject(projectId, title, startDate, endDate, color);
   };
+
+  const currentSidebarWidth = isSidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
 
   const handleItemClick = (item: TimelineItem | Milestone | SubProject) => {
     setSelectedItem(item);
@@ -182,57 +179,105 @@ function TimelineContent() {
       onDragEnd={handleDragEnd}
       collisionDetection={pointerWithin}
     >
-      <div className="h-screen flex bg-background">
-        {/* FIXED SIDEBAR */}
+      <div className="h-screen flex bg-background overflow-hidden relative">
+        {/* 
+            SINGLE MAIN SCROLL CONTAINER 
+            This handles both vertical (sticky sidebar) and horizontal (sticky header) scrolling.
+        */}
         <div
-          className="flex flex-col border-r border-border bg-background shrink-0"
-          style={{ width: SIDEBAR_WIDTH }}
+          ref={timelineRef}
+          className="flex-1 overflow-auto scrollbar-hide w-full h-full relative"
+          id="timeline-scroll-container"
         >
-          <SidebarHeader
-            startDate={startDate}
-            onNavigate={handleNavigate}
-            onTodayClick={handleTodayClick}
-            onExpandAll={expandAllWorkspaces}
-            isAllExpanded={Object.values(workspacesMap).length > 0 && Object.values(workspacesMap).every(ws => !ws.isCollapsed)}
-          />
+          {/* Internal wrapper to ensure min-width fits all content (Sidebar + TimelineColumns) */}
+          <div className="min-w-max flex flex-col relative h-full">
 
-          <div
-            ref={sidebarRef}
-            className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide"
-            onScroll={handleSidebarScroll}
-          >
+            {/* --- STICKY TOP ROW (HEADERS) --- */}
+            <div className="sticky top-0 z-40 flex bg-background h-min border-b border-border">
+              {/* Sticky Left Sidebar Header */}
+              <div
+                className={`sticky left-0 z-50 bg-background border-r border-border overflow-hidden`}
+                style={{ width: currentSidebarWidth }}
+              >
+                <SidebarHeader
+                  startDate={startDate}
+                  onNavigate={handleNavigate}
+                  onTodayClick={handleTodayClick}
+                  onExpandAll={expandAllWorkspaces}
+                  isAllExpanded={Object.values(workspacesMap).length > 0 && Object.values(workspacesMap).every(ws => !ws.isCollapsed)}
+                  isCollapsed={isSidebarCollapsed}
+                  onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                />
+              </div>
+
+
+
+              {/* Scrolling Timeline Header */}
+              <div className="flex-1 bg-background">
+                <TimelineHeader
+                  startDate={startDate}
+                  visibleDays={visibleDays}
+                />
+              </div>
+            </div>
+
+            {/* --- VIRTUALIZED BODY --- */}
             <div
               style={{
                 height: `${rowVirtualizer.getTotalSize()}px`,
-                width: '100%',
                 position: 'relative',
+                width: '100%',
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const id = sortedWorkspaceIds[virtualRow.index];
                 if (!workspacesMap[id]) return null;
+
                 return (
                   <div
                     key={virtualRow.key}
+                    className="flex w-full absolute left-0"
                     style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
                       height: `${virtualRow.size}px`,
+                      top: 0,
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    <SidebarWorkspace
-                      key={id}
-                      workspace={workspacesMap[id]}
-                      projects={workspaceProjects.get(id) || []}
-                      projectsItems={projectsItems}
-                      projectsSubProjects={projectsSubProjects}
-                      openProjectIds={Array.from(openProjectIds)}
-                      onToggleWorkspace={() => toggleWorkspace(id)}
-                      onToggleProject={toggleProject}
-                    />
+                    {/* Sticky Sidebar Cell */}
+                    <div
+                      className="sticky left-0 z-50 bg-background border-r border-border shrink-0 overflow-hidden"
+                      style={{ width: currentSidebarWidth }}
+                    >
+                      <SidebarWorkspace
+                        key={id}
+                        workspace={workspacesMap[id]}
+                        projects={workspaceProjects.get(id) || []}
+                        projectsItems={projectsItems}
+                        projectsSubProjects={projectsSubProjects}
+                        openProjectIds={Array.from(openProjectIds)}
+                        onToggleWorkspace={() => toggleWorkspace(id)}
+                        onToggleProject={toggleProject}
+                        isSidebarCollapsed={isSidebarCollapsed}
+                      />
+                    </div>
+
+                    {/* Timeline Content Cell */}
+                    <div className="flex-1 min-w-0">
+                      <WorkspaceSection
+                        key={id}
+                        workspace={workspacesMap[id]}
+                        projects={workspaceProjects.get(id) || []}
+                        projectsItems={projectsItems}
+                        projectsMilestones={projectsMilestones}
+                        projectsSubProjects={projectsSubProjects}
+                        openProjectIds={openProjectIds}
+                        startDate={startDate}
+                        visibleDays={visibleDays}
+                        onToggleItemComplete={toggleItemComplete}
+                        onItemClick={handleItemClick}
+                        onSubProjectClick={handleItemClick}
+                      />
+                    </div>
                   </div>
                 );
               })}
@@ -240,65 +285,22 @@ function TimelineContent() {
           </div>
         </div>
 
-        {/* SCROLLABLE TIMELINE CONTENT */}
+        {/* Floating Expand Button (Visible only when collapsed) */}
         <div
-          ref={timelineRef}
-          className="flex-1 overflow-y-auto overflow-x-scroll scrollbar-hide"
-          onScroll={handleTimelineScroll}
+          className={`absolute top-2 left-2 z-[60] ${isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         >
-          <div className="min-w-fit">
-            <TimelineHeader
-              startDate={startDate}
-              visibleDays={visibleDays}
-            />
-
-            <div
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-                position: 'relative',
-                // Ensure width matches header
-                width: '100%'
-              }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const id = sortedWorkspaceIds[virtualRow.index];
-                if (!workspacesMap[id]) return null;
-                return (
-                  <div
-                    key={virtualRow.key}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
-                    <WorkspaceSection
-                      key={id}
-                      workspace={workspacesMap[id]}
-                      projects={workspaceProjects.get(id) || []}
-                      projectsItems={projectsItems}
-                      projectsMilestones={projectsMilestones}
-                      projectsSubProjects={projectsSubProjects}
-                      openProjectIds={openProjectIds}
-                      startDate={startDate}
-                      visibleDays={visibleDays}
-                      onToggleItemComplete={toggleItemComplete}
-                      onItemClick={handleItemClick}
-                      onSubProjectClick={handleItemClick}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <button
+            onClick={() => setIsSidebarCollapsed(false)}
+            className="w-8 h-8 rounded-md bg-background border border-border shadow-sm flex items-center justify-center hover:bg-secondary/50"
+            title="Expand Sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-muted-foreground" />
+          </button>
         </div>
 
         <button
           onClick={() => setIsAddDialogOpen(true)}
-          className="fixed bottom-4 right-4 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center z-30"
+          className="fixed bottom-4 right-4 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center z-50"
         >
           <Plus className="w-5 h-5" />
         </button>
@@ -404,8 +406,6 @@ function TimelineContent() {
 
 export function Timeline() {
   return (
-    <DropAnimationProvider>
-      <TimelineContent />
-    </DropAnimationProvider>
+    <TimelineContent />
   );
 }

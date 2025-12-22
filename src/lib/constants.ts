@@ -1,5 +1,6 @@
 // Dimensions
 export const SIDEBAR_WIDTH = 300;
+export const COLLAPSED_SIDEBAR_WIDTH = 0;
 export const CELL_WIDTH = 180;
 export const HEADER_HEIGHT = 48;
 export const WORKSPACE_HEADER_HEIGHT = 36;

@@ -1,9 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { Milestone } from '@/types/timeline';
 import { Flag } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useRef, useLayoutEffect, useState } from 'react';
-import { useDropAnimation } from './DropAnimationContext';
+import { QuickEditPopover } from './QuickEditPopover';
 
 interface MilestoneItemProps {
   milestone: Milestone;
@@ -81,7 +79,7 @@ export function MilestoneItemView({
   );
 }
 
-import { QuickEditPopover } from './QuickEditPopover';
+
 
 // ...
 
@@ -91,41 +89,17 @@ export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }:
     data: { type: 'milestone', item: milestone },
   });
 
-  const { consumeDropInfo } = useDropAnimation();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [animateFrom, setAnimateFrom] = useState<{ x: number; y: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const dropInfo = consumeDropInfo(milestone.id);
-    if (dropInfo && containerRef.current) {
-      const currentRect = containerRef.current.getBoundingClientRect();
-      const offsetX = dropInfo.rect.left - currentRect.left;
-      const offsetY = dropInfo.rect.top - currentRect.top;
-      setAnimateFrom({ x: offsetX, y: offsetY });
-      // Clear the animation state after it completes
-      const timer = setTimeout(() => setAnimateFrom(null), 200);
-      return () => clearTimeout(timer);
-    }
-  }, [milestone.id, milestone.date, consumeDropInfo]);
-
   return (
-    <div ref={containerRef}>
-      <motion.div
-        ref={setNodeRef}
-        initial={animateFrom ? { x: animateFrom.x, y: animateFrom.y } : false}
-        animate={{ x: 0, y: 0 }}
-        transition={{ duration: 0 }}
-      >
-        <QuickEditPopover item={milestone}>
-          <MilestoneItemView
-            milestone={milestone}
-            onClick={onClick}
-            isDragging={isDragging}
-            dragHandleProps={{ ...attributes, ...listeners }}
-            isCompact={isCompact}
-          />
-        </QuickEditPopover>
-      </motion.div>
+    <div ref={setNodeRef} style={{ opacity: isDragging ? 0.3 : 1 }}>
+      <QuickEditPopover item={milestone}>
+        <MilestoneItemView
+          milestone={milestone}
+          onClick={onClick}
+          isDragging={isDragging}
+          dragHandleProps={{ ...attributes, ...listeners }}
+          isCompact={isCompact}
+        />
+      </QuickEditPopover>
     </div>
   );
 }

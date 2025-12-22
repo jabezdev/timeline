@@ -81,8 +81,14 @@ export function useTimelineVirtualization(
     // Force re-measurement when structure changes
     // This solves the issue where expanding a project doesn't push siblings down
     // because the virtualizer cache wasn't invalidating
+    // Force re-measurement when structure changes
+    // This solves the issue where expanding a project doesn't push siblings down
+    // because the virtualizer cache wasn't invalidating
     useEffect(() => {
-        rowVirtualizer.measure();
+        const timeoutId = setTimeout(() => {
+            rowVirtualizer.measure();
+        }, 0);
+        return () => clearTimeout(timeoutId);
     }, [rowVirtualizer, openProjectIds, workspacesMap, workspaceProjects, projectsItems]);
 
     return { rowVirtualizer };

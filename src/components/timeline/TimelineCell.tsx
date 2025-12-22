@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import { TimelineItem, Milestone } from '@/types/timeline';
 import { UnifiedItem } from './UnifiedItem';
 import { MilestoneItem } from './MilestoneItem';
-import { LayoutGroup, motion } from 'framer-motion';
 import { QuickCreatePopover } from './QuickCreatePopover';
 
 interface TimelineCellProps {
@@ -72,33 +71,27 @@ export function TimelineCell({
           } ${isOver ? 'bg-primary/10' : ''}`}
         style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
       >
-        <LayoutGroup id={`cell-${droppableId}`}>
-          <motion.div
-            className="flex flex-col gap-1 h-full"
-            layout
-            transition={{ duration: 0 }}
-          >
-            {milestones.map(milestone => (
-              <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
-                <MilestoneItem
-                  milestone={milestone}
-                  workspaceColor={workspaceColor}
-                />
-              </div>
-            ))}
+        <div className="flex flex-col gap-1 h-full">
+          {milestones.map(milestone => (
+            <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
+              <MilestoneItem
+                milestone={milestone}
+                workspaceColor={workspaceColor}
+              />
+            </div>
+          ))}
 
-            {items.map(item => (
-              <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
-                <UnifiedItem
-                  item={item}
-                  onToggleComplete={onToggleItemComplete}
-                  onClick={() => { }} // We handle click in wrapper
-                  workspaceColor={workspaceColor}
-                />
-              </div>
-            ))}
-          </motion.div>
-        </LayoutGroup>
+          {items.map(item => (
+            <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
+              <UnifiedItem
+                item={item}
+                onToggleComplete={onToggleItemComplete}
+                onClick={() => { }} // We handle click in wrapper
+                workspaceColor={workspaceColor}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </QuickCreatePopover>
   );

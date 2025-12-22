@@ -1,12 +1,11 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { UnifiedItem } from './UnifiedItem';
 import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { GripVertical } from 'lucide-react';
-import { motion, LayoutGroup } from 'framer-motion';
-import { useDropAnimation } from './DropAnimationContext';
+
 import { QuickEditPopover } from './QuickEditPopover';
 import { QuickCreatePopover } from './QuickCreatePopover';
 
@@ -128,10 +127,6 @@ function DraggableSubProjectBar({
     data: { type: 'subProject', item: subProject, rowHeight },
   });
 
-  const { consumeDropInfo } = useDropAnimation();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [animateFrom, setAnimateFrom] = useState<{ x: number; y: number } | null>(null);
-
   const subProjectStart = parseISO(subProject.startDate);
   const subProjectEnd = parseISO(subProject.endDate);
 
@@ -141,37 +136,17 @@ function DraggableSubProjectBar({
   const left = startOffsetDays * CELL_WIDTH;
   const width = durationDays * CELL_WIDTH;
 
-  useLayoutEffect(() => {
-    const dropInfo = consumeDropInfo(subProject.id);
-    if (dropInfo && containerRef.current) {
-      const currentRect = containerRef.current.getBoundingClientRect();
-      const offsetX = dropInfo.rect.left - currentRect.left;
-      const offsetY = dropInfo.rect.top - currentRect.top;
-      setAnimateFrom({ x: offsetX, y: offsetY });
-      // Clear the animation state after it completes
-      const timer = setTimeout(() => setAnimateFrom(null), 200);
-      return () => clearTimeout(timer);
-    }
-  }, [subProject.id, subProject.startDate, consumeDropInfo]);
-
   return (
-    <div ref={containerRef} className="absolute top-1 bottom-1" style={{ left: `${left}px`, width: `${width}px` }}>
-      <motion.div
-        initial={animateFrom ? { x: animateFrom.x, y: animateFrom.y } : false}
-        animate={{ x: 0, y: 0 }}
-        transition={{ duration: 0 }}
+    <div className="absolute top-1 bottom-1" style={{ left: `${left}px`, width: `${width}px` }}>
+      <SubProjectBar
+        ref={setNodeRef}
+        subProject={subProject}
+        width={width}
+        isDragging={isDragging}
+        onClick={onClick}
+        dragHandleProps={{ ...attributes, ...listeners }}
         className="h-full"
-      >
-        <SubProjectBar
-          ref={setNodeRef}
-          subProject={subProject}
-          width={width}
-          isDragging={isDragging}
-          onClick={onClick}
-          dragHandleProps={{ ...attributes, ...listeners }}
-          className="h-full"
-        />
-      </motion.div>
+      />
     </div>
   );
 }
@@ -244,24 +219,18 @@ function SubProjectCell({
       className="shrink-0 px-1 py-1"
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: height }}
     >
-      <LayoutGroup id={`sublane-${laneIndex}-${dateStr}`}>
-        <motion.div
-          className="flex flex-col gap-1 h-full"
-          layout
-          transition={{ duration: 0 }}
-        >
-          {items.map(item => (
-            <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
-              <UnifiedItem
-                item={item}
-                onToggleComplete={onToggleItemComplete}
-                onClick={() => { }} // We handle click in wrapper
-                workspaceColor={workspaceColor}
-              />
-            </div>
-          ))}
-        </motion.div>
-      </LayoutGroup>
+      <div className="flex flex-col gap-1 h-full">
+        {items.map(item => (
+          <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
+            <UnifiedItem
+              item={item}
+              onToggleComplete={onToggleItemComplete}
+              onClick={() => { }} // We handle click in wrapper
+              workspaceColor={workspaceColor}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 
@@ -398,11 +367,7 @@ export function SubProjectSection({
   if (subProjectLanes.length === 0) return null;
 
   return (
-    <motion.div
-      className="relative"
-      layout
-      transition={{ duration: 0 }}
-    >
+    <div className="relative">
       {/* Individual SubProject lanes with their own droppable zones */}
       {subProjectLanes.map((lane, index) => (
         <SubProjectLane
@@ -418,6 +383,6 @@ export function SubProjectSection({
           projectId={projectId}
         />
       ))}
-    </motion.div>
+    </div>
   );
 }

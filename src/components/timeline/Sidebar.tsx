@@ -1,18 +1,17 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
-import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp, PanelLeftClose } from 'lucide-react';
 import { PreferencesPopover } from '../preferences-popover';
 import { WorkspaceManagerPopover } from '../workspace-manager-popover';
 import { Button } from '../ui/button';
 import { format } from 'date-fns';
 import {
   SIDEBAR_WIDTH,
+  COLLAPSED_SIDEBAR_WIDTH,
   HEADER_HEIGHT,
   WORKSPACE_HEADER_HEIGHT,
   PROJECT_HEADER_HEIGHT,
-  SUBPROJECT_HEADER_HEIGHT,
-  EXPAND_ANIMATION
+  SUBPROJECT_HEADER_HEIGHT
 } from '@/lib/constants';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { useMemo, useRef, useEffect } from 'react';
 import { calculateProjectExpandedHeight } from '@/lib/timelineUtils';
@@ -27,13 +26,27 @@ interface SidebarHeaderProps {
   onTodayClick: () => void;
   onExpandAll: () => void;
   isAllExpanded: boolean;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll, isAllExpanded }: SidebarHeaderProps) {
+export function SidebarHeader({
+  startDate,
+  onNavigate,
+  onTodayClick,
+  onExpandAll,
+  isAllExpanded,
+  isCollapsed,
+  onToggleCollapse
+}: SidebarHeaderProps) {
+  const width = isCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
+
+  if (isCollapsed) return null;
+
   return (
     <div
       className="shrink-0 flex items-center justify-between px-2 border-r border-b border-border bg-background"
-      style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH, height: HEADER_HEIGHT }}
+      style={{ width, minWidth: width, height: HEADER_HEIGHT }}
     >
       {/* Left group: Preferences & Workspaces */}
       <div className="flex items-center gap-1">
@@ -73,6 +86,11 @@ export function SidebarHeader({ startDate, onNavigate, onTodayClick, onExpandAll
           )}
           <span className="sr-only">{isAllExpanded ? "Collapse All Workspaces" : "Expand All Workspaces"}</span>
         </Button>
+
+        <div className="w-px h-4 bg-border mx-1" />
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={onToggleCollapse} title="Collapse Sidebar">
+          <PanelLeftClose className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );
@@ -86,6 +104,7 @@ interface SidebarWorkspaceProps {
   openProjectIds: string[]; // Normalized to strings array
   onToggleWorkspace: () => void;
   onToggleProject: (projectId: string, workspaceId: string) => void;
+  isSidebarCollapsed: boolean;
 }
 
 export function SidebarWorkspace({
@@ -95,15 +114,18 @@ export function SidebarWorkspace({
   projectsSubProjects,
   openProjectIds,
   onToggleWorkspace,
-  onToggleProject
+  onToggleProject,
+  isSidebarCollapsed
 }: SidebarWorkspaceProps) {
   const projectCount = projects.length;
+
+  if (isSidebarCollapsed) return null;
 
   return (
     <div className="border-b border-border">
       {/* Workspace header */}
       <div
-        className="flex items-center gap-2 px-2 bg-background cursor-pointer hover:bg-secondary/30 transition-colors"
+        className="flex items-center gap-2 px-2 bg-background cursor-pointer hover:bg-secondary/30"
         style={{ height: WORKSPACE_HEADER_HEIGHT }}
         onClick={onToggleWorkspace}
       >
@@ -131,31 +153,21 @@ export function SidebarWorkspace({
       </div>
 
       {/* Projects */}
-      <AnimatePresence initial={false}>
-        {!workspace.isCollapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              height: { duration: EXPAND_ANIMATION.duration, ease: EXPAND_ANIMATION.ease },
-              opacity: { duration: EXPAND_ANIMATION.duration * 0.6, ease: 'easeOut' }
-            }}
-          >
-            {projects.map(project => (
-              <SidebarProject
-                key={project.id}
-                project={project}
-                items={projectsItems.get(project.id) || []}
-                subProjects={projectsSubProjects.get(project.id) || []}
-                isOpen={openProjectIds.includes(project.id)}
-                onToggle={() => onToggleProject(project.id, workspace.id)}
-                workspaceColor={workspace.color}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {!workspace.isCollapsed && (
+        <div >
+          {projects.map(project => (
+            <SidebarProject
+              key={project.id}
+              project={project}
+              items={projectsItems.get(project.id) || []}
+              subProjects={projectsSubProjects.get(project.id) || []}
+              isOpen={openProjectIds.includes(project.id)}
+              onToggle={() => onToggleProject(project.id, workspace.id)}
+              workspaceColor={workspace.color}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -186,7 +198,6 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
   const projectHeight = measuredHeight > 0 ? measuredHeight : computedHeight;
 
   const wasOpenRef = useRef(isOpen);
-  const isExpandCollapse = wasOpenRef.current !== isOpen;
   useEffect(() => {
     wasOpenRef.current = isOpen;
   }, [isOpen]);
@@ -195,7 +206,7 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
     <div className="border-b border-border/50">
       {/* Project header */}
       <div
-        className="flex items-center gap-1.5 px-2 cursor-pointer hover:bg-secondary/30 transition-colors"
+        className="flex items-center gap-1.5 px-2 cursor-pointer hover:bg-secondary/30"
         style={{ height: PROJECT_HEADER_HEIGHT }}
         onClick={onToggle}
       >
@@ -215,25 +226,12 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
       </div>
 
       {/* Expanded content spacer */}
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: projectHeight }}
-            exit={{ height: 0 }}
-            transition={{
-              height: {
-                duration: 0,
-                ease: "linear"
-              }
-            }}
-            style={{
-              transition: 'none'
-            }}
-            className="overflow-hidden"
-          />
-        )}
-      </AnimatePresence>
+      {isOpen && (
+        <div
+          style={{ height: projectHeight }}
+          className="overflow-hidden"
+        />
+      )}
     </div>
   );
 }

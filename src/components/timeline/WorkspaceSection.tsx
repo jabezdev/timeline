@@ -1,7 +1,6 @@
 import { Workspace, Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/constants';
+import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT } from '@/lib/constants';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
@@ -42,37 +41,26 @@ export function WorkspaceSection({
       />
 
       {/* Projects */}
-      <AnimatePresence initial={false}>
-        {!workspace.isCollapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              height: { duration: EXPAND_ANIMATION.duration, ease: EXPAND_ANIMATION.ease },
-              opacity: { duration: EXPAND_ANIMATION.duration * 0.6, ease: 'easeOut' }
-            }}
-            className="overflow-hidden"
-          >
-            {projects.map(project => (
-              <ProjectRow
-                key={project.id}
-                project={project}
-                items={projectsItems.get(project.id) || []}
-                milestones={projectsMilestones.get(project.id) || []}
-                subProjects={projectsSubProjects.get(project.id) || []}
-                isOpen={openProjectIds.has(project.id)}
-                startDate={startDate}
-                visibleDays={visibleDays}
-                workspaceColor={workspace.color}
-                onToggleItemComplete={onToggleItemComplete}
-                onItemClick={onItemClick}
-                onSubProjectClick={onSubProjectClick}
-              />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {!workspace.isCollapsed && (
+        <div className="overflow-hidden">
+          {projects.map(project => (
+            <ProjectRow
+              key={project.id}
+              project={project}
+              items={projectsItems.get(project.id) || []}
+              milestones={projectsMilestones.get(project.id) || []}
+              subProjects={projectsSubProjects.get(project.id) || []}
+              isOpen={openProjectIds.has(project.id)}
+              startDate={startDate}
+              visibleDays={visibleDays}
+              workspaceColor={workspace.color}
+              onToggleItemComplete={onToggleItemComplete}
+              onItemClick={onItemClick}
+              onSubProjectClick={onSubProjectClick}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

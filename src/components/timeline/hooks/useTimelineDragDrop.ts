@@ -9,7 +9,6 @@ import {
 } from '@dnd-kit/core';
 import { subDays, parseISO, format } from 'date-fns';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { useDropAnimation } from '../DropAnimationContext';
 import { CELL_WIDTH } from '@/lib/constants';
 import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
 
@@ -18,8 +17,6 @@ export function useTimelineDragDrop() {
     const [dragOffsetDays, setDragOffsetDays] = useState(0);
     const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
     const dragOverlayRef = useRef<HTMLDivElement>(null);
-
-    const { registerDrop } = useDropAnimation();
 
     const {
         updateItem,
@@ -66,11 +63,6 @@ export function useTimelineDragDrop() {
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
-
-        if (dragOverlayRef.current && active.id) {
-            const rect = dragOverlayRef.current.getBoundingClientRect();
-            registerDrop(String(active.id), rect);
-        }
 
         setActiveDragItem(null);
 

@@ -1,12 +1,11 @@
-import { useMemo, useRef, useEffect, useLayoutEffect, useState } from 'react';
+import { useMemo, useRef, useLayoutEffect, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
 import { MilestoneItem } from './MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CELL_WIDTH, PROJECT_HEADER_HEIGHT, EXPAND_ANIMATION } from '@/lib/constants';
+import { CELL_WIDTH, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { packSubProjects } from '@/lib/timelineUtils';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { QuickCreatePopover } from './QuickCreatePopover';
@@ -169,7 +168,7 @@ export function ProjectRow({
   // Use useLayoutEffect to measure before paint for smoother sync
   useLayoutEffect(() => {
     if (!isOpen) {
-      setProjectHeight(project.id, 0);
+      setTimeout(() => setProjectHeight(project.id, 0), 0);
       return;
     }
 
@@ -189,7 +188,7 @@ export function ProjectRow({
     };
 
     // Measure immediately for initial sync
-    measureHeight();
+    setTimeout(measureHeight, 0);
 
     // Use ResizeObserver with debouncing for dynamic content changes
     let resizeObserver: ResizeObserver | null = null;
@@ -231,57 +230,46 @@ export function ProjectRow({
       </div>
 
       {/* EXPANDED CONTENT */}
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            ref={expandedContentRef}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{
-              height: { duration: EXPAND_ANIMATION.duration, ease: EXPAND_ANIMATION.ease },
-              opacity: { duration: EXPAND_ANIMATION.duration * 0.6, ease: 'easeOut' }
-            }}
-            className="flex flex-col overflow-hidden"
+      {isOpen && (
+        <div
+          ref={expandedContentRef}
+          className="flex flex-col overflow-hidden"
+        >
+          {/* Main Items Row */}
+          <div
+            className="flex border-b border-border/30 items-stretch"
           >
-            {/* Main Items Row - uses layout animation for smooth height changes */}
-            <motion.div
-              className="flex border-b border-border/30 items-stretch"
-              layout
-              transition={{ duration: 0 }}
-            >
-              {days.map((day) => {
-                const dateStr = format(day, 'yyyy-MM-dd');
-                return (
-                  <TimelineCell
-                    key={day.toISOString()}
-                    date={day}
-                    projectId={project.id}
-                    items={items.get(dateStr) || []}
-                    milestones={[]}
-                    workspaceColor={workspaceColor}
-                    onToggleItemComplete={onToggleItemComplete}
-                    onItemClick={onItemClick}
-                    cellWidth={CELL_WIDTH}
-                  />
-                );
-              })}
-            </motion.div>
+            {days.map((day) => {
+              const dateStr = format(day, 'yyyy-MM-dd');
+              return (
+                <TimelineCell
+                  key={day.toISOString()}
+                  date={day}
+                  projectId={project.id}
+                  items={items.get(dateStr) || []}
+                  milestones={[]}
+                  workspaceColor={workspaceColor}
+                  onToggleItemComplete={onToggleItemComplete}
+                  onItemClick={onItemClick}
+                  cellWidth={CELL_WIDTH}
+                />
+              );
+            })}
+          </div>
 
-            {/* SubProjects Section - unified droppable zone spanning all lanes */}
-            <SubProjectSection
-              projectId={project.id}
-              subProjectLanes={subProjectLanes}
-              itemsBySubProject={subProjectItems}
-              days={days}
-              workspaceColor={workspaceColor}
-              onToggleItemComplete={onToggleItemComplete}
-              onItemClick={onItemClick}
-              onSubProjectClick={onSubProjectClick}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {/* SubProjects Section - unified droppable zone spanning all lanes */}
+          <SubProjectSection
+            projectId={project.id}
+            subProjectLanes={subProjectLanes}
+            itemsBySubProject={subProjectItems}
+            days={days}
+            workspaceColor={workspaceColor}
+            onToggleItemComplete={onToggleItemComplete}
+            onItemClick={onItemClick}
+            onSubProjectClick={onSubProjectClick}
+          />
+        </div>
+      )}
     </div>
   );
 }
