@@ -27,11 +27,12 @@ const transformSubProject = (db: any): SubProject => ({
     startDate: db.start_date,
     endDate: db.end_date,
     projectId: db.project_id,
-    color: db.color,
+    color: db.color !== null && db.color !== undefined ? String(db.color) : undefined,
     description: db.description,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
 });
+
 
 // Helper to transform Milestone (DB -> App)
 const transformMilestone = (db: any): Milestone => ({
@@ -40,10 +41,11 @@ const transformMilestone = (db: any): Milestone => ({
     date: db.date,
     projectId: db.project_id,
     content: db.content,
-    color: db.color,
+    color: db.color !== null && db.color !== undefined ? String(db.color) : undefined,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
 });
+
 
 // Helper to transform Item (DB -> App)
 const transformItem = (db: any): TimelineItem => ({
@@ -54,11 +56,12 @@ const transformItem = (db: any): TimelineItem => ({
     completed: db.completed,
     projectId: db.project_id,
     subProjectId: db.sub_project_id,
-    color: db.color,
+    color: db.color !== null && db.color !== undefined ? String(db.color) : undefined,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
     completedAt: db.completed_at,
 });
+
 
 export const api = {
     // --- READ ---
