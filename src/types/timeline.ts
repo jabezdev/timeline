@@ -1,4 +1,3 @@
-
 export interface TimelineItem {
   id: string;
   title: string;
@@ -8,9 +7,9 @@ export interface TimelineItem {
   projectId: string;
   subProjectId?: string;
   color?: string;
+  completedAt?: string;
   createdAt?: string;
   updatedAt?: string;
-  completedAt?: string;
 }
 
 export interface Milestone {
@@ -40,17 +39,22 @@ export interface Project {
   id: string;
   name: string;
   workspaceId: string;
-  color: number;
+  color: string;
   position: number;
   isHidden?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Workspace {
   id: string;
   name: string;
-  color: number;
+  color: string;
   isCollapsed: boolean;
   isHidden?: boolean;
+  position: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TimelineState {

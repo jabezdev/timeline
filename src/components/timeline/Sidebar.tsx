@@ -1,5 +1,6 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
-import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp, PanelLeftClose } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp, PanelLeftClose, RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { PreferencesPopover } from '../preferences-popover';
 import { WorkspaceManagerPopover } from '../workspace-manager-popover';
 import { Button } from '../ui/button';
@@ -39,6 +40,7 @@ export function SidebarHeader({
   isCollapsed,
   onToggleCollapse
 }: SidebarHeaderProps) {
+  const queryClient = useQueryClient();
   const width = isCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
 
   if (isCollapsed) return null;
@@ -71,6 +73,18 @@ export function SidebarHeader({
         <Button variant="outline" size="icon" className="h-6 w-6" onClick={onTodayClick} title="Go to Today">
           <Calendar className="h-3.5 w-3.5" />
           <span className="sr-only">Go to Today</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-6 w-6 ml-1"
+          onClick={() => {
+            queryClient.invalidateQueries();
+          }}
+          title="Purge & Refetch"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span className="sr-only">Purge & Refetch</span>
         </Button>
         <Button
           variant="outline"
@@ -180,7 +194,7 @@ interface SidebarProjectProps {
   subProjects: SubProject[];
   isOpen: boolean;
   onToggle: () => void;
-  workspaceColor: number;
+  workspaceColor: string;
 }
 
 function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspaceColor }: SidebarProjectProps) {

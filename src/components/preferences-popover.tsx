@@ -1,4 +1,5 @@
-import { Settings, LogOut } from "lucide-react"
+import { Settings, LogOut, Trash2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/components/auth/AuthProvider"
@@ -28,6 +29,7 @@ const FONTS = [
 export function PreferencesPopover() {
   const { theme, setTheme } = useTheme()
   const { signOut } = useAuth()
+  const queryClient = useQueryClient()
   const [font, setFont] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('font-family') || 'inter'
@@ -95,6 +97,22 @@ export function PreferencesPopover() {
               </SelectContent>
             </Select>
           </div>
+
+          <Separator className="my-2" />
+
+          {/* Clear Cache */}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              queryClient.removeQueries()
+              // Optional: You could reload the page or show a toast here
+              window.location.reload()
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Clear Cache
+          </Button>
 
           <Separator className="my-2" />
 

@@ -6,8 +6,11 @@ const transformWorkspace = (db: any): Workspace => ({
     id: db.id,
     name: db.name,
     color: db.color,
-    isCollapsed: db.is_collapsed,
+    isCollapsed: false, // Client-side state only, default to expanded
     isHidden: db.is_hidden,
+    position: db.position || 0,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at,
 });
 
 // Helper to transform Project (DB -> App)
@@ -18,6 +21,8 @@ const transformProject = (db: any): Project => ({
     color: db.color,
     position: db.position || 0,
     isHidden: db.is_hidden,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at,
 });
 
 // Helper to transform SubProject (DB -> App)
@@ -27,7 +32,7 @@ const transformSubProject = (db: any): SubProject => ({
     startDate: db.start_date,
     endDate: db.end_date,
     projectId: db.project_id,
-    color: db.color !== null && db.color !== undefined ? String(db.color) : undefined,
+    color: db.color,
     description: db.description,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
@@ -41,7 +46,7 @@ const transformMilestone = (db: any): Milestone => ({
     date: db.date,
     projectId: db.project_id,
     content: db.content,
-    color: db.color !== null && db.color !== undefined ? String(db.color) : undefined,
+    color: db.color,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
 });
@@ -56,40 +61,56 @@ const transformItem = (db: any): TimelineItem => ({
     completed: db.completed,
     projectId: db.project_id,
     subProjectId: db.sub_project_id,
-    color: db.color !== null && db.color !== undefined ? String(db.color) : undefined,
+    color: db.color,
+    completedAt: db.completed_at,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
-    completedAt: db.completed_at,
 });
 
 
 export const api = {
     // --- READ ---
     async fetchStructure(): Promise<Partial<TimelineState>> {
-        const { data: workspaces } = await supabase.from('workspaces').select('*');
-        const { data: projects } = await supabase.from('projects').select('*');
-        const { data: settings } = await supabase.from('user_settings').select('*').maybeSingle();
+        const { data: workspaces } = await supabase
+            .from('workspaces')
+            .select('*')
+            .order('position', { ascending: true });
+
+        const { data: projects } = await supabase
+            .from('projects')
+            .select('*')
+            .order('position', { ascending: true });
+
+        const { data: settings } = await supabase
+            .from('user_settings')
+            .select('*')
+            .maybeSingle();
 
         const state: Partial<TimelineState> = {
             workspaces: {},
             projects: {},
-            workspaceOrder: settings?.workspace_order || [],
+            workspaceOrder: [],
             openProjectIds: settings?.open_project_ids || [],
         };
 
-        workspaces?.forEach(w => state.workspaces![w.id] = transformWorkspace(w));
+        // Populate workspaces
+        if (workspaces) {
+            workspaces.forEach(w => state.workspaces![w.id] = transformWorkspace(w));
+            state.workspaceOrder = workspaces.map(w => w.id);
+        }
 
-        // Sort projects by position
-        const sortedProjects = (projects || []).sort((a, b) => (a.position || 0) - (b.position || 0));
-        sortedProjects.forEach(p => state.projects![p.id] = transformProject(p));
+        // Populate projects
+        if (projects) {
+            projects.forEach(p => state.projects![p.id] = transformProject(p));
+        }
 
         return state;
     },
 
     async fetchTimelineData(startDate: string, endDate: string): Promise<Partial<TimelineState>> {
-        // Items: date within range
+        // Timeline Items: date within range
         const { data: items } = await supabase
-            .from('items')
+            .from('timeline_items')
             .select('*')
             .gte('date', startDate)
             .lte('date', endDate);
@@ -102,7 +123,6 @@ export const api = {
             .lte('date', endDate);
 
         // SubProjects: Overlapping range
-        // logic: start <= range_end AND end >= range_start
         const { data: subProjects } = await supabase
             .from('sub_projects')
             .select('*')
@@ -122,15 +142,19 @@ export const api = {
         return state;
     },
 
-    // --- WRITE (Optimistic, fire and forget usually, but we define them here) ---
+    // --- WRITE ---
 
     async createWorkspace(w: Workspace) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("User not authenticated");
+
         return supabase.from('workspaces').upsert({
             id: w.id,
+            user_id: user.id,
             name: w.name,
             color: w.color,
             is_hidden: w.isHidden,
-            // is_collapsed: w.isCollapsed, // Local only
+            position: w.position,
         });
     },
 
@@ -139,7 +163,7 @@ export const api = {
         if ('name' in updates) dbUpdates.name = updates.name;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
-        // if ('isCollapsed' in updates) dbUpdates.is_collapsed = updates.isCollapsed; // Local only
+        if ('position' in updates) dbUpdates.position = updates.position;
 
         return supabase.from('workspaces').update(dbUpdates).eq('id', id);
     },
@@ -174,16 +198,11 @@ export const api = {
         const updates = projects.map(p => ({
             id: p.id,
             position: p.position,
-            // We need to include other required fields if Upserting, but for update we can just loop
-            // Supabase JS doesn't support bulk update easily without upsert.
-            // Let's use upsert with minimal data if possible, or just loop updates.
-            // Better: Upsert requires all non-null fields. 
-            // Loop calls is safest for now for reliability, though slower.
         }));
 
         // Parallelize updates
         return Promise.all(updates.map(u =>
-            supabase.from('projects').update({ position: u.position }).eq('id', u.id)
+            supabase.from('projects').update({ position: u.position }).eq('id', u.id!)
         ));
     },
 
@@ -243,7 +262,7 @@ export const api = {
     },
 
     async createItem(i: TimelineItem) {
-        return supabase.from('items').upsert({
+        return supabase.from('timeline_items').upsert({
             id: i.id,
             title: i.title,
             content: i.content,
@@ -252,6 +271,7 @@ export const api = {
             project_id: i.projectId,
             sub_project_id: i.subProjectId,
             color: i.color,
+            completed_at: i.completedAt,
         });
     },
 
@@ -264,22 +284,22 @@ export const api = {
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('completedAt' in updates) dbUpdates.completed_at = updates.completedAt;
-        return supabase.from('items').update(dbUpdates).eq('id', id);
+        return supabase.from('timeline_items').update(dbUpdates).eq('id', id);
     },
 
     async deleteItem(id: string) {
-        return supabase.from('items').delete().eq('id', id);
+        return supabase.from('timeline_items').delete().eq('id', id);
     },
 
-    // User Settings (for order only now)
-    async saveSettings(workspaceOrder: string[]) {
+    // User Settings
+    async saveSettings(workspaceOrder: string[], openProjectIds: string[] = []) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         return supabase.from('user_settings').upsert({
             user_id: user.id,
             workspace_order: workspaceOrder,
-            // open_project_ids: openProjectIds // Local only
+            open_project_ids: openProjectIds
         });
     }
 };

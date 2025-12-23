@@ -7,12 +7,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
+
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -59,11 +54,11 @@ interface SortableWorkspaceItemProps {
   projects: Project[];
   isExpanded: boolean;
   onToggleExpand: () => void;
-  onEdit: () => void;
+  onEdit: (updates: Partial<Workspace>) => void;
   onDelete: () => void;
   onToggleHidden: () => void;
-  onAddProject: () => void;
-  onEditProject: (project: Project) => void;
+  onAddProject: (name: string) => void;
+  onEditProject: (project: Project, updates: Partial<Project>) => void;
   onDeleteProject: (project: Project) => void;
   onToggleProjectHidden: (project: Project) => void;
   onReorderProjects: (projectIds: string[]) => void;
@@ -145,9 +140,8 @@ function SortableWorkspaceItem({
 
         <span className={cn("flex-1 text-sm font-medium truncate", workspace.isHidden && "text-muted-foreground/50 italic")}>{workspace.name}</span>
 
-        <button onClick={onEdit} className="p-1 hover:bg-secondary rounded">
-          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-        </button>
+        <EditWorkspacePopover workspace={workspace} onEdit={onEdit} />
+
         <button onClick={onToggleHidden} className="p-1 hover:bg-secondary rounded" title={workspace.isHidden ? "Show Workspace" : "Hide Workspace"}>
           {workspace.isHidden ? (
             <EyeOff className="w-3.5 h-3.5 text-muted-foreground/70" />
@@ -175,8 +169,8 @@ function SortableWorkspaceItem({
                 <SortableProjectItem
                   key={project.id}
                   project={project}
-                  workspaceColor={workspace.color}
-                  onEdit={() => onEditProject(project)}
+                  workspaceColor={Number(workspace.color)}
+                  onEdit={(updates) => onEditProject(project, updates)}
                   onDelete={() => onDeleteProject(project)}
                   onToggleHidden={() => onToggleProjectHidden(project)}
                 />
@@ -184,23 +178,122 @@ function SortableWorkspaceItem({
             </SortableContext>
           </DndContext>
 
-          <button
-            onClick={onAddProject}
-            className="flex items-center gap-2 w-full mt-1 p-2 text-xs text-muted-foreground hover:bg-secondary rounded transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            Add Project
-          </button>
+          <AddProjectPopover workspaceId={workspace.id} onAdd={onAddProject} />
         </div>
       )}
     </div>
   );
 }
 
+function EditWorkspacePopover({ workspace, onEdit }: { workspace: Workspace; onEdit: (updates: Partial<Workspace>) => void }) {
+  const [name, setName] = useState(workspace.name);
+  const [color, setColor] = useState(Number(workspace.color));
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onEdit({ name: name.trim(), color: String(color) });
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="p-1 hover:bg-secondary rounded">
+          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
+        <div className="space-y-4">
+          <h4 className="font-medium text-sm">Edit Organization</h4>
+          <div className="space-y-2">
+            <Label htmlFor={`edit-ws-name-${workspace.id}`}>Name</Label>
+            <Input
+              id={`edit-ws-name-${workspace.id}`}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmit();
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="grid grid-cols-6 gap-2 justify-items-center">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-7 h-7 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
+                    }`}
+                  style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Save</Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function AddProjectPopover({ workspaceId, onAdd }: { workspaceId: string; onAdd: (name: string) => void }) {
+  const [name, setName] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onAdd(name.trim());
+    setName('');
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="flex items-center gap-2 w-full mt-1 p-2 text-xs text-muted-foreground hover:bg-secondary rounded transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Add Project
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
+        <div className="space-y-4">
+          <h4 className="font-medium text-sm">Add Project</h4>
+          <div className="space-y-2">
+            <Label htmlFor={`add-proj-name-${workspaceId}`}>Name</Label>
+            <Input
+              id={`add-proj-name-${workspaceId}`}
+              placeholder="e.g. Website Redesign"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmit();
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Add</Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface SortableProjectItemProps {
   project: Project;
   workspaceColor: number;
-  onEdit: () => void;
+  onEdit: (updates: Partial<Project>) => void;
   onDelete: () => void;
   onToggleHidden: () => void;
 }
@@ -243,9 +336,8 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onTogg
 
       <span className={cn("flex-1 text-xs truncate", project.isHidden && "text-muted-foreground/50 italic")}>{project.name}</span>
 
-      <button onClick={onEdit} className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity">
-        <Pencil className="w-3 h-3 text-muted-foreground" />
-      </button>
+      <EditProjectPopover project={project} onEdit={onEdit} />
+
       <button onClick={onToggleHidden} className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity" title={project.isHidden ? "Show Project" : "Hide Project"}>
         {project.isHidden ? (
           <EyeOff className="w-3 h-3 text-muted-foreground/70" />
@@ -260,17 +352,116 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onTogg
   );
 }
 
+function EditProjectPopover({ project, onEdit }: { project: Project; onEdit: (updates: Partial<Project>) => void }) {
+  const [name, setName] = useState(project.name);
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onEdit({ name: name.trim() });
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity">
+          <Pencil className="w-3 h-3 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
+        <div className="space-y-4">
+          <h4 className="font-medium text-sm">Edit Project</h4>
+          <div className="space-y-2">
+            <Label htmlFor={`edit-proj-name-${project.id}`}>Name</Label>
+            <Input
+              id={`edit-proj-name-${project.id}`}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmit();
+              }}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Save</Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function AddWorkspacePopover({ onAdd }: { onAdd: (name: string, color: number) => void }) {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(1);
+  const [open, setOpen] = useState(false);
+
+  const handleSubmit = () => {
+    if (!name.trim()) return;
+    onAdd(name.trim(), color);
+    setName('');
+    setColor(1);
+    setOpen(false);
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-xs"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          Add Org
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
+        <div className="space-y-4">
+          <h4 className="font-medium text-sm">Add Organization</h4>
+          <div className="space-y-2">
+            <Label htmlFor="add-ws-name">Name</Label>
+            <Input
+              id="add-ws-name"
+              placeholder="e.g. Acme Corp"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmit();
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Color</Label>
+            <div className="grid grid-cols-6 gap-2 justify-items-center">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`w-7 h-7 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
+                    }`}
+                  style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Add</Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function WorkspaceManagerPopover() {
-  const { data: timelineState } = useTimelineData(new Date(), 14); // Pass Date object
-  // Actually, useTimelineData fetches everything.
-  // We can pass a dummy date or use the current viewing date if we had access to it, 
-  // but this component is isolated.
-  // Ideally, useStructureQuery would be better if we exported it, but useTimelineData is the public API.
-  // Let's use a dummy date for now or null if allowed. 
-  // Wait, useTimelineData requires startDate and visibleDays.
-  // Maybe we should export `useStructureQuery` or make `useTimelineData` arguments optional?
-  // Use "today" for now.
-  const today = new Date().toISOString().split('T')[0];
+  const { data: timelineState } = useTimelineData(new Date(), 14);
   const {
     workspaces,
     workspaceOrder,
@@ -292,18 +483,8 @@ export function WorkspaceManagerPopover() {
 
 
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
-  const [isAddWorkspaceOpen, setIsAddWorkspaceOpen] = useState(false);
-  const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
-  const [editingWorkspace, setEditingWorkspace] = useState<Workspace | null>(null);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [deletingWorkspace, setDeletingWorkspace] = useState<Workspace | null>(null);
   const [deletingProject, setDeletingProject] = useState<Project | null>(null);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>('');
-
-  // Form states
-  const [workspaceName, setWorkspaceName] = useState('');
-  const [workspaceColor, setWorkspaceColor] = useState(1);
-  const [projectName, setProjectName] = useState('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -332,21 +513,6 @@ export function WorkspaceManagerPopover() {
     }
   };
 
-  const handleAddWorkspace = () => {
-    if (!workspaceName.trim()) return;
-    addWorkspace(workspaceName.trim(), workspaceColor);
-    setWorkspaceName('');
-    setWorkspaceColor(1);
-    setIsAddWorkspaceOpen(false);
-  };
-
-  const handleEditWorkspace = () => {
-    if (!editingWorkspace || !workspaceName.trim()) return;
-    updateWorkspace(editingWorkspace.id, { name: workspaceName.trim(), color: workspaceColor });
-    setWorkspaceName('');
-    setWorkspaceColor(1);
-    setEditingWorkspace(null);
-  };
 
   const handleDeleteWorkspace = () => {
     if (!deletingWorkspace) return;
@@ -354,42 +520,10 @@ export function WorkspaceManagerPopover() {
     setDeletingWorkspace(null);
   };
 
-  const handleAddProject = () => {
-    if (!projectName.trim() || !selectedWorkspaceId) return;
-    addProject(selectedWorkspaceId, projectName.trim());
-    setProjectName('');
-    setSelectedWorkspaceId('');
-    setIsAddProjectOpen(false);
-  };
-
-  const handleEditProject = () => {
-    if (!editingProject || !projectName.trim()) return;
-    updateProject(editingProject.id, { name: projectName.trim() });
-    setProjectName('');
-    setEditingProject(null);
-  };
-
   const handleDeleteProject = () => {
     if (!deletingProject) return;
     deleteProject(deletingProject.id);
     setDeletingProject(null);
-  };
-
-  const openEditWorkspace = (ws: Workspace) => {
-    setWorkspaceName(ws.name);
-    setWorkspaceColor(ws.color);
-    setEditingWorkspace(ws);
-  };
-
-  const openEditProject = (proj: Project) => {
-    setProjectName(proj.name);
-    setEditingProject(proj);
-  };
-
-  const openAddProject = (workspaceId: string) => {
-    setSelectedWorkspaceId(workspaceId);
-    setProjectName('');
-    setIsAddProjectOpen(true);
   };
 
   const sortedWorkspaces = workspaceOrder
@@ -409,19 +543,7 @@ export function WorkspaceManagerPopover() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm">Workspaces & Projects</h4>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs"
-                onClick={() => {
-                  setWorkspaceName('');
-                  setWorkspaceColor(1);
-                  setIsAddWorkspaceOpen(true);
-                }}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Add Org
-              </Button>
+              <AddWorkspacePopover onAdd={addWorkspace} />
             </div>
 
             <p className="text-xs text-muted-foreground">
@@ -450,11 +572,11 @@ export function WorkspaceManagerPopover() {
                         projects={workspaceProjects}
                         isExpanded={expandedWorkspaces.has(workspace.id)}
                         onToggleExpand={() => toggleExpand(workspace.id)}
-                        onEdit={() => openEditWorkspace(workspace)}
+                        onEdit={(updates) => updateWorkspace(workspace.id, updates)}
                         onDelete={() => setDeletingWorkspace(workspace)}
                         onToggleHidden={() => updateWorkspace(workspace.id, { isHidden: !workspace.isHidden })}
-                        onAddProject={() => openAddProject(workspace.id)}
-                        onEditProject={openEditProject}
+                        onAddProject={(name) => addProject(workspace.id, name)}
+                        onEditProject={(p, updates) => updateProject(p.id, updates)}
                         onDeleteProject={(p) => setDeletingProject(p)}
                         onToggleProjectHidden={(p) => updateProject(p.id, { isHidden: !p.isHidden })}
                         onReorderProjects={(ids) => reorderProjects(workspace.id, ids)}
@@ -468,153 +590,7 @@ export function WorkspaceManagerPopover() {
         </PopoverContent>
       </Popover>
 
-      {/* Add Workspace Dialog */}
-      <Dialog open={isAddWorkspaceOpen} onOpenChange={setIsAddWorkspaceOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Organization</DialogTitle>
-            <DialogDescription>Create a new top-level workspace.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="ws-name">Name</Label>
-              <Input
-                id="ws-name"
-                placeholder="e.g. Acme Corp"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="grid grid-cols-6 gap-2 justify-items-center">
-                {COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setWorkspaceColor(c)}
-                    className={`w-7 h-7 rounded-full transition-all ${workspaceColor === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                      }`}
-                    style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddWorkspaceOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddWorkspace} disabled={!workspaceName.trim()}>
-              Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Edit Workspace Dialog */}
-      <Dialog open={!!editingWorkspace} onOpenChange={(open) => !open && setEditingWorkspace(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Edit Organization</DialogTitle>
-            <DialogDescription>Update workspace details.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-ws-name">Name</Label>
-              <Input
-                id="edit-ws-name"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="grid grid-cols-6 gap-2 justify-items-center">
-                {COLORS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setWorkspaceColor(c)}
-                    className={`w-7 h-7 rounded-full transition-all ${workspaceColor === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                      }`}
-                    style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingWorkspace(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditWorkspace} disabled={!workspaceName.trim()}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Project Dialog */}
-      <Dialog open={isAddProjectOpen} onOpenChange={setIsAddProjectOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Project</DialogTitle>
-            <DialogDescription>Create a new project in this organization.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="proj-name">Name</Label>
-              <Input
-                id="proj-name"
-                placeholder="e.g. Website Redesign"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddProjectOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddProject} disabled={!projectName.trim()}>
-              Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Project Dialog */}
-      <Dialog open={!!editingProject} onOpenChange={(open) => !open && setEditingProject(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>Update project details.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-proj-name">Name</Label>
-              <Input
-                id="edit-proj-name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                autoFocus
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingProject(null)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditProject} disabled={!projectName.trim()}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Workspace Confirmation */}
       <AlertDialog open={!!deletingWorkspace} onOpenChange={(open) => !open && setDeletingWorkspace(null)}>
