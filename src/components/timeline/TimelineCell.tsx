@@ -63,43 +63,61 @@ export function TimelineCell({
   }
 
   return (
-    <QuickCreatePopover
-      open={isCreating}
-      onOpenChange={setIsCreating}
-      type="item"
-      projectId={projectId}
-      date={dateStr}
-      subProjectId={subProjectId}
-      defaultColor={workspaceColor}
-    >
-      <div
-        ref={setNodeRef}
-        className={`px-1 py-1 shrink-0 ${showBorder ? 'border-r border-border last:border-r-0' : ''
-          } ${isOver ? 'bg-primary/10' : ''}`}
-        style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
-      >
-        <div className="flex flex-col gap-1 h-full">
-          {milestones.map(milestone => (
-            <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
-              <MilestoneItem
-                milestone={milestone}
-                workspaceColor={workspaceColor}
-              />
-            </div>
-          ))}
 
-          {items.map(item => (
-            <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
-              <UnifiedItem
-                item={item}
-                onToggleComplete={onToggleItemComplete}
-                onClick={() => { }} // We handle click in wrapper
-                workspaceColor={workspaceColor}
-              />
-            </div>
-          ))}
-        </div>
+    <div
+      ref={setNodeRef}
+      className={`shrink-0 relative ${showBorder ? 'border-r border-border last:border-r-0' : ''
+        } ${isOver ? 'bg-primary/10' : ''}`}
+      style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
+
+    >
+      {/* Background Trigger Layer */}
+      <div className="absolute inset-0 z-0">
+        <QuickCreatePopover
+          open={isCreating}
+          onOpenChange={setIsCreating}
+          type="item"
+          projectId={projectId}
+          date={dateStr}
+          subProjectId={subProjectId}
+          defaultColor={workspaceColor}
+        >
+          <div className="w-full h-full cursor-cell" />
+        </QuickCreatePopover>
       </div>
-    </QuickCreatePopover>
+
+      {/* Content Layer - sits on top, pointer-events-none ensures clicks pass through gaps to trigger */}
+      <div className="relative z-10 flex flex-col gap-1 px-1 py-1 pointer-events-none min-h-full">
+        {milestones.map(milestone => (
+          <div
+            key={milestone.id}
+            onClick={(e) => handleItemClick(e, milestone)}
+            className="pointer-events-auto"
+          >
+            <MilestoneItem
+              milestone={milestone}
+              workspaceColor={workspaceColor}
+            />
+          </div>
+        ))}
+
+        {items.map(item => (
+          <div
+            key={item.id}
+            onClick={(e) => handleItemClick(e, item)}
+            className="pointer-events-auto"
+          >
+            <UnifiedItem
+              item={item}
+              onToggleComplete={onToggleItemComplete}
+              onClick={() => { }} // We handle click in wrapper
+              workspaceColor={workspaceColor}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+
   );
 }
+
