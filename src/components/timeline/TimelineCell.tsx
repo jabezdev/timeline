@@ -29,6 +29,7 @@ export function TimelineCell({
   laneId,
   items,
   milestones,
+
   workspaceColor,
   onToggleItemComplete,
   onItemClick,
@@ -54,6 +55,12 @@ export function TimelineCell({
     e.stopPropagation();
     onItemClick(item);
   };
+
+
+  // Debug logging
+  if (items.length > 0) {
+    console.log(`TimelineCell [${dateStr}]: Rendering ${items.length} items`, items);
+  }
 
   return (
     <QuickCreatePopover

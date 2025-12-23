@@ -18,9 +18,10 @@ interface QuickCreatePopoverProps {
     projectId: string;
     subProjectId?: string;
     date: string; // YYYY-MM-DD
-    children: React.ReactNode;
+    children?: React.ReactNode;
     defaultColor?: number;
 }
+
 
 export function QuickCreatePopover({
     open,
