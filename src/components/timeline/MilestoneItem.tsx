@@ -1,4 +1,5 @@
-import { useDraggable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Milestone } from '@/types/timeline';
 import { Flag } from 'lucide-react';
 import { QuickEditPopover } from './QuickEditPopover';
@@ -85,13 +86,27 @@ export function MilestoneItemView({
 // ...
 
 export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }: MilestoneItemProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({
     id: milestone.id,
     data: { type: 'milestone', item: milestone },
   });
 
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    zIndex: isDragging ? 999 : undefined,
+  };
+
   return (
-    <div ref={setNodeRef} style={{ opacity: isDragging ? 0.3 : 1 }}>
+    <div ref={setNodeRef} style={style}>
       <QuickEditPopover item={milestone}>
         <MilestoneItemView
           milestone={milestone}

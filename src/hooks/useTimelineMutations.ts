@@ -351,14 +351,24 @@ export function useTimelineMutations() {
     });
 
     const reorderWorkspaces = useMutation({
-        mutationFn: async (newOrder: string[]) => {
-            await api.saveSettings(newOrder); // Using saveSettings for workspace order
-            return newOrder;
+        mutationFn: async (workspaces: Partial<Workspace>[]) => {
+            await api.reorderWorkspaces(workspaces);
+            return workspaces;
         },
-        onMutate: async (newOrder) => {
+        onMutate: async (workspaces) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
-            updateStructureCache(old => ({ ...old, workspaceOrder: newOrder }));
+            updateStructureCache(old => {
+                const newOrder = workspaces.map(w => w.id as string);
+                // We also need to update position in the workspace objects themselves
+                const newWorkspaces = { ...old.workspaces };
+                workspaces.forEach(w => {
+                    if (newWorkspaces[w.id!]) {
+                        newWorkspaces[w.id!] = { ...newWorkspaces[w.id!], position: w.position! };
+                    }
+                });
+                return { ...old, workspaces: newWorkspaces, workspaceOrder: newOrder };
+            });
             return { previous };
         },
         onSettled: () => queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] })
@@ -405,6 +415,48 @@ export function useTimelineMutations() {
         updateMilestone,
         deleteMilestone,
         reorderWorkspaces,
-        reorderProjects
+        reorderProjects,
+        reorderMilestones: useMutation({
+            mutationFn: async (milestones: Partial<Milestone>[]) => {
+                await api.reorderMilestones(milestones);
+                return milestones;
+            },
+            onMutate: async (milestones) => {
+                await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+                const previous = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
+                updateTimelineDataCache(old => {
+                    const newMilestones = { ...old.milestones };
+                    milestones.forEach(m => {
+                        if (newMilestones[m.id!]) {
+                            newMilestones[m.id!] = { ...newMilestones[m.id!], position: m.position! };
+                        }
+                    });
+                    return { ...old, milestones: newMilestones };
+                });
+                return { previous };
+            },
+            onSettled: () => queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] })
+        }),
+        reorderItems: useMutation({
+            mutationFn: async (items: Partial<TimelineItem>[]) => {
+                await api.reorderItems(items);
+                return items;
+            },
+            onMutate: async (items) => {
+                await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+                const previous = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
+                updateTimelineDataCache(old => {
+                    const newItems = { ...old.items };
+                    items.forEach(i => {
+                        if (newItems[i.id!]) {
+                            newItems[i.id!] = { ...newItems[i.id!], position: i.position! };
+                        }
+                    });
+                    return { ...old, items: newItems };
+                });
+                return { previous };
+            },
+            onSettled: () => queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] })
+        })
     };
 }

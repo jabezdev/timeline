@@ -478,7 +478,7 @@ export function WorkspaceManagerPopover() {
   const updateProject = (id: string, updates: Partial<Project>) => mutations.updateProject.mutate({ id, updates });
   const deleteProject = (id: string) => mutations.deleteProject.mutate(id);
 
-  const reorderWorkspaces = (newOrder: string[]) => mutations.reorderWorkspaces.mutate(newOrder);
+  const reorderWorkspaces = (orderedWorkspaces: Partial<Workspace>[]) => mutations.reorderWorkspaces.mutate(orderedWorkspaces);
   const reorderProjects = (workspaceId: string, ids: string[]) => mutations.reorderProjects.mutate({ workspaceId, projectIds: ids });
 
 
@@ -508,8 +508,13 @@ export function WorkspaceManagerPopover() {
     if (over && active.id !== over.id) {
       const oldIndex = workspaceOrder.indexOf(active.id as string);
       const newIndex = workspaceOrder.indexOf(over.id as string);
-      const newOrder = arrayMove(workspaceOrder, oldIndex, newIndex);
-      reorderWorkspaces(newOrder);
+      const newOrderIds = arrayMove(workspaceOrder, oldIndex, newIndex);
+      // Map to objects with new positions
+      const updates = newOrderIds.map((id, index) => ({
+        id,
+        position: index
+      }));
+      reorderWorkspaces(updates);
     }
   };
 

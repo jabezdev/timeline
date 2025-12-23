@@ -47,6 +47,7 @@ const transformMilestone = (db: any): Milestone => ({
     projectId: db.project_id,
     content: db.content,
     color: db.color,
+    position: db.position || 0,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
 });
@@ -63,6 +64,7 @@ const transformItem = (db: any): TimelineItem => ({
     subProjectId: db.sub_project_id,
     color: db.color,
     completedAt: db.completed_at,
+    position: db.position || 0,
     createdAt: db.created_at,
     updatedAt: db.updated_at,
 });
@@ -113,14 +115,16 @@ export const api = {
             .from('timeline_items')
             .select('*')
             .gte('date', startDate)
-            .lte('date', endDate);
+            .lte('date', endDate)
+            .order('position', { ascending: true });
 
         // Milestones: date within range
         const { data: milestones } = await supabase
             .from('milestones')
             .select('*')
             .gte('date', startDate)
-            .lte('date', endDate);
+            .lte('date', endDate)
+            .order('position', { ascending: true });
 
         // SubProjects: Overlapping range
         const { data: subProjects } = await supabase
@@ -245,6 +249,7 @@ export const api = {
             project_id: m.projectId,
             content: m.content,
             color: m.color,
+            position: m.position,
         });
     },
 
@@ -272,6 +277,7 @@ export const api = {
             sub_project_id: i.subProjectId,
             color: i.color,
             completed_at: i.completedAt,
+            position: i.position,
         });
     },
 
@@ -301,5 +307,35 @@ export const api = {
             workspace_order: workspaceOrder,
             open_project_ids: openProjectIds
         });
+    },
+
+    async reorderWorkspaces(workspaces: Partial<Workspace>[]) {
+        const updates = workspaces.map(w => ({
+            id: w.id,
+            position: w.position,
+        }));
+        return Promise.all(updates.map(u =>
+            supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!)
+        ));
+    },
+
+    async reorderMilestones(milestones: Partial<Milestone>[]) {
+        const updates = milestones.map(m => ({
+            id: m.id,
+            position: m.position,
+        }));
+        return Promise.all(updates.map(u =>
+            supabase.from('milestones').update({ position: u.position }).eq('id', u.id!)
+        ));
+    },
+
+    async reorderItems(items: Partial<TimelineItem>[]) {
+        const updates = items.map(i => ({
+            id: i.id,
+            position: i.position,
+        }));
+        return Promise.all(updates.map(u =>
+            supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!)
+        ));
     }
 };

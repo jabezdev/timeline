@@ -7,6 +7,7 @@ export interface TimelineItem {
   projectId: string;
   subProjectId?: string;
   color?: string;
+  position?: number;
   completedAt?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -19,6 +20,7 @@ export interface Milestone {
   projectId: string;
   content?: string;
   color?: string;
+  position?: number;
   createdAt?: string;
   updatedAt?: string;
 }

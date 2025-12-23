@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { format } from 'date-fns';
 import { TimelineItem, Milestone } from '@/types/timeline';
 import { UnifiedItem } from './UnifiedItem';
@@ -71,25 +72,29 @@ export function TimelineCell({
       style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
     >
       <div className="flex flex-col gap-1 h-full">
-        {milestones.map(milestone => (
-          <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
-            <MilestoneItem
-              milestone={milestone}
-              workspaceColor={workspaceColor}
-            />
-          </div>
-        ))}
+        <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
+          {milestones.map(milestone => (
+            <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
+              <MilestoneItem
+                milestone={milestone}
+                workspaceColor={workspaceColor}
+              />
+            </div>
+          ))}
+        </SortableContext>
 
-        {items.map(item => (
-          <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
-            <UnifiedItem
-              item={item}
-              onToggleComplete={onToggleItemComplete}
-              onClick={() => { }} // We handle click in wrapper
-              workspaceColor={workspaceColor}
-            />
-          </div>
-        ))}
+        <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+          {items.map(item => (
+            <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
+              <UnifiedItem
+                item={item}
+                onToggleComplete={onToggleItemComplete}
+                onClick={() => { }} // We handle click in wrapper
+                workspaceColor={workspaceColor}
+              />
+            </div>
+          ))}
+        </SortableContext>
       </div>
     </div>
 

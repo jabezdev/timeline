@@ -1,6 +1,7 @@
 import { useMemo, useRef, useLayoutEffect, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
 import { MilestoneItem } from './MilestoneItem';
@@ -61,15 +62,17 @@ function MilestoneDropCell({
       >
         {/* Render Milestones */}
         <div className="flex flex-col gap-1">
-          {milestones.map(milestone => (
-            <div key={milestone.id} onClick={(e) => handleMilestoneClick(e, milestone)}>
-              <MilestoneItem
-                milestone={milestone}
-                workspaceColor={workspaceColor}
-                isCompact={!isOpen && uncompletedItems.length > 0}
-              />
-            </div>
-          ))}
+          <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
+            {milestones.map(milestone => (
+              <div key={milestone.id} onClick={(e) => handleMilestoneClick(e, milestone)}>
+                <MilestoneItem
+                  milestone={milestone}
+                  workspaceColor={workspaceColor}
+                  isCompact={!isOpen && uncompletedItems.length > 0}
+                />
+              </div>
+            ))}
+          </SortableContext>
         </div>
 
         {/* If collapsed and has uncompleted items, show dots for each */}

@@ -98,6 +98,7 @@ create table public.milestones (
   content text,
   date date,
   color text,
+  position integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -124,6 +125,7 @@ create table public.timeline_items (
   color text,
   completed boolean default false,
   completed_at timestamp with time zone,
+  position integer default 0,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
