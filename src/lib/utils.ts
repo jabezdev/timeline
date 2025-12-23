@@ -11,7 +11,7 @@ export function packSubProjects(subProjects: SubProject[]): SubProject[][] {
   if (!subProjects || subProjects.length === 0) return [];
 
   // Sort by start date
-  const sorted = [...subProjects].sort((a, b) => 
+  const sorted = [...subProjects].sort((a, b) =>
     parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime()
   );
 
@@ -19,7 +19,7 @@ export function packSubProjects(subProjects: SubProject[]): SubProject[][] {
 
   for (const sub of sorted) {
     let placed = false;
-    
+
     // Try to fit in existing lanes
     for (const lane of lanes) {
       const lastInLane = lane[lane.length - 1];
@@ -38,3 +38,16 @@ export function packSubProjects(subProjects: SubProject[]): SubProject[][] {
 
   return lanes;
 }
+
+export function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers / environments
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+

@@ -44,8 +44,9 @@ export function UnifiedItemView({
                     onClick(item);
                 }
             }}
-            className={`group relative flex items-start gap-1.5 px-2 py-1.5 rounded-sm border cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''
+            className={`group relative flex items-start gap-1.5 px-2 py-1.5 rounded-sm border cursor-grab active:cursor-grabbing touch-none ${isDragging ? 'opacity-30' : ''
                 } ${item.completed ? 'opacity-60 bg-secondary/30 border-border' : 'bg-secondary/50 border-border hover:border-primary/30'} ${className || ''}`}
+
         >
             <button
                 onClick={(e) => {

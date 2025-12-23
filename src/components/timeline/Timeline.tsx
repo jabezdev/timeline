@@ -23,6 +23,8 @@ import { SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS, HEADE
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
+import { generateId } from '@/lib/utils';
+
 
 
 // Hooks
@@ -109,7 +111,8 @@ function TimelineContent() {
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
     // Generate ID or let backend do it? API usually needs full object.
     const newItem: TimelineItem = {
-      id: crypto.randomUUID(),
+      id: generateId(),
+
       title,
       date,
       projectId,
@@ -123,7 +126,8 @@ function TimelineContent() {
 
   const handleAddMilestone = (projectId: string, title: string, date: string, color?: number) => {
     const newMilestone: Milestone = {
-      id: crypto.randomUUID(),
+      id: generateId(),
+
       title,
       date,
       projectId,
@@ -134,7 +138,8 @@ function TimelineContent() {
 
   const handleAddSubProject = (projectId: string, title: string, startDate: string, endDate: string, color?: number) => {
     const newSub: SubProject = {
-      id: crypto.randomUUID(),
+      id: generateId(),
+
       title,
       startDate,
       endDate,

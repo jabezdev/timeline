@@ -56,8 +56,9 @@ export function MilestoneItemView({
           onClick(milestone);
         }
       }}
-      className={`group relative flex items-center gap-1.5 px-2 ${isCompact ? 'py-0.5 text-[10px]' : 'py-1.5'} rounded-sm border cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''
+      className={`group relative flex items-center gap-1.5 px-2 ${isCompact ? 'py-0.5 text-[10px]' : 'py-1.5'} rounded-sm border cursor-grab active:cursor-grabbing touch-none ${isDragging ? 'opacity-30' : ''
         } ${className || ''}`}
+
       style={{
         ...style,
         backgroundColor: bgColor,

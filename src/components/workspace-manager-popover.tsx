@@ -119,7 +119,8 @@ function SortableWorkspaceItem({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab hover:bg-secondary rounded p-1"
+          className="cursor-grab hover:bg-secondary rounded p-1 touch-none"
+
         >
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </button>
@@ -229,7 +230,8 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onTogg
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab hover:bg-secondary rounded p-0.5"
+        className="cursor-grab hover:bg-secondary rounded p-0.5 touch-none"
+
       >
         <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
       </button>

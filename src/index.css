@@ -102,7 +102,7 @@
     --milestone: 40 56% 68%;
     --task: 83 35% 63%;
     --note: 331 41% 72%;
-    
+
     /* Shadows */
     --shadow-sm: 0 2px 8px hsl(222 47% 4% / 0.4);
     --shadow-md: 0 4px 16px hsl(222 47% 4% / 0.5);
@@ -148,26 +148,64 @@
 
   /* Hide scrollbar but keep scrolling */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-  }
-  
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
 
-  .workspace-accent-1 { --workspace-accent: var(--workspace-1); }
-  .workspace-accent-2 { --workspace-accent: var(--workspace-2); }
-  .workspace-accent-3 { --workspace-accent: var(--workspace-3); }
-  .workspace-accent-4 { --workspace-accent: var(--workspace-4); }
-  .workspace-accent-5 { --workspace-accent: var(--workspace-5); }
-  .workspace-accent-6 { --workspace-accent: var(--workspace-6); }
-  .workspace-accent-7 { --workspace-accent: var(--workspace-7); }
-  .workspace-accent-8 { --workspace-accent: var(--workspace-8); }
-  .workspace-accent-9 { --workspace-accent: var(--workspace-9); }
-  .workspace-accent-10 { --workspace-accent: var(--workspace-10); }
-  .workspace-accent-11 { --workspace-accent: var(--workspace-11); }
-  .workspace-accent-12 { --workspace-accent: var(--workspace-12); }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
+  }
+
+  .workspace-accent-1 {
+    --workspace-accent: var(--workspace-1);
+  }
+
+  .workspace-accent-2 {
+    --workspace-accent: var(--workspace-2);
+  }
+
+  .workspace-accent-3 {
+    --workspace-accent: var(--workspace-3);
+  }
+
+  .workspace-accent-4 {
+    --workspace-accent: var(--workspace-4);
+  }
+
+  .workspace-accent-5 {
+    --workspace-accent: var(--workspace-5);
+  }
+
+  .workspace-accent-6 {
+    --workspace-accent: var(--workspace-6);
+  }
+
+  .workspace-accent-7 {
+    --workspace-accent: var(--workspace-7);
+  }
+
+  .workspace-accent-8 {
+    --workspace-accent: var(--workspace-8);
+  }
+
+  .workspace-accent-9 {
+    --workspace-accent: var(--workspace-9);
+  }
+
+  .workspace-accent-10 {
+    --workspace-accent: var(--workspace-10);
+  }
+
+  .workspace-accent-11 {
+    --workspace-accent: var(--workspace-11);
+  }
+
+  .workspace-accent-12 {
+    --workspace-accent: var(--workspace-12);
+  }
 
   .timeline-grid {
     display: grid;
@@ -182,7 +220,13 @@
 
   .drag-handle {
     cursor: grab;
+    touch-action: none;
   }
+
+  .touch-none {
+    touch-action: none;
+  }
+
 
   .drag-handle:active {
     cursor: grabbing;
@@ -199,13 +243,14 @@
   .prose li[data-task-list-item] {
     list-style-type: disc !important;
   }
-  
+
   .prose li[data-task-list-item] {
     margin-top: 0;
     margin-bottom: 0.25em;
     padding-left: 0.5em;
     display: flex;
-    align-items: baseline; /* Align bullet with text */
+    align-items: baseline;
+    /* Align bullet with text */
     position: relative;
   }
 
@@ -215,7 +260,7 @@
     color: hsl(var(--foreground));
     font-size: 1.2em;
   }
-  
+
   /* Reset padding for the UL to allow space for bullets */
   .prose ul.contains-task-list {
     padding-left: 1.5em;
@@ -232,9 +277,11 @@
     background-color: transparent;
     cursor: pointer;
     margin-right: 0.75em;
-    margin-left: 0; /* No negative margin needed if we flex */
+    margin-left: 0;
+    /* No negative margin needed if we flex */
     position: relative;
-    top: 0.2em; /* visual optical adjustment */
+    top: 0.2em;
+    /* visual optical adjustment */
     flex-shrink: 0;
     transition: all 0.2s ease;
   }

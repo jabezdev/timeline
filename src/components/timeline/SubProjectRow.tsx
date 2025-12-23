@@ -78,7 +78,8 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
         {/* Drag Handle - aligned with checkbox (w-3 to match checkbox width) */}
         <div
           {...dragHandleProps}
-          className="w-3 h-3 flex items-center justify-center cursor-grab active:cursor-grabbing shrink-0"
+          className="w-3 h-3 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
+
         >
           <GripVertical className="w-3 h-3 opacity-50" />
         </div>

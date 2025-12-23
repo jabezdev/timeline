@@ -6,7 +6,8 @@ import { useTimelineMutations } from "@/hooks/useTimelineMutations";
 import { TimelineItem, Milestone } from "@/types/timeline";
 
 import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, generateId } from "@/lib/utils";
+
 
 const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
@@ -53,7 +54,8 @@ export function QuickCreatePopover({
             return;
         }
 
-        const id = crypto.randomUUID();
+        const id = generateId();
+
 
         if (type === 'item') {
             const newItem: TimelineItem = {
