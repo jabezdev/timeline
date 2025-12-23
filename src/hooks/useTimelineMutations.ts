@@ -25,16 +25,16 @@ export function useTimelineMutations() {
     // --- WORKSPACES ---
     const addWorkspace = useMutation({
         mutationFn: async ({ name, color }: { name: string; color: number }) => {
-            const id = `ws-${Date.now()}`;
-            const newWorkspace: Workspace = { id, name, color, isCollapsed: false, isHidden: false };
+            const id = crypto.randomUUID();
+            const newWorkspace: Workspace = { id, name, color: String(color), isCollapsed: false, isHidden: false, position: 0 };
             await api.createWorkspace(newWorkspace);
             return newWorkspace;
         },
         onMutate: async ({ name, color }) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
-            const id = `ws-${Date.now()}`;
-            const newWorkspace: Workspace = { id, name, color, isCollapsed: false, isHidden: false };
+            const id = crypto.randomUUID();
+            const newWorkspace: Workspace = { id, name, color: String(color), isCollapsed: false, isHidden: false, position: 0 };
 
             updateStructureCache(old => ({
                 ...old,
@@ -74,16 +74,16 @@ export function useTimelineMutations() {
     // --- PROJECTS ---
     const addProject = useMutation({
         mutationFn: async ({ workspaceId, name, color, position }: { workspaceId: string, name: string, color: number, position: number }) => {
-            const id = `proj-${crypto.randomUUID()}`;
-            const newProject: Project = { id, workspaceId, name, color, position, isHidden: false };
+            const id = crypto.randomUUID();
+            const newProject: Project = { id, workspaceId, name, color: String(color), position, isHidden: false };
             await api.createProject(newProject);
             return newProject;
         },
         onMutate: async ({ workspaceId, name, color, position }) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
-            const id = `temp-proj-${Date.now()}`;
-            const newProject: Project = { id, workspaceId, name, color, position, isHidden: false };
+            const id = crypto.randomUUID();
+            const newProject: Project = { id, workspaceId, name, color: String(color), position, isHidden: false };
             updateStructureCache(old => ({
                 ...old,
                 projects: { ...old.projects, [id]: newProject }
