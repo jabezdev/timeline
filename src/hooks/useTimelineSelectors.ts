@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
+import { Project, TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 
-export function useTimelineSelectors() {
+export function useTimelineSelectors(
+    state: TimelineState,
+    openProjectIdsArray: string[]
+) {
     const {
         workspaces: workspacesMap,
         projects: projectsMap,
@@ -10,8 +12,7 @@ export function useTimelineSelectors() {
         milestones: milestonesMap,
         subProjects: subProjectsMap,
         workspaceOrder,
-        openProjectIds: openProjectIdsArray,
-    } = useTimelineStore();
+    } = state;
 
     const openProjectIds = useMemo(() => new Set(openProjectIdsArray), [openProjectIdsArray]);
 

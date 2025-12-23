@@ -4,6 +4,7 @@ import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT } from '@/lib/constants';
 
 interface WorkspaceSectionProps {
   workspace: Workspace;
+  isCollapsed: boolean; // New prop
   projects: Project[];
   projectsItems: Map<string, TimelineItem[]>;
   projectsMilestones: Map<string, Milestone[]>;
@@ -18,6 +19,7 @@ interface WorkspaceSectionProps {
 
 export function WorkspaceSection({
   workspace,
+  isCollapsed,
   projects,
   projectsItems,
   projectsMilestones,
@@ -41,7 +43,7 @@ export function WorkspaceSection({
       />
 
       {/* Projects */}
-      {!workspace.isCollapsed && (
+      {!isCollapsed && (
         <div className="overflow-hidden">
           {projects.map(project => (
             <ProjectRow

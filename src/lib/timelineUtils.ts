@@ -22,10 +22,12 @@ export function calculateRowHeight(maxItemCount: number, baseHeight: number = 40
 
 // Calculate max items per day for main project items (not in subprojects)
 export function getMaxItemsPerDay(items: TimelineItem[]): number {
+    if (!items || items.length === 0) return 1;
     const itemsByDate = new Map<string, number>();
     items.filter(item => !item.subProjectId).forEach(item => {
         itemsByDate.set(item.date, (itemsByDate.get(item.date) || 0) + 1);
     });
+    if (itemsByDate.size === 0) return 1;
     return Math.max(1, ...Array.from(itemsByDate.values()));
 }
 

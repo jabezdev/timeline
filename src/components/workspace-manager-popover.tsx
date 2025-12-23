@@ -26,7 +26,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useTimelineStore } from '@/hooks/useTimelineStore'; // Likely still used for UI state? No, we removed everything from it. Check if we need it.
+// We removed reorder/etc from store.
+// We might still need it for some UI state? WorkspaceManagerPopover doesn't seem to use UI state from store (like sidebar collapsed).
+// It uses local state for expanded.
+import { useTimelineData } from '@/hooks/useTimelineData';
+import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 import { Workspace, Project } from '@/types/timeline';
 import {
   DndContext,
@@ -254,19 +259,35 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onTogg
 }
 
 export function WorkspaceManagerPopover() {
+  const { data: timelineState } = useTimelineData(new Date(), 14); // Pass Date object
+  // Actually, useTimelineData fetches everything.
+  // We can pass a dummy date or use the current viewing date if we had access to it, 
+  // but this component is isolated.
+  // Ideally, useStructureQuery would be better if we exported it, but useTimelineData is the public API.
+  // Let's use a dummy date for now or null if allowed. 
+  // Wait, useTimelineData requires startDate and visibleDays.
+  // Maybe we should export `useStructureQuery` or make `useTimelineData` arguments optional?
+  // Use "today" for now.
+  const today = new Date().toISOString().split('T')[0];
   const {
     workspaces,
     workspaceOrder,
-    projects,
-    addWorkspace,
-    addProject,
-    updateWorkspace,
-    updateProject,
-    deleteWorkspace,
-    deleteProject,
-    reorderWorkspaces,
-    reorderProjects,
-  } = useTimelineStore();
+    projects
+  } = timelineState || { workspaces: {}, workspaceOrder: [], projects: {} };
+
+  const mutations = useTimelineMutations();
+
+  const addWorkspace = (name: string, color: number) => mutations.addWorkspace.mutate({ name, color });
+  const updateWorkspace = (id: string, updates: Partial<Workspace>) => mutations.updateWorkspace.mutate({ id, updates });
+  const deleteWorkspace = (id: string) => mutations.deleteWorkspace.mutate(id);
+
+  const addProject = (workspaceId: string, name: string) => mutations.addProject.mutate({ workspaceId, name, color: 1, position: 0 }); // Default color/pos
+  const updateProject = (id: string, updates: Partial<Project>) => mutations.updateProject.mutate({ id, updates });
+  const deleteProject = (id: string) => mutations.deleteProject.mutate(id);
+
+  const reorderWorkspaces = (newOrder: string[]) => mutations.reorderWorkspaces.mutate(newOrder);
+  const reorderProjects = (workspaceId: string, ids: string[]) => mutations.reorderProjects.mutate({ workspaceId, projectIds: ids });
+
 
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Set<string>>(new Set());
   const [isAddWorkspaceOpen, setIsAddWorkspaceOpen] = useState(false);

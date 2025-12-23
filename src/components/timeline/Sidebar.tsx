@@ -98,6 +98,7 @@ export function SidebarHeader({
 
 interface SidebarWorkspaceProps {
   workspace: Workspace;
+  isCollapsed: boolean; // New prop
   projects: Project[]; // Explicitly passed
   projectsItems: Map<string, TimelineItem[]>;
   projectsSubProjects: Map<string, SubProject[]>;
@@ -109,6 +110,7 @@ interface SidebarWorkspaceProps {
 
 export function SidebarWorkspace({
   workspace,
+  isCollapsed,
   projects,
   projectsItems,
   projectsSubProjects,
@@ -129,7 +131,7 @@ export function SidebarWorkspace({
         style={{ height: WORKSPACE_HEADER_HEIGHT }}
         onClick={onToggleWorkspace}
       >
-        {workspace.isCollapsed ? (
+        {isCollapsed ? (
           <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
         ) : (
           <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -153,7 +155,7 @@ export function SidebarWorkspace({
       </div>
 
       {/* Projects */}
-      {!workspace.isCollapsed && (
+      {!isCollapsed && (
         <div >
           {projects.map(project => (
             <SidebarProject
@@ -192,10 +194,10 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
   }, [project, items, subProjects]);
 
   // Also read measured height from store for dynamic content sync
-  const measuredHeight = useTimelineStore((state) => state.projectHeights.get(project.id) || 0);
+  const measuredHeight = useTimelineStore((state) => state.projectHeights[project.id] || 0);
 
-  // Prefer measured height when available
-  const projectHeight = measuredHeight > 0 ? measuredHeight : computedHeight;
+  // Prefer measured height when available, but ensure we don't collapse below computed minimum (e.g. empty state)
+  const projectHeight = Math.max(measuredHeight || 0, computedHeight);
 
   const wasOpenRef = useRef(isOpen);
   useEffect(() => {

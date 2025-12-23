@@ -168,7 +168,7 @@ export function ProjectRow({
   // Use useLayoutEffect to measure before paint for smoother sync
   useLayoutEffect(() => {
     if (!isOpen) {
-      setTimeout(() => setProjectHeight(project.id, 0), 0);
+      setProjectHeight(project.id, 0);
       return;
     }
 
@@ -188,7 +188,7 @@ export function ProjectRow({
     };
 
     // Measure immediately for initial sync
-    setTimeout(measureHeight, 0);
+    measureHeight();
 
     // Use ResizeObserver with debouncing for dynamic content changes
     let resizeObserver: ResizeObserver | null = null;

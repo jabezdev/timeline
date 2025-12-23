@@ -18,7 +18,7 @@ import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { Plus, PanelLeftOpen } from 'lucide-react';
 import { AddItemDialog } from './AddItemDialog';
 import { ItemDialog } from './ItemDialog';
-import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
+import { TimelineItem, Milestone, SubProject, Project } from '@/types/timeline';
 import { SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT } from '@/lib/constants';
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
@@ -30,21 +30,35 @@ import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
 import { useTimelineDragDrop } from './hooks/useTimelineDragDrop';
 import { useTimelineScroll } from './hooks/useTimelineScroll';
 import { useTimelineVirtualization } from './hooks/useTimelineVirtualization';
-import { useTimelineDataQuery, useStructureQuery } from '@/hooks/useTimelineQueries';
+import { useTimelineData } from '@/hooks/useTimelineData';
+import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 
 function TimelineContent() {
   const visibleDays = VISIBLE_DAYS;
 
-  // 1. Scroll Logic (Simplified: We only use startDate logic here, mostly)
-  // We don't need handleTimelineScroll/handleSidebarScroll anymore as we are using a single container.
+  // 1. Scroll Logic
   const {
     startDate,
-    timelineRef, // Reuse this ref for the main container
+    timelineRef,
     handleNavigate,
     handleTodayClick,
   } = useTimelineScroll(visibleDays);
 
-  // 2. Data Selectors
+  // 2. Data & Mutations
+  const { data: timelineState, isLoading } = useTimelineData(startDate, visibleDays);
+  const mutations = useTimelineMutations();
+
+  const {
+    collapsedWorkspaceIds,
+    toggleWorkspace,
+    setAllWorkspacesCollapsed,
+    toggleProject,
+    isSidebarCollapsed,
+    setSidebarCollapsed,
+    openProjectIds: storeOpenProjectIds
+  } = useTimelineStore();
+
+  // 3. Data Selectors (Pass State)
   const {
     projectsItems,
     projectsMilestones,
@@ -54,9 +68,9 @@ function TimelineContent() {
     allSubProjects,
     sortedWorkspaceIds,
     openProjectIds
-  } = useTimelineSelectors();
+  } = useTimelineSelectors(timelineState, storeOpenProjectIds);
 
-  // 3. Drag & Drop Logic
+  // 4. Drag & Drop Logic
   const {
     activeDragItem,
     dragOverlayRef,
@@ -66,29 +80,11 @@ function TimelineContent() {
     adjustTranslate,
   } = useTimelineDragDrop();
 
-  // 4. Store Actions & State
-  const {
-    workspaces: workspacesMap,
-    toggleWorkspace,
-    toggleProject,
-    toggleItemComplete,
-    addItem,
-    updateItem,
-    updateMilestone,
-    addWorkspace,
-    addProject,
-    expandAllWorkspaces,
-    addSubProject,
-    updateSubProject,
-    addMilestone,
-    deleteItem,
-    deleteMilestone,
-    deleteSubProject,
-    syncRemoteData,
-    syncRangeData,
-  } = useTimelineStore();
-
   // 5. Virtualization
+  const {
+    workspaces: workspacesMap, // Need to extract from state for virtualization
+  } = timelineState;
+
   const { rowVirtualizer } = useTimelineVirtualization(
     sortedWorkspaceIds,
     workspacesMap,
@@ -96,27 +92,9 @@ function TimelineContent() {
     projectsItems,
     projectsSubProjects,
     openProjectIds,
+    collapsedWorkspaceIds,
     timelineRef
   );
-
-  // 6. React Query Integration
-  const startStr = format(startDate, 'yyyy-MM-dd');
-  const endStr = format(addDays(startDate, visibleDays), 'yyyy-MM-dd');
-
-  const structureQuery = useStructureQuery();
-  const timelineDataQuery = useTimelineDataQuery({ startDate: startStr, endDate: endStr });
-
-  useEffect(() => {
-    if (structureQuery.data) {
-      syncRemoteData(structureQuery.data);
-    }
-  }, [structureQuery.data, syncRemoteData, structureQuery.status]);
-
-  useEffect(() => {
-    if (timelineDataQuery.data) {
-      syncRangeData(timelineDataQuery.data, { startDate: startStr, endDate: endStr });
-    }
-  }, [timelineDataQuery.data, syncRangeData, startStr, endStr, timelineDataQuery.status]);
 
   // local UI state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -125,18 +103,63 @@ function TimelineContent() {
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
   // Sidebar Collapse State
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  // Sidebar Collapse State (Moved to Store)
 
+  // Action Handlers using Mutations
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
-    addItem(projectId, title, date, subProjectId, color);
+    // Generate ID or let backend do it? API usually needs full object.
+    const newItem: TimelineItem = {
+      id: crypto.randomUUID(),
+      title,
+      date,
+      projectId,
+      subProjectId,
+      color: color ? String(color) : undefined,
+      completed: false,
+      content: ''
+    };
+    mutations.addItem.mutate(newItem);
   };
 
   const handleAddMilestone = (projectId: string, title: string, date: string, color?: number) => {
-    addMilestone(projectId, title, date, color);
+    const newMilestone: Milestone = {
+      id: crypto.randomUUID(),
+      title,
+      date,
+      projectId,
+      color: color ? String(color) : undefined
+    };
+    mutations.addMilestone.mutate(newMilestone);
   };
 
   const handleAddSubProject = (projectId: string, title: string, startDate: string, endDate: string, color?: number) => {
-    addSubProject(projectId, title, startDate, endDate, color);
+    const newSub: SubProject = {
+      id: crypto.randomUUID(),
+      title,
+      startDate,
+      endDate,
+      projectId,
+      color: color ? String(color) : undefined
+    };
+    mutations.addSubProject.mutate(newSub);
+  };
+
+  // 5. Logic
+
+  // Handlers for workspace/project expansion
+  const handleToggleWorkspace = (workspaceId: string) => {
+    toggleWorkspace(workspaceId);
+  };
+
+  const handleToggleProject = (project: Project) => {
+    toggleProject(project.id, project.workspaceId, sortedWorkspaceIds);
+  };
+
+  const handleExpandAll = () => {
+    // If ANY workspace is collapsed, expand all.
+    // If ALL are expanded, collapse all.
+    const areAllExpanded = sortedWorkspaceIds.every(id => !collapsedWorkspaceIds.includes(id));
+    setAllWorkspacesCollapsed(areAllExpanded, sortedWorkspaceIds);
   };
 
   const currentSidebarWidth = isSidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
@@ -146,16 +169,17 @@ function TimelineContent() {
     setIsItemDialogOpen(true);
   };
 
+  // ... (keeping other handlers like ItemDelete, ItemSave same) ...
   const handleItemDelete = (item: TimelineItem | Milestone | SubProject) => {
     if ('completed' in item) {
-      deleteItem(item.id);
+      mutations.deleteItem.mutate(item.id);
     } else if ('startDate' in item) {
       // Trigger custom dialog
       setSubProjectToDelete(item as SubProject);
       setIsItemDialogOpen(false); // Close the detail view
       return;
     } else {
-      deleteMilestone(item.id);
+      mutations.deleteMilestone.mutate(item.id);
     }
     setSelectedItem(null);
     setIsItemDialogOpen(false);
@@ -163,11 +187,21 @@ function TimelineContent() {
 
   const handleItemSave = (updatedItem: TimelineItem | Milestone | SubProject) => {
     if ('completed' in updatedItem) {
-      updateItem(updatedItem.id, updatedItem as TimelineItem);
+      mutations.updateItem.mutate({ id: updatedItem.id, updates: updatedItem as TimelineItem });
     } else if ('startDate' in updatedItem) {
-      updateSubProject(updatedItem.id, updatedItem as SubProject);
+      mutations.updateSubProject.mutate({ id: updatedItem.id, updates: updatedItem as SubProject });
     } else {
-      updateMilestone(updatedItem.id, updatedItem as Milestone);
+      mutations.updateMilestone.mutate({ id: updatedItem.id, updates: updatedItem as Milestone });
+    }
+  };
+
+  const handleToggleItemComplete = (id: string) => {
+    const item = timelineState.items[id];
+    if (item) {
+      mutations.updateItem.mutate({
+        id,
+        updates: { completed: !item.completed, completedAt: !item.completed ? new Date().toISOString() : undefined }
+      });
     }
   };
 
@@ -203,10 +237,10 @@ function TimelineContent() {
                   startDate={startDate}
                   onNavigate={handleNavigate}
                   onTodayClick={handleTodayClick}
-                  onExpandAll={expandAllWorkspaces}
-                  isAllExpanded={Object.values(workspacesMap).length > 0 && Object.values(workspacesMap).every(ws => !ws.isCollapsed)}
+                  onExpandAll={handleExpandAll}
+                  isAllExpanded={sortedWorkspaceIds.every(id => !collapsedWorkspaceIds.includes(id))}
                   isCollapsed={isSidebarCollapsed}
-                  onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  onToggleCollapse={() => setSidebarCollapsed(!isSidebarCollapsed)}
                 />
               </div>
 
@@ -233,9 +267,13 @@ function TimelineContent() {
                 const id = sortedWorkspaceIds[virtualRow.index];
                 if (!workspacesMap[id]) return null;
 
+                const isWorkspaceCollapsed = collapsedWorkspaceIds.includes(id);
+
                 return (
                   <div
                     key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={rowVirtualizer.measureElement}
                     className="flex w-full absolute left-0"
                     style={{
                       height: `${virtualRow.size}px`,
@@ -251,12 +289,13 @@ function TimelineContent() {
                       <SidebarWorkspace
                         key={id}
                         workspace={workspacesMap[id]}
+                        isCollapsed={isWorkspaceCollapsed}
                         projects={workspaceProjects.get(id) || []}
                         projectsItems={projectsItems}
                         projectsSubProjects={projectsSubProjects}
                         openProjectIds={Array.from(openProjectIds)}
-                        onToggleWorkspace={() => toggleWorkspace(id)}
-                        onToggleProject={toggleProject}
+                        onToggleWorkspace={() => handleToggleWorkspace(id)}
+                        onToggleProject={(projectId) => handleToggleProject(workspaceProjects.get(id)?.find(p => p.id === projectId)!)} // Need project object for workspace Id
                         isSidebarCollapsed={isSidebarCollapsed}
                       />
                     </div>
@@ -266,14 +305,15 @@ function TimelineContent() {
                       <WorkspaceSection
                         key={id}
                         workspace={workspacesMap[id]}
+                        isCollapsed={isWorkspaceCollapsed}
                         projects={workspaceProjects.get(id) || []}
                         projectsItems={projectsItems}
                         projectsMilestones={projectsMilestones}
                         projectsSubProjects={projectsSubProjects}
-                        openProjectIds={openProjectIds}
+                        openProjectIds={new Set(openProjectIds)}
                         startDate={startDate}
                         visibleDays={visibleDays}
-                        onToggleItemComplete={toggleItemComplete}
+                        onToggleItemComplete={handleToggleItemComplete}
                         onItemClick={handleItemClick}
                         onSubProjectClick={handleItemClick}
                       />
@@ -290,7 +330,7 @@ function TimelineContent() {
           className={`absolute top-2 left-2 z-[60] ${isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         >
           <button
-            onClick={() => setIsSidebarCollapsed(false)}
+            onClick={() => setSidebarCollapsed(false)}
             className="w-8 h-8 rounded-md bg-background border border-border shadow-sm flex items-center justify-center hover:bg-secondary/50"
             title="Expand Sidebar"
           >
@@ -338,7 +378,7 @@ function TimelineContent() {
             <AlertDialogAction
               onClick={() => {
                 if (subProjectToDelete) {
-                  deleteSubProject(subProjectToDelete.id, false);
+                  mutations.deleteSubProject.mutate({ id: subProjectToDelete.id, deleteItems: false });
                   setSubProjectToDelete(null);
                 }
               }}
@@ -349,7 +389,7 @@ function TimelineContent() {
             <AlertDialogAction
               onClick={() => {
                 if (subProjectToDelete) {
-                  deleteSubProject(subProjectToDelete.id, true);
+                  mutations.deleteSubProject.mutate({ id: subProjectToDelete.id, deleteItems: true });
                   setSubProjectToDelete(null);
                 }
               }}

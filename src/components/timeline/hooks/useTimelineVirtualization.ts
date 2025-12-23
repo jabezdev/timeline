@@ -17,6 +17,7 @@ export function useTimelineVirtualization(
     projectsItems: Map<string, TimelineItem[]>,
     projectsSubProjects: Map<string, SubProject[]>,
     openProjectIds: Set<string>,
+    collapsedWorkspaceIds: string[], // Local UI state
     parentRef: React.RefObject<HTMLElement>
 ) {
     const { projectHeights } = useTimelineStore();
@@ -28,7 +29,8 @@ export function useTimelineVirtualization(
 
         let height = WORKSPACE_HEADER_HEIGHT;
 
-        if (ws.isCollapsed) return height;
+        // Check local UI state for collapse
+        if (collapsedWorkspaceIds.includes(wsId)) return height;
 
         const projects = workspaceProjects.get(wsId) || [];
 
@@ -38,7 +40,7 @@ export function useTimelineVirtualization(
 
             if (openProjectIds.has(project.id)) {
                 // Check if we have a measured height from the store (for accurate animations/dynamic content)
-                const storedHeight = projectHeights.get(project.id);
+                const storedHeight = projectHeights[project.id];
 
                 if (storedHeight !== undefined && storedHeight > 0) {
                     height += storedHeight;
@@ -65,7 +67,8 @@ export function useTimelineVirtualization(
         openProjectIds,
         projectHeights,
         projectsItems,
-        projectsSubProjects
+        projectsSubProjects,
+        collapsedWorkspaceIds
     ]);
 
     const rowVirtualizer = useVirtualizer({
@@ -84,12 +87,10 @@ export function useTimelineVirtualization(
     // Force re-measurement when structure changes
     // This solves the issue where expanding a project doesn't push siblings down
     // because the virtualizer cache wasn't invalidating
+    // Force re-measurement synchronously before paint when structure changes
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            rowVirtualizer.measure();
-        }, 0);
-        return () => clearTimeout(timeoutId);
-    }, [rowVirtualizer, openProjectIds, workspacesMap, workspaceProjects, projectsItems]);
+        rowVirtualizer.measure();
+    }, [rowVirtualizer, openProjectIds, workspacesMap, workspaceProjects, projectsItems, collapsedWorkspaceIds]);
 
     return { rowVirtualizer };
 }
