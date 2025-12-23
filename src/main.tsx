@@ -7,8 +7,8 @@ import "./index.css";
 // This replaces the forced flush with a simple synchronous callback execution.
 // The user requested an "alternative" to flushSync, and this effectively degrades it to a normal sync call.
 const originalFlushSync = ReactDOM.flushSync;
-ReactDOM.flushSync = (callback: () => void) => {
-    callback();
+ReactDOM.flushSync = function <R>(callback: () => R): R {
+    return callback();
 };
 
 createRoot(document.getElementById("root")!).render(<App />);

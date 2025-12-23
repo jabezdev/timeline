@@ -785,39 +785,45 @@ export const useTimelineStore = create<TimelineStore>()(
         const deletedSubProjectIds: string[] = [];
 
         // 2. Remove deleted Items (in range but missing from data)
-        Object.values(state.items).forEach(item => {
-          if (item.date >= startDate && item.date <= endDate) {
-            // If item is in this range safely, but not in the incoming data packet, it's deleted.
-            // Note: data.items only contains items in this range.
-            if (!data.items?.[item.id]) {
-              delete newItems[item.id];
-              deletedItemIds.push(item.id);
+        if (data.items) {
+          Object.values(state.items).forEach(item => {
+            if (item.date >= startDate && item.date <= endDate) {
+              // If item is in this range safely, but not in the incoming data packet, it's deleted.
+              // Note: data.items only contains items in this range.
+              if (!data.items?.[item.id]) {
+                delete newItems[item.id];
+                deletedItemIds.push(item.id);
+              }
             }
-          }
-        });
+          });
+        }
 
         // 3. Remove deleted Milestones
-        Object.values(state.milestones).forEach(ms => {
-          if (ms.date >= startDate && ms.date <= endDate) {
-            if (!data.milestones?.[ms.id]) {
-              delete newMilestones[ms.id];
-              deletedMilestoneIds.push(ms.id);
+        if (data.milestones) {
+          Object.values(state.milestones).forEach(ms => {
+            if (ms.date >= startDate && ms.date <= endDate) {
+              if (!data.milestones?.[ms.id]) {
+                delete newMilestones[ms.id];
+                deletedMilestoneIds.push(ms.id);
+              }
             }
-          }
-        });
+          });
+        }
 
         // 4. Remove deleted SubProjects (overlapping range but missing)
         // Logic: if subProject overlaps the range, api would have returned it.
-        Object.values(state.subProjects).forEach(sp => {
-          // Overlap check: start <= end AND end >= start
-          const overlaps = sp.startDate <= endDate && sp.endDate >= startDate;
-          if (overlaps) {
-            if (!data.subProjects?.[sp.id]) {
-              delete newSubProjects[sp.id];
-              deletedSubProjectIds.push(sp.id);
+        if (data.subProjects) {
+          Object.values(state.subProjects).forEach(sp => {
+            // Overlap check: start <= end AND end >= start
+            const overlaps = sp.startDate <= endDate && sp.endDate >= startDate;
+            if (overlaps) {
+              if (!data.subProjects?.[sp.id]) {
+                delete newSubProjects[sp.id];
+                deletedSubProjectIds.push(sp.id);
+              }
             }
-          }
-        });
+          });
+        }
 
         // Clean up local DB (Dexie) to prevent ghost items on reload
         if (deletedItemIds.length > 0) db.items.bulkDelete(deletedItemIds).catch(console.error);

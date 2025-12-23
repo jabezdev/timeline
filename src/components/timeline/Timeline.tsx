@@ -110,13 +110,13 @@ function TimelineContent() {
     if (structureQuery.data) {
       syncRemoteData(structureQuery.data);
     }
-  }, [structureQuery.data, syncRemoteData]);
+  }, [structureQuery.data, syncRemoteData, structureQuery.status]);
 
   useEffect(() => {
     if (timelineDataQuery.data) {
       syncRangeData(timelineDataQuery.data, { startDate: startStr, endDate: endStr });
     }
-  }, [timelineDataQuery.data, syncRangeData, startStr, endStr]);
+  }, [timelineDataQuery.data, syncRangeData, startStr, endStr, timelineDataQuery.status]);
 
   // local UI state
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

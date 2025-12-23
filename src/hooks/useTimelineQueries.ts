@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { TimelineState } from '@/types/timeline';
 
@@ -20,7 +20,8 @@ export function useTimelineDataQuery({ startDate, endDate }: TimelineDateRange) 
         queryKey: ['timeline', 'data', { startDate, endDate }],
         queryFn: () => api.fetchTimelineData(startDate, endDate),
         // Make remote DB the priority. Always refetch on focus.
-        staleTime: 0,
+        // staleTime: 0, // Removed to use global default (5 mins) for better UX
         enabled: !!startDate && !!endDate,
+        placeholderData: keepPreviousData,
     });
 }
