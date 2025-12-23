@@ -3,7 +3,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TimelineItem, Milestone, SubProject } from "@/types/timeline";
-import { useTimelineStore } from "@/hooks/useTimelineStore";
+import { useTimelineMutations } from "@/hooks/useTimelineMutations";
+
 import { X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { debounce } from 'lodash';
@@ -30,14 +31,8 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
     const isSubProject = 'startDate' in item;
     const isItem = 'completed' in item;
 
-    const {
-        updateItem,
-        updateMilestone,
-        updateSubProject,
-        deleteItem,
-        deleteMilestone,
-        deleteSubProject
-    } = useTimelineStore();
+    const mutations = useTimelineMutations();
+
 
     // Reset state when item changes or popover opens
     useEffect(() => {
@@ -56,13 +51,14 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
     // Save Logic
     const saveChanges = useCallback((updates: any) => {
         if (isItem) {
-            updateItem(item.id, updates);
+            mutations.updateItem.mutate({ id: item.id, updates });
         } else if (isMilestone) {
-            updateMilestone(item.id, updates);
+            mutations.updateMilestone.mutate({ id: item.id, updates });
         } else if (isSubProject) {
-            updateSubProject(item.id, updates);
+            mutations.updateSubProject.mutate({ id: item.id, updates });
         }
-    }, [isItem, isMilestone, isSubProject, item.id, updateItem, updateMilestone, updateSubProject]);
+    }, [isItem, isMilestone, isSubProject, item.id, mutations]);
+
 
     // Debounced Save for Title
     const debouncedSaveTitle = useRef(
@@ -101,9 +97,9 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
         e.stopPropagation();
 
         if (isItem) {
-            deleteItem(item.id);
+            mutations.deleteItem.mutate(item.id);
         } else if (isMilestone) {
-            deleteMilestone(item.id);
+            mutations.deleteMilestone.mutate(item.id);
         } else if (isSubProject) {
             // Default to deleting items? Or ask? User said "edit really quickly".
             // SubProject deletion usually requires confirmation on items.
@@ -114,8 +110,9 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
             // A simple delete button might be too dangerous for SubProjects if it nukes items.
             // BUT, for tasks/milestones it's fine.
             // Let's implement unlink (false) for SubProjects to be safe but fast.
-            deleteSubProject(item.id, false);
+            mutations.deleteSubProject.mutate({ id: item.id, deleteItems: false });
         }
+
         setOpen(false);
     };
 

@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useTimelineStore } from "@/hooks/useTimelineStore";
+import { useTimelineMutations } from "@/hooks/useTimelineMutations";
+import { TimelineItem, Milestone } from "@/types/timeline";
+
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,7 +35,8 @@ export function QuickCreatePopover({
     const [date, setDate] = useState(initialDate);
     const [color, setColor] = useState<number>(defaultColor);
 
-    const { addItem, addMilestone } = useTimelineStore();
+    const mutations = useTimelineMutations();
+
 
     // Reset state when opening
     useEffect(() => {
@@ -50,11 +53,31 @@ export function QuickCreatePopover({
             return;
         }
 
+        const id = crypto.randomUUID();
+
         if (type === 'item') {
-            addItem(projectId, title, date, subProjectId, color);
+            const newItem: TimelineItem = {
+                id,
+                title,
+                date,
+                projectId,
+                subProjectId,
+                color: color?.toString(), // Ensure string if type expects string
+                completed: false,
+                content: ''
+            };
+            mutations.addItem.mutate(newItem);
         } else {
-            addMilestone(projectId, title, date, color);
+            const newMilestone: Milestone = {
+                id,
+                title,
+                date,
+                projectId,
+                color: color?.toString(),
+            };
+            mutations.addMilestone.mutate(newMilestone);
         }
+
         onOpenChange(false);
     };
 
