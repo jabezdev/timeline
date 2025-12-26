@@ -1,73 +1,58 @@
-# Welcome to your project
+# My Timeline
 
-## Project info
+![Project Header](https://via.placeholder.com/1200x400?text=My+Custom+Timeline)
 
+### *Built because my brain doesn't work in lists.*
 
+I built **Timeline** for myself. After years of jumping between dozens of "perfect" task managers, I realized none of them actually clicked with the way I visualize my work. I don't see my life as a series of checkboxes; I see it as a stream of overlapping missions, milestones, and deadlines.
 
-## How can I edit this code?
+## 🧠 Why I Built This
 
-There are several ways of editing your application.
+Most productivity tools fall into two camps: they're either too simple (checklists that lose context) or too rigid (corporate Gantt charts). I needed something in the middle—a "Goldilocks" tool that respects:
+- **Spatial Thinking**: I need to see *where* a task sits in the month, not just that it's due today.
+- **Hierarchical Depth**: My brain needs to nest things. Workspaces for different areas of my life, Projects for my goals, and Sub-Projects for the messy details.
+- **Velocity**: I want to feel the momentum of a project moving across a timeline.
 
+## ✨ Features That Click For Me
 
+- **🏗️ Structured for Focus**: I organized it into `Workspaces` > `Projects` > `Sub-Projects` / `Milestones` > `Items`. It's the only way I can keep my side projects separate from my day job without losing my mind.
+- **📅 Visual Timeline**: A horizontal, date-driven view. It's not just a calendar; it's a map of my time.
+- **⚡ Zero Friction**: I hate waiting for spinners. This app is built to be snappy—instant updates, no-nonsense drag-and-drop, and a UI that stays out of my way.
+- **🔄 Sync Everywhere**: I use Supabase to make sure my data is everywhere I am, instantly.
 
+## 🛠️ The Gear Under the Hood
 
+This is my playground for testing modern tech:
+- **Frontend**: My favorite stack—[React](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/).
+- **Styles**: [Tailwind CSS](https://tailwindcss.com/) for the "glassmorphic" look I love, with [shadcn/ui](https://ui.shadcn.com/) for the core components.
+- **State**: The power combo of [TanStack Query](https://tanstack.com/query/latest) and [Zustand](https://github.com/pmndrs/zustand).
+- **Backend**: [Supabase](https://supabase.com/) for that "it just works" database and auth.
 
+## 🚀 How to Run It (If You Want To)
 
+1. **Clone it**
+   ```bash
+   git clone https://github.com/jabezdev/timeline.git
+   cd timeline
+   ```
 
-**Use your preferred IDE**
+2. **Install things**
+   ```bash
+   npm install
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes.
+3. **Set up your environment**
+   You'll need your own Supabase project:
+   ```env
+   VITE_SUPABASE_URL=your_url
+   VITE_SUPABASE_ANON_KEY=your_key
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+4. **Fire it up**
+   ```bash
+   npm run dev
+   ```
 
-Follow these steps:
+---
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-
-
-
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-
+*Made with ❤️ for a more organized mind (specifically mine).*
