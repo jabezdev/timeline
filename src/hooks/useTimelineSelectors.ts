@@ -47,6 +47,10 @@ export function useTimelineSelectors(
             if (pSubProjects.has(sp.projectId)) pSubProjects.get(sp.projectId)!.push(sp);
         });
 
+        // Sort items and milestones by title
+        pItems.forEach(items => items.sort((a, b) => a.title.localeCompare(b.title)));
+        pMilestones.forEach(milestones => milestones.sort((a, b) => a.title.localeCompare(b.title)));
+
         return {
             projectsItems: pItems,
             projectsMilestones: pMilestones,

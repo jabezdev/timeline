@@ -55,7 +55,7 @@ export const api = {
             .select('*')
             .gte('date', startDate)
             .lte('date', endDate)
-            .order('position', { ascending: true });
+            .order('title', { ascending: true });
 
         // Milestones: date within range
         const { data: milestones } = await supabase
@@ -63,7 +63,7 @@ export const api = {
             .select('*')
             .gte('date', startDate)
             .lte('date', endDate)
-            .order('position', { ascending: true });
+            .order('title', { ascending: true });
 
         // SubProjects: Overlapping range
         const { data: subProjects } = await supabase
