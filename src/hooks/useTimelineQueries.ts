@@ -20,7 +20,8 @@ export function useTimelineDataQuery({ startDate, endDate }: TimelineDateRange) 
         queryKey: ['timeline', 'data', { startDate, endDate }],
         queryFn: () => api.fetchTimelineData(startDate, endDate),
         // Make remote DB the priority. Always refetch on focus.
-        // staleTime: 0, // Removed to use global default (5 mins) for better UX
+        staleTime: 1000 * 60 * 5, // 5 minutes
+        refetchOnWindowFocus: false, // Prevent clearing on window focus if network is down
         enabled: !!startDate && !!endDate,
         placeholderData: keepPreviousData,
     });

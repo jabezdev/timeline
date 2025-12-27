@@ -19,7 +19,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 export function useTimelineDragDrop() {
     const [activeDragItem, setActiveDragItem] = useState<{ type: string; item: any } | null>(null);
     const [dragOffsetDays, setDragOffsetDays] = useState(0);
-    const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
     const dragOverlayRef = useRef<HTMLDivElement>(null);
 
     const mutations = useTimelineMutations();
@@ -35,55 +35,44 @@ export function useTimelineDragDrop() {
 
     const handleDragStart = (event: DragStartEvent) => {
         setActiveDragItem(event.active.data.current as any);
-
-        const rect = event.active.rect.current?.initial;
-        const activatorEvent = event.activatorEvent as any;
-
-        if (rect && activatorEvent) {
-            const clientX = activatorEvent.touches ? activatorEvent.touches[0].clientX : activatorEvent.clientX;
-            const clientY = activatorEvent.touches ? activatorEvent.touches[0].clientY : activatorEvent.clientY;
-
-            if (typeof clientX === 'number' && typeof clientY === 'number') {
-                const offsetX = clientX - rect.left;
-                const offsetY = clientY - rect.top;
-                setDragOffset({ x: offsetX, y: offsetY });
-
-                if (event.active.data.current?.type === 'subProject') {
-                    const days = Math.floor(offsetX / CELL_WIDTH);
-                    setDragOffsetDays(days);
-                } else {
-                    setDragOffsetDays(0);
-                }
-                return;
-            }
-        }
-        setDragOffset({ x: 0, y: 0 });
         setDragOffsetDays(0);
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
+        const { active, over, delta } = event;
 
-        setActiveDragItem(null);
-
-        if (!over) return;
+        if (!over) {
+            setActiveDragItem(null);
+            return;
+        }
 
         const activeItemData = active.data.current as { type: string; item: any };
-        if (!activeItemData) return;
+        if (!activeItemData) {
+            setActiveDragItem(null);
+            return;
+        }
 
         // Case 1: SubProject (Free Drag) - Keep existing logic
         if (activeItemData.type === 'subProject') {
             const dropData = over.data.current as { projectId: string; date: string; subProjectId?: string } | undefined;
-            if (!dropData) return;
+            if (!dropData) {
+                setActiveDragItem(null);
+                return;
+            }
 
-            const newDate = dropData.date;
+            // Calculate days moved based on DELTA x, not manual offset
+            // We need to know how many "cells" we moved.
+            const daysMoved = Math.round(delta.x / CELL_WIDTH);
+
             const sp = activeItemData.item as SubProject;
             const originalStart = parseISO(sp.startDate);
             const originalEnd = parseISO(sp.endDate);
-            const dropDateObj = parseISO(newDate);
-            const newStartObj = subDays(dropDateObj, dragOffsetDays);
+
+            // New Start is simple: Old Start + Days Moved
+            const newStartObj = addDays(originalStart, daysMoved);
             const duration = originalEnd.getTime() - originalStart.getTime();
             const newEndObj = new Date(newStartObj.getTime() + duration);
+
             const newStartStr = format(newStartObj, 'yyyy-MM-dd');
             const newEndStr = format(newEndObj, 'yyyy-MM-dd');
 
@@ -95,22 +84,14 @@ export function useTimelineDragDrop() {
                 const queries = queryClient.getQueriesData<TimelineState>({ queryKey: ['timeline', 'data'] });
                 const allData = queries.find(([_key, data]) => data?.items)?.[1];
 
-                const relatedItems = Object.values(allData?.items || {}).filter((i: TimelineItem) => i.subProjectId === sp.id); // Update all items including completed
+                const relatedItems = Object.values(allData?.items || {}).filter((i: TimelineItem) => i.subProjectId === sp.id);
 
                 if (relatedItems.length > 0) {
-                    const diffDays = differenceInDays(dropDateObj, originalStart) - dragOffsetDays;
-                    // Wait, dragOffsetDays is "days cursor is from start".
-                    // newStart is calculated as 'dropDate - offset'.
-                    // So diff is 'newStart - originalStart'.
-
-                    const actualNewStart = parseISO(newStartStr);
-                    const actualOldStart = parseISO(sp.startDate);
-                    const dayDiff = differenceInDays(actualNewStart, actualOldStart);
-
-                    if (dayDiff !== 0) {
+                    // The diff is exactly daysMoved
+                    if (daysMoved !== 0) {
                         childItemsToUpdate = relatedItems.map((item: TimelineItem) => {
                             const itemDate = parseISO(item.date);
-                            const newItemDate = addDays(itemDate, dayDiff);
+                            const newItemDate = addDays(itemDate, daysMoved);
                             return {
                                 id: item.id,
                                 date: format(newItemDate, 'yyyy-MM-dd')
@@ -125,6 +106,7 @@ export function useTimelineDragDrop() {
                     childItemsToUpdate
                 });
             }
+            setActiveDragItem(null);
             return;
         }
 
@@ -150,7 +132,10 @@ export function useTimelineDragDrop() {
             overSubProjectId = (targetItem as TimelineItem).subProjectId; // Undefined for milestones
         }
 
-        if (!overDate || !overProjectId) return;
+        if (!overDate || !overProjectId) {
+            setActiveDragItem(null);
+            return;
+        }
 
         const isSameContainer =
             activeItem.date === overDate &&
@@ -160,7 +145,10 @@ export function useTimelineDragDrop() {
         if (isSameContainer && active.id !== over.id) {
             // REORDER within same cell
             const allData = queryClient.getQueryData(['timeline', 'data']) as any;
-            if (!allData) return;
+            if (!allData) {
+                setActiveDragItem(null);
+                return;
+            }
 
             let itemsInCell: any[] = [];
 
@@ -208,24 +196,18 @@ export function useTimelineDragDrop() {
                 mutations.updateMilestone.mutate({ id: activeItem.id, updates: { date: overDate } });
             }
         }
+
+        setActiveDragItem(null);
     };
 
-    const adjustTranslate: Modifier = useCallback(({ transform }) => {
-        return {
-            ...transform,
-            x: transform.x - dragOffset.x,
-            y: transform.y - dragOffset.y,
-        };
-    }, [dragOffset]);
+
 
     return {
         activeDragItem,
-        dragOffset,
         dragOverlayRef,
         sensors,
         handleDragStart,
         handleDragEnd,
-        adjustTranslate,
         setActiveDragItem
     };
 }

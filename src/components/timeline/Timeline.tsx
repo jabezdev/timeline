@@ -9,7 +9,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core';
+import {
+  DndContext,
+  DragOverlay,
+  pointerWithin,
+} from '@dnd-kit/core';
 import { addDays, subDays, parseISO, format, differenceInDays } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
 import { WorkspaceSection } from './WorkspaceSection';
@@ -79,7 +83,7 @@ function TimelineContent() {
     sensors,
     handleDragStart,
     handleDragEnd,
-    adjustTranslate,
+
   } = useTimelineDragDrop();
 
   // 5. Virtualization
@@ -435,7 +439,15 @@ function TimelineContent() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <DragOverlay modifiers={[adjustTranslate]} dropAnimation={null}>
+      {/* 
+         Drop animation configuration:
+         Animating the overlay to the new position gives a "quick slide" effect.
+         We use `defaultDropAnimationSideEffects` to handle opacity transitions properly (e.g. fading out the drag styles).
+      */}
+      <DragOverlay
+        modifiers={[]}
+        dropAnimation={null}
+      >
         {activeDragItem ? (
           <div ref={dragOverlayRef}>
             {/* Simplified Drag Preview rendering for now to avoid complexity in this file 

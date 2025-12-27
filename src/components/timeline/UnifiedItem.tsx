@@ -11,6 +11,8 @@ interface UnifiedItemProps {
     workspaceColor: number;
 }
 
+import { motion } from 'framer-motion';
+
 export function UnifiedItemView({
     item,
     onToggleComplete,
@@ -29,7 +31,16 @@ export function UnifiedItemView({
     className?: string;
 }) {
     return (
-        <div
+        <motion.div
+            layout // Enable Framer Motion layout animations
+            layoutId={item.id} // Unique ID for reparenting
+            transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 30,
+                mass: 1 // Quick snappy spring
+            }}
+            initial={false} // Prevent initial mount animation
             style={{
                 backgroundColor: item.color
                     ? (item.color.startsWith('#') ? `${item.color}20` : `hsl(var(--workspace-${item.color}) / 0.2)`)
@@ -73,7 +84,7 @@ export function UnifiedItemView({
             <span className={`flex-1 min-w-0 text-xs font-medium break-words whitespace-pre-wrap ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                 {item.title || "Untitled"}
             </span>
-        </div>
+        </motion.div>
     );
 }
 

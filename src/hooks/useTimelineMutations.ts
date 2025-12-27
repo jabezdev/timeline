@@ -3,23 +3,28 @@ import { api } from '@/lib/api';
 import { TimelineItem, Milestone, SubProject, Workspace, Project, TimelineState } from '@/types/timeline';
 import { subDays, parseISO, format, differenceInDays, addDays } from 'date-fns';
 import { toast } from 'sonner';
+import { flushSync } from 'react-dom';
 
 export function useTimelineMutations() {
     const queryClient = useQueryClient();
 
     // Helper to optimistically update Timeline Data (Items, Milestones, SubProjects)
     const updateTimelineDataCache = (updater: (oldData: Partial<TimelineState>) => Partial<TimelineState>) => {
-        queryClient.setQueriesData({ queryKey: ['timeline', 'data'] }, (oldData: Partial<TimelineState> | undefined) => {
-            if (!oldData) return oldData;
-            return updater(oldData);
+        flushSync(() => {
+            queryClient.setQueriesData({ queryKey: ['timeline', 'data'] }, (oldData: Partial<TimelineState> | undefined) => {
+                if (!oldData) return oldData;
+                return updater(oldData);
+            });
         });
     };
 
     // Helper to optimistically update Structure Data (Workspaces, Projects)
     const updateStructureCache = (updater: (oldData: Partial<TimelineState>) => Partial<TimelineState>) => {
-        queryClient.setQueryData(['timeline', 'structure'], (oldData: Partial<TimelineState> | undefined) => {
-            if (!oldData) return { workspaces: {}, projects: {}, subProjects: {}, milestones: {}, items: {} };
-            return updater(oldData);
+        flushSync(() => {
+            queryClient.setQueryData(['timeline', 'structure'], (oldData: Partial<TimelineState> | undefined) => {
+                if (!oldData) return { workspaces: {}, projects: {}, subProjects: {}, milestones: {}, items: {} };
+                return updater(oldData);
+            });
         });
     };
 
@@ -31,8 +36,8 @@ export function useTimelineMutations() {
             await api.createWorkspace(newWorkspace);
             return newWorkspace;
         },
-        onMutate: async ({ name, color }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: ({ name, color }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             const id = crypto.randomUUID();
             const newWorkspace: Workspace = { id, name, color: String(color), isCollapsed: false, isHidden: false, position: 0 };
@@ -56,8 +61,8 @@ export function useTimelineMutations() {
             await api.updateWorkspace(id, updates);
             return { id, updates };
         },
-        onMutate: async ({ id, updates }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: ({ id, updates }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             updateStructureCache(old => {
                 const ws = old.workspaces?.[id];
@@ -80,8 +85,8 @@ export function useTimelineMutations() {
             await api.createProject(newProject);
             return newProject;
         },
-        onMutate: async ({ workspaceId, name, color, position }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: ({ workspaceId, name, color, position }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             const id = crypto.randomUUID();
             const newProject: Project = { id, workspaceId, name, color: String(color), position, isHidden: false };
@@ -99,8 +104,8 @@ export function useTimelineMutations() {
             await api.updateProject(id, updates);
             return { id, updates };
         },
-        onMutate: async ({ id, updates }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: ({ id, updates }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             updateStructureCache(old => {
                 const p = old.projects?.[id];
@@ -121,8 +126,8 @@ export function useTimelineMutations() {
             await api.createSubProject(sp);
             return sp;
         },
-        onMutate: async (newSub) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: (newSub) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => ({
                 ...old,
@@ -145,8 +150,8 @@ export function useTimelineMutations() {
             await api.updateSubProject(id, updates);
             return { id, updates, childItemsToUpdate };
         },
-        onMutate: async ({ id, updates, childItemsToUpdate }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: ({ id, updates, childItemsToUpdate }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
 
             updateTimelineDataCache(old => {
@@ -210,8 +215,8 @@ export function useTimelineMutations() {
             await api.deleteSubProject(id);
             return id;
         },
-        onMutate: async ({ id }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: ({ id }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => {
                 const newSP = { ...old.subProjects };
@@ -230,8 +235,8 @@ export function useTimelineMutations() {
             await api.createItem(item);
             return item;
         },
-        onMutate: async (newItem) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: (newItem) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => ({
                 ...old,
@@ -251,8 +256,8 @@ export function useTimelineMutations() {
             await api.updateItem(id, updates);
             return { id, updates };
         },
-        onMutate: async ({ id, updates }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: ({ id, updates }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => {
                 const item = old.items?.[id];
@@ -276,8 +281,8 @@ export function useTimelineMutations() {
             await api.deleteItem(id);
             return id;
         },
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: (id) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => {
                 const newItems = { ...old.items };
@@ -299,8 +304,8 @@ export function useTimelineMutations() {
             await api.createMilestone(m);
             return m;
         },
-        onMutate: async (newM) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: (newM) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => ({
                 ...old,
@@ -316,8 +321,8 @@ export function useTimelineMutations() {
             await api.updateMilestone(id, updates);
             return { id, updates };
         },
-        onMutate: async ({ id, updates }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: ({ id, updates }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => {
                 const m = old.milestones?.[id];
@@ -337,8 +342,8 @@ export function useTimelineMutations() {
             await api.deleteMilestone(id);
             return id;
         },
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+        onMutate: (id) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
             updateTimelineDataCache(old => {
                 const newM = { ...old.milestones };
@@ -356,8 +361,8 @@ export function useTimelineMutations() {
             await api.deleteWorkspace(id);
             return id;
         },
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: (id) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             updateStructureCache(old => {
                 const newWS = { ...old.workspaces };
@@ -376,8 +381,8 @@ export function useTimelineMutations() {
             await api.deleteProject(id);
             return id;
         },
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: (id) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             updateStructureCache(old => {
                 const newProj = { ...old.projects };
@@ -394,8 +399,8 @@ export function useTimelineMutations() {
             await api.reorderWorkspaces(workspaces);
             return workspaces;
         },
-        onMutate: async (workspaces) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: (workspaces) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             updateStructureCache(old => {
                 const newOrder = workspaces.map(w => w.id as string);
@@ -420,8 +425,8 @@ export function useTimelineMutations() {
             await api.reorderProjects(projectsToUpdate);
             return { workspaceId, projectIds };
         },
-        onMutate: async ({ workspaceId, projectIds }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+        onMutate: ({ workspaceId, projectIds }) => {
+            void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previous = queryClient.getQueryData(['timeline', 'structure']);
             updateStructureCache(old => {
                 const newProjects = { ...old.projects };
@@ -460,8 +465,8 @@ export function useTimelineMutations() {
                 await api.reorderMilestones(milestones);
                 return milestones;
             },
-            onMutate: async (milestones) => {
-                await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+            onMutate: (milestones) => {
+                void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
                 const previous = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
                 updateTimelineDataCache(old => {
                     const newMilestones = { ...old.milestones };
@@ -481,8 +486,8 @@ export function useTimelineMutations() {
                 await api.reorderItems(items);
                 return items;
             },
-            onMutate: async (items) => {
-                await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
+            onMutate: (items) => {
+                void queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
                 const previous = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
                 updateTimelineDataCache(old => {
                     const newItems = { ...old.items };
