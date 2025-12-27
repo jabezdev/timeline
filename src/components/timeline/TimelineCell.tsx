@@ -57,46 +57,53 @@ export function TimelineCell({
     onItemClick(item);
   };
 
-  // Debug logging
-  if (items.length > 0) {
-    console.log(`TimelineCell [${dateStr}]: Rendering ${items.length} items`, items);
-  }
+
 
   return (
 
 
-    <div
-      ref={setNodeRef}
-      className={`px-1 py-1 shrink-0 ${showBorder ? 'border-r border-border last:border-r-0' : ''
-        } ${isOver ? 'bg-primary/10' : ''}`}
-      style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
+    <QuickCreatePopover
+      open={isCreating}
+      onOpenChange={setIsCreating}
+      type="item"
+      projectId={projectId}
+      date={dateStr}
+      subProjectId={subProjectId}
+      defaultColor={workspaceColor}
     >
-      <div className="flex flex-col gap-1 h-full">
-        <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-          {milestones.map(milestone => (
-            <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
-              <MilestoneItem
-                milestone={milestone}
-                workspaceColor={workspaceColor}
-              />
-            </div>
-          ))}
-        </SortableContext>
+      <div
+        ref={setNodeRef}
+        className={`px-1 py-1 shrink-0 ${showBorder ? 'border-r border-border last:border-r-0' : ''
+          } ${isOver ? 'bg-primary/10' : ''}`}
+        style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
+      >
+        <div className="flex flex-col gap-1 h-full">
+          <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
+            {milestones.map(milestone => (
+              <div key={milestone.id} onClick={(e) => handleItemClick(e, milestone)}>
+                <MilestoneItem
+                  milestone={milestone}
+                  workspaceColor={workspaceColor}
+                />
+              </div>
+            ))}
+          </SortableContext>
 
-        <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-          {items.map(item => (
-            <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
-              <UnifiedItem
-                item={item}
-                onToggleComplete={onToggleItemComplete}
-                onClick={() => { }} // We handle click in wrapper
-                workspaceColor={workspaceColor}
-              />
-            </div>
-          ))}
-        </SortableContext>
+          <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+            {items.map(item => (
+              <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
+                <UnifiedItem
+                  item={item}
+                  onToggleComplete={onToggleItemComplete}
+                  onClick={() => { }} // We handle click in wrapper
+                  workspaceColor={workspaceColor}
+                />
+              </div>
+            ))}
+          </SortableContext>
+        </div>
       </div>
-    </div>
+    </QuickCreatePopover>
 
   );
 }

@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -249,6 +249,7 @@ export function ItemDialog({ item, open, onOpenChange, onSave, onDelete }: ItemD
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="sm:max-w-[900px] h-[80vh] flex flex-col p-0 gap-0 overflow-hidden [&>button]:hidden">
                 <DialogHeader className="flex-shrink-0 p-4 border-b bg-background z-10">
+                    <DialogTitle className="sr-only">Item Details</DialogTitle>
                     <div className="flex items-center gap-4 w-full">
                         {!isMilestone && !isSubProject && (
                             <Checkbox
