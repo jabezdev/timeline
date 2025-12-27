@@ -8,11 +8,11 @@ import {
     PointerSensor,
     Modifier
 } from '@dnd-kit/core';
-import { subDays, parseISO, format } from 'date-fns';
+import { subDays, parseISO, format, differenceInDays, addDays } from 'date-fns';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 
 import { CELL_WIDTH } from '@/lib/constants';
-import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
+import { TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 import { useQueryClient } from '@tanstack/react-query'; // Need to access query cache to get current lists for reorder
 import { arrayMove } from '@dnd-kit/sortable';
 
@@ -88,9 +88,41 @@ export function useTimelineDragDrop() {
             const newEndStr = format(newEndObj, 'yyyy-MM-dd');
 
             if (sp.startDate !== newStartStr) {
+                // Calculate item updates
+                let childItemsToUpdate: Partial<TimelineItem>[] = [];
+
+                // Use getQueriesData for fuzzy match since key includes variables
+                const queries = queryClient.getQueriesData<TimelineState>({ queryKey: ['timeline', 'data'] });
+                const allData = queries.find(([_key, data]) => data?.items)?.[1];
+
+                const relatedItems = Object.values(allData?.items || {}).filter((i: TimelineItem) => i.subProjectId === sp.id); // Update all items including completed
+
+                if (relatedItems.length > 0) {
+                    const diffDays = differenceInDays(dropDateObj, originalStart) - dragOffsetDays;
+                    // Wait, dragOffsetDays is "days cursor is from start".
+                    // newStart is calculated as 'dropDate - offset'.
+                    // So diff is 'newStart - originalStart'.
+
+                    const actualNewStart = parseISO(newStartStr);
+                    const actualOldStart = parseISO(sp.startDate);
+                    const dayDiff = differenceInDays(actualNewStart, actualOldStart);
+
+                    if (dayDiff !== 0) {
+                        childItemsToUpdate = relatedItems.map((item: TimelineItem) => {
+                            const itemDate = parseISO(item.date);
+                            const newItemDate = addDays(itemDate, dayDiff);
+                            return {
+                                id: item.id,
+                                date: format(newItemDate, 'yyyy-MM-dd')
+                            };
+                        });
+                    }
+                }
+
                 mutations.updateSubProject.mutate({
                     id: sp.id,
-                    updates: { startDate: newStartStr, endDate: newEndStr }
+                    updates: { startDate: newStartStr, endDate: newEndStr },
+                    childItemsToUpdate
                 });
             }
             return;

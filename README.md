@@ -8,25 +8,25 @@ I built **Timeline** for myself. After years of jumping between dozens of "perfe
 
 ## 🧠 Why I Built This
 
-Most productivity tools fall into two camps: they're either too simple (checklists that lose context) or too rigid (corporate Gantt charts). I needed something in the middle—a "Goldilocks" tool that respects:
+Most productivity tools fall into two camps: they're either too simple (checklists that lose context) or too rigid (corporate Gantt charts). I needed something in the middle. A "Goldilocks" tool that respects:
 - **Spatial Thinking**: I need to see *where* a task sits in the month, not just that it's due today.
 - **Hierarchical Depth**: My brain needs to nest things. Workspaces for different areas of my life, Projects for my goals, and Sub-Projects for the messy details.
 - **Velocity**: I want to feel the momentum of a project moving across a timeline.
 
 ## ✨ Features That Click For Me
 
-- **🏗️ Structured for Focus**: I organized it into `Workspaces` > `Projects` > `Sub-Projects` / `Milestones` > `Items`. It's the only way I can keep my side projects separate from my day job without losing my mind.
-- **📅 Visual Timeline**: A horizontal, date-driven view. It's not just a calendar; it's a map of my time.
+- **🏗️ Structured for Focus**: I organized it into `Workspaces` > `Projects` > `Sub-Projects` / `Milestones` > `Items`. It's the only way I can keep my side projects separate from each other without losing my mind.
+- **📅 Visual Timeline**: A horizontal, date-driven view. It's a map of my time.
 - **⚡ Zero Friction**: I hate waiting for spinners. This app is built to be snappy—instant updates, no-nonsense drag-and-drop, and a UI that stays out of my way.
 - **🔄 Sync Everywhere**: I use Supabase to make sure my data is everywhere I am, instantly.
 
 ## 🛠️ The Gear Under the Hood
 
 This is my playground for testing modern tech:
-- **Frontend**: My favorite stack—[React](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/).
-- **Styles**: [Tailwind CSS](https://tailwindcss.com/) for the "glassmorphic" look I love, with [shadcn/ui](https://ui.shadcn.com/) for the core components.
-- **State**: The power combo of [TanStack Query](https://tanstack.com/query/latest) and [Zustand](https://github.com/pmndrs/zustand).
-- **Backend**: [Supabase](https://supabase.com/) for that "it just works" database and auth.
+- **Frontend**: [React](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/).
+- **Styles**: [Tailwind CSS](https://tailwindcss.com/) with [shadcn/ui](https://ui.shadcn.com/) for the core components.
+- **State**: Combo of [TanStack Query](https://tanstack.com/query/latest) and [Zustand](https://github.com/pmndrs/zustand).
+- **Backend**: [Supabase](https://supabase.com/) free tier since it's just for me.
 
 ## 🚀 How to Run It (If You Want To)
 

@@ -194,7 +194,36 @@ function TimelineContent() {
     if ('completed' in updatedItem) {
       mutations.updateItem.mutate({ id: updatedItem.id, updates: updatedItem as TimelineItem });
     } else if ('startDate' in updatedItem) {
-      mutations.updateSubProject.mutate({ id: updatedItem.id, updates: updatedItem as SubProject });
+      let childItemsToUpdate: Partial<TimelineItem>[] = [];
+
+      // Calculate cascading updates if startDate changed
+      // We use selectedItem as the "Original" state
+      if (selectedItem && 'startDate' in selectedItem) {
+        const originalSP = selectedItem as SubProject;
+        const newSP = updatedItem as SubProject;
+
+        if (originalSP.id === newSP.id && originalSP.startDate !== newSP.startDate) {
+          const oldStart = parseISO(originalSP.startDate);
+          const newStart = parseISO(newSP.startDate);
+          const diffDays = differenceInDays(newStart, oldStart);
+
+          if (diffDays !== 0) {
+            const relatedItems = Object.values(timelineState.items || {}).filter(i => i.subProjectId === originalSP.id);
+            if (relatedItems.length > 0) {
+              childItemsToUpdate = relatedItems.map(item => ({
+                id: item.id,
+                date: format(addDays(parseISO(item.date), diffDays), 'yyyy-MM-dd')
+              }));
+            }
+          }
+        }
+      }
+
+      mutations.updateSubProject.mutate({
+        id: updatedItem.id,
+        updates: updatedItem as SubProject,
+        childItemsToUpdate
+      });
     } else {
       mutations.updateMilestone.mutate({ id: updatedItem.id, updates: updatedItem as Milestone });
     }

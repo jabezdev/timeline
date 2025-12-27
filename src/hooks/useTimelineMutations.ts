@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { TimelineItem, Milestone, SubProject, Workspace, Project, TimelineState } from '@/types/timeline';
+import { subDays, parseISO, format, differenceInDays, addDays } from 'date-fns';
 import { toast } from 'sonner';
 
 export function useTimelineMutations() {
@@ -137,19 +138,57 @@ export function useTimelineMutations() {
     });
 
     const updateSubProject = useMutation({
-        mutationFn: async ({ id, updates }: { id: string, updates: Partial<SubProject> }) => {
+        mutationFn: async ({ id, updates, childItemsToUpdate }: { id: string, updates: Partial<SubProject>, childItemsToUpdate?: Partial<TimelineItem>[] }) => {
+            if (childItemsToUpdate && childItemsToUpdate.length > 0) {
+                await api.batchUpdateItems(childItemsToUpdate);
+            }
             await api.updateSubProject(id, updates);
-            return { id, updates };
+            return { id, updates, childItemsToUpdate };
         },
-        onMutate: async ({ id, updates }) => {
+        onMutate: async ({ id, updates, childItemsToUpdate }) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousQueries = queryClient.getQueriesData({ queryKey: ['timeline', 'data'] });
+
             updateTimelineDataCache(old => {
                 const sp = old.subProjects?.[id];
                 if (!sp) return old;
+
+                let newItems = { ...old.items };
+
+                // Apply child item updates if provided
+                if (childItemsToUpdate && childItemsToUpdate.length > 0) {
+                    childItemsToUpdate.forEach(update => {
+                        if (newItems[update.id!] && update.date) {
+                            newItems[update.id!] = {
+                                ...newItems[update.id!],
+                                date: update.date
+                            };
+                        }
+                    });
+                } else if (updates.startDate && sp.startDate !== updates.startDate) {
+                    // Fallback to internal diff calculation if implicit update (e.g. from simplistic caller)
+                    const oldStart = parseISO(sp.startDate);
+                    const newStart = parseISO(updates.startDate);
+                    const diffDays = differenceInDays(newStart, oldStart);
+
+                    if (diffDays !== 0) {
+                        Object.values(newItems).forEach(item => {
+                            if (item.subProjectId === id) {
+                                const itemDate = parseISO(item.date);
+                                const newDate = addDays(itemDate, diffDays);
+                                newItems[item.id] = {
+                                    ...item,
+                                    date: format(newDate, 'yyyy-MM-dd')
+                                };
+                            }
+                        });
+                    }
+                }
+
                 return {
                     ...old,
-                    subProjects: { ...old.subProjects, [id]: { ...sp, ...updates, updatedAt: new Date().toISOString() } }
+                    subProjects: { ...old.subProjects, [id]: { ...sp, ...updates, updatedAt: new Date().toISOString() } },
+                    items: newItems
                 };
             });
             return { previousQueries };

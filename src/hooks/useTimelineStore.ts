@@ -62,9 +62,16 @@ export const useTimelineStore = create<TimelineStore>()(
       setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
 
       setProjectHeight: (projectId, height) =>
-        set((state) => ({
-          projectHeights: { ...state.projectHeights, [projectId]: height },
-        })),
+        set((state) => {
+          if (state.projectHeights[projectId] === height) return {}; // No change, return empty (Zustand merges partial, but returning empty object or null typically stops update if using standard set patterns? Wait, zustand set merges. returning empty means no changes to properties. BUT it might still trigger listener? simpler to return state or nothing if logic allows)
+          // Verify zustand behavior: set(partial) merges. If partial is empty, Reference might not change? 
+          // Better:
+          if (state.projectHeights[projectId] === height) return state; // Returning state directly prevents update if strict equality check is used by zustand (v4+ usually does Object.is check)
+
+          return {
+            projectHeights: { ...state.projectHeights, [projectId]: height },
+          };
+        }),
     }),
     {
       name: 'timeline-ui-storage',

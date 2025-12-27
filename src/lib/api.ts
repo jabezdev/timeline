@@ -1,73 +1,12 @@
 import { supabase } from './supabase';
 import { TimelineState, Workspace, Project, SubProject, Milestone, TimelineItem } from '@/types/timeline';
-
-// Helper to transform Workspace (DB -> App)
-const transformWorkspace = (db: any): Workspace => ({
-    id: db.id,
-    name: db.name,
-    color: db.color,
-    isCollapsed: false, // Client-side state only, default to expanded
-    isHidden: db.is_hidden,
-    position: db.position || 0,
-    createdAt: db.created_at,
-    updatedAt: db.updated_at,
-});
-
-// Helper to transform Project (DB -> App)
-const transformProject = (db: any): Project => ({
-    id: db.id,
-    name: db.name,
-    workspaceId: db.workspace_id,
-    color: db.color,
-    position: db.position || 0,
-    isHidden: db.is_hidden,
-    createdAt: db.created_at,
-    updatedAt: db.updated_at,
-});
-
-// Helper to transform SubProject (DB -> App)
-const transformSubProject = (db: any): SubProject => ({
-    id: db.id,
-    title: db.title,
-    startDate: db.start_date,
-    endDate: db.end_date,
-    projectId: db.project_id,
-    color: db.color,
-    description: db.description,
-    createdAt: db.created_at,
-    updatedAt: db.updated_at,
-});
-
-
-// Helper to transform Milestone (DB -> App)
-const transformMilestone = (db: any): Milestone => ({
-    id: db.id,
-    title: db.title,
-    date: db.date,
-    projectId: db.project_id,
-    content: db.content,
-    color: db.color,
-    position: db.position || 0,
-    createdAt: db.created_at,
-    updatedAt: db.updated_at,
-});
-
-
-// Helper to transform Item (DB -> App)
-const transformItem = (db: any): TimelineItem => ({
-    id: db.id,
-    title: db.title,
-    content: db.content,
-    date: db.date,
-    completed: db.completed,
-    projectId: db.project_id,
-    subProjectId: db.sub_project_id,
-    color: db.color,
-    completedAt: db.completed_at,
-    position: db.position || 0,
-    createdAt: db.created_at,
-    updatedAt: db.updated_at,
-});
+import {
+    transformWorkspace,
+    transformProject,
+    transformSubProject,
+    transformMilestone,
+    transformItem
+} from '@/lib/transformers';
 
 
 export const api = {
@@ -337,5 +276,33 @@ export const api = {
         return Promise.all(updates.map(u =>
             supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!)
         ));
+    },
+
+    async batchUpdateItems(items: Partial<TimelineItem>[]) {
+        const updates = items.map(i => ({
+            id: i.id,
+            ...i
+        }));
+
+        // Remove undefined fields to avoid overwriting with null/undefined if Supabase behaves weirdly, 
+        // though upsert/update usually handles it. 
+        // Using Promise.all for individual updates is safer without a dedicated bulk RPC func.
+        // For pure batch update in one query, Supabase requires upsert with all fields, 
+        // but we only have partials here.
+
+        return Promise.all(updates.map(u => {
+            const { id, ...rest } = u;
+            const dbUpdates: any = {};
+            if ('title' in rest) dbUpdates.title = rest.title;
+            if ('content' in rest) dbUpdates.content = rest.content;
+            if ('date' in rest) dbUpdates.date = rest.date;
+            if ('completed' in rest) dbUpdates.completed = rest.completed;
+            if ('subProjectId' in rest) dbUpdates.sub_project_id = rest.subProjectId;
+            if ('color' in rest) dbUpdates.color = rest.color;
+            if ('completedAt' in rest) dbUpdates.completed_at = rest.completedAt;
+            if ('position' in rest) dbUpdates.position = rest.position;
+
+            return supabase.from('timeline_items').update(dbUpdates).eq('id', id!);
+        }));
     }
 };

@@ -166,19 +166,26 @@ export function ProjectRow({
   const expandedContentRef = useRef<HTMLDivElement>(null);
   const setProjectHeight = useTimelineStore((state) => state.setProjectHeight);
   const measureTimeoutRef = useRef<number | null>(null);
+  const lastMeasuredHeight = useRef<number>(0);
 
   // Measure and report height to store for sidebar sync
   // Use useLayoutEffect to measure before paint for smoother sync
   useLayoutEffect(() => {
     if (!isOpen) {
-      setProjectHeight(project.id, 0);
+      if (lastMeasuredHeight.current !== 0) {
+        setProjectHeight(project.id, 0);
+        lastMeasuredHeight.current = 0;
+      }
       return;
     }
 
     const measureHeight = () => {
       if (expandedContentRef.current) {
         const height = expandedContentRef.current.scrollHeight;
-        setProjectHeight(project.id, height);
+        if (Math.abs(height - lastMeasuredHeight.current) > 1) {
+          setProjectHeight(project.id, height);
+          lastMeasuredHeight.current = height;
+        }
       }
     };
 
