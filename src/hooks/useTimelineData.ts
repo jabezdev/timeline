@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useStructureQuery, useTimelineDataQuery } from '@/hooks/useTimelineQueries';
 import { TimelineState } from '@/types/timeline';
 import { addDays, format } from 'date-fns';
@@ -14,7 +15,7 @@ export function useTimelineData(startDate: Date, visibleDays: number) {
     const error = structure.error || timeline.error;
 
     // Merge data
-    const data: TimelineState = {
+    const data: TimelineState = useMemo(() => ({
         workspaces: structure.data?.workspaces || {},
         workspaceOrder: structure.data?.workspaceOrder || [],
         projects: structure.data?.projects || {},
@@ -26,7 +27,7 @@ export function useTimelineData(startDate: Date, visibleDays: number) {
         currentDate: startStr,
         visibleDays,
         isSyncing: isLoading,
-    };
+    }), [structure.data, timeline.data, startStr, visibleDays, isLoading]);
 
     return {
         data,
