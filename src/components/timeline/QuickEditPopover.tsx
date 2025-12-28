@@ -135,6 +135,7 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
                 align="start"
                 side="bottom"
                 onOpenAutoFocus={(e) => e.preventDefault()}
+                onClick={(e) => e.stopPropagation()}
             >
                 <div className="space-y-3">
                     <div className="space-y-1">
