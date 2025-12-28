@@ -17,7 +17,7 @@ concurrency:
 jobs:
   deploy:
     environment:
-      name: github-pages
+      name: timeline-production
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
@@ -34,6 +34,9 @@ jobs:
 
       - name: Build
         run: bun run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
