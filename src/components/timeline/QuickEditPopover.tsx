@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverAnchor, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TimelineItem, Milestone, SubProject } from "@/types/timeline";
 import { useTimelineMutations } from "@/hooks/useTimelineMutations";
 
-import { X, Trash2 } from "lucide-react";
+import { Calendar as CalendarIcon, X, Trash2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { debounce } from 'lodash';
 import { Button } from "@/components/ui/button";
@@ -118,7 +120,7 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
+            <PopoverAnchor asChild>
                 <div
                     className={className}
                     onContextMenu={(e) => {
@@ -129,13 +131,16 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
                 >
                     {children}
                 </div>
-            </PopoverTrigger>
+            </PopoverAnchor>
             <PopoverContent
                 className="w-72 p-3"
                 align="start"
                 side="bottom"
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
+                onInteractOutside={(e) => {
+                    // Default close behavior
+                }}
             >
                 <div className="space-y-3">
                     <div className="space-y-1">
@@ -149,24 +154,45 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
                     </div>
 
                     <div className="flex gap-2">
-                        <div className="space-y-1 flex-1">
+                        <div className="space-y-1 flex-1 min-w-0">
                             <Label className="text-xs">{isSubProject ? 'Start' : 'Date'}</Label>
-                            <Input
-                                type="date"
-                                value={date}
-                                onChange={(e) => handleDateChange(e.target.value)}
-                                className="h-8 text-xs"
-                            />
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" size="sm" className="w-full h-8 justify-start text-left font-normal px-2 text-xs">
+                                        <CalendarIcon className="mr-2 h-3 w-3 opacity-50 shrink-0" />
+                                        <span className="truncate">{date ? format(parseISO(date), 'MMM d') : "Date"}</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={date ? parseISO(date) : undefined}
+                                        onSelect={(d) => d && handleDateChange(format(d, 'yyyy-MM-dd'))}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
                         {isSubProject && (
-                            <div className="space-y-1 flex-1">
+                            <div className="space-y-1 flex-1 min-w-0">
                                 <Label className="text-xs">End</Label>
-                                <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => handleEndDateChange(e.target.value)}
-                                    className="h-8 text-xs"
-                                />
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" size="sm" className="w-full h-8 justify-start text-left font-normal px-2 text-xs">
+                                            <CalendarIcon className="mr-2 h-3 w-3 opacity-50 shrink-0" />
+                                            <span className="truncate">{endDate ? format(parseISO(endDate), 'MMM d') : "End"}</span>
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={endDate ? parseISO(endDate) : undefined}
+                                            onSelect={(d) => d && handleEndDateChange(format(d, 'yyyy-MM-dd'))}
+                                            disabled={(d) => date ? d < parseISO(date) : false}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         )}
                     </div>

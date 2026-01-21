@@ -10,7 +10,6 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [isSignUp, setIsSignUp] = useState(false);
     const { toast } = useToast();
     const navigate = useNavigate();
 
@@ -19,28 +18,16 @@ export default function Login() {
         setLoading(true);
 
         try {
-            if (isSignUp) {
-                const { error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                });
-                if (error) throw error;
-                toast({
-                    title: "Account created!",
-                    description: "Please check your email to verify your account.",
-                });
-            } else {
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-                if (error) throw error;
-                navigate('/');
-            }
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) throw error;
+            navigate('/');
         } catch (error: any) {
             toast({
                 variant: "destructive",
-                title: "Error",
+                title: "Login Failed",
                 description: error.message,
             });
         } finally {
@@ -53,10 +40,10 @@ export default function Login() {
             <div className="w-full max-w-sm p-8 space-y-4 border rounded-lg bg-card text-card-foreground shadow-sm">
                 <div className="space-y-2 text-center">
                     <h1 className="text-2xl font-bold tracking-tight">
-                        {isSignUp ? "Create an account" : "Welcome back"}
+                        Welcome back
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Enter your email to sign in to your account
+                        Enter your credentials to continue
                     </p>
                 </div>
 
@@ -83,19 +70,9 @@ export default function Login() {
                         />
                     </div>
                     <Button type="submit" className="w-full" disabled={loading}>
-                        {loading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
+                        {loading ? "Loading..." : "Sign In"}
                     </Button>
                 </form>
-
-                <div className="text-center text-sm">
-                    <button
-                        type="button"
-                        onClick={() => setIsSignUp(!isSignUp)}
-                        className="underline underline-offset-4 hover:text-primary"
-                    >
-                        {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
-                    </button>
-                </div>
             </div>
         </div>
     );

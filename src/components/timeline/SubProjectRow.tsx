@@ -222,14 +222,13 @@ function SubProjectCell({
     >
       <div className="flex flex-col gap-1 h-full">
         {items.map(item => (
-          <div key={item.id} onClick={(e) => handleItemClick(e, item)}>
-            <UnifiedItem
-              item={item}
-              onToggleComplete={onToggleItemComplete}
-              onClick={() => { }} // We handle click in wrapper
-              workspaceColor={workspaceColor}
-            />
-          </div>
+          <UnifiedItem
+            key={item.id}
+            item={item}
+            onToggleComplete={onToggleItemComplete}
+            onClick={onItemClick}
+            workspaceColor={workspaceColor}
+          />
         ))}
       </div>
     </div>
@@ -276,7 +275,7 @@ export function SubProjectLane({
         {days.map((day, index) => (
           <div
             key={day.toISOString()}
-            className={`shrink-0 ${index < days.length - 1 ? 'border-r border-border' : ''}`}
+            className={`shrink-0 ${index < days.length - 1 ? 'border-r border-border/50' : ''}`}
             style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
           />
         ))}

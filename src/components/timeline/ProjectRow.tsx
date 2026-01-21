@@ -56,7 +56,7 @@ function MilestoneDropCell({
     >
       <div
         ref={setNodeRef}
-        className={`flex flex-col justify-center px-1 border-r border-border/30 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
+        className={`flex flex-col justify-center px-1 border-r border-border/50 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
           }`}
         style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
       >

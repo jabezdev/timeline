@@ -1,10 +1,19 @@
 import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
-import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp, PanelLeftClose, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp, PanelLeftClose, RefreshCw, FolderPlus, Plus, FilePlus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { PreferencesPopover } from '../preferences-popover';
-import { WorkspaceManagerPopover } from '../workspace-manager-popover';
+import { WorkspaceManagerPopover, AddWorkspacePopover } from '../workspace-manager-popover';
 import { Button } from '../ui/button';
+import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 import { format } from 'date-fns';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 import {
   SIDEBAR_WIDTH,
   COLLAPSED_SIDEBAR_WIDTH,
@@ -115,6 +124,7 @@ interface SidebarWorkspaceProps {
   isCollapsed: boolean; // New prop
   projects: Project[]; // Explicitly passed
   projectsItems: Map<string, TimelineItem[]>;
+  projectsMilestones: Map<string, Milestone[]>; // Added prop
   projectsSubProjects: Map<string, SubProject[]>;
   openProjectIds: string[]; // Normalized to strings array
   onToggleWorkspace: () => void;
@@ -127,6 +137,7 @@ export function SidebarWorkspace({
   isCollapsed,
   projects,
   projectsItems,
+  projectsMilestones,
   projectsSubProjects,
   openProjectIds,
   onToggleWorkspace,
@@ -134,6 +145,21 @@ export function SidebarWorkspace({
   isSidebarCollapsed
 }: SidebarWorkspaceProps) {
   const projectCount = projects.length;
+  const mutations = useTimelineMutations();
+  const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+
+  const handleAddProject = () => {
+    if (!newProjectName.trim()) return;
+    mutations.addProject.mutate({
+      workspaceId: workspace.id,
+      name: newProjectName.trim(),
+      color: 1,
+      position: 0
+    });
+    setNewProjectName('');
+    setIsAddProjectOpen(false);
+  };
 
   if (isSidebarCollapsed) return null;
 
@@ -163,10 +189,89 @@ export function SidebarWorkspace({
 
         <span className="text-sm font-medium text-foreground truncate flex-1">{workspace.name}</span>
 
-        <span className="text-[10px] text-muted-foreground shrink-0">
+        <span className="text-[10px] text-muted-foreground shrink-0 group-hover/ws:hidden">
           {projectCount} {projectCount === 1 ? 'proj' : 'projs'}
         </span>
+
+        {/* Quick Add Project Button (Contextual) */}
+        <Popover open={isAddProjectOpen} onOpenChange={(open) => {
+          if (!open) setIsAddProjectOpen(false);
+        }}>
+          <PopoverTrigger asChild>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsAddProjectOpen(true);
+              }}
+              className="h-5 w-5 rounded hover:bg-secondary flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Quick Add Project"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-3" align="start" side="right" onClick={(e) => e.stopPropagation()}>
+            <div className="space-y-2">
+              <h4 className="font-medium text-xs">New Project in {workspace.name}</h4>
+              <div className="flex gap-2">
+                <Input
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  placeholder="Project Name"
+                  className="h-7 text-xs"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddProject();
+                  }}
+                />
+                <Button size="sm" className="h-7 text-xs" onClick={handleAddProject}>Add</Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
+
+      {/* Collapsed State Indicators */}
+      {isCollapsed && (
+        <div className="px-2 pt-1 pb-2 flex flex-col gap-1">
+          {projects.map(p => {
+            const items = projectsItems.get(p.id) || [];
+            const milestones = projectsMilestones.get(p.id) || [];
+
+
+            if (items.length === 0 && milestones.length === 0) return null;
+
+            return (
+              <div key={p.id} className="flex flex-wrap gap-1 px-1.5 py-1">
+                {/* Milestones */}
+                {milestones.map(m => (
+                  <div
+                    key={m.id}
+                    className="w-2.5 h-2.5 rounded-full border-[2px] border-current box-border bg-transparent shrink-0"
+                    style={{
+                      color: m.color
+                        ? (m.color.startsWith('#') ? m.color : `hsl(var(--workspace-${m.color}))`)
+                        : `hsl(var(--workspace-${workspace.color}))`
+                    }}
+                    title={`Milestone: ${m.title}`}
+                  />
+                ))}
+                {/* Task Dots */}
+                {items.map(i => (
+                  <div
+                    key={i.id}
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${i.completed ? 'opacity-30' : 'opacity-80'}`}
+                    style={{
+                      backgroundColor: i.completed ? 'currentColor' : `hsl(var(--workspace-${workspace.color}))`,
+                      color: `hsl(var(--workspace-${workspace.color}))`
+                    }}
+                    title={`Task: ${i.title} (${i.completed ? 'Completed' : 'Pending'})`}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Projects */}
       {!isCollapsed && (
@@ -252,3 +357,5 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
     </div>
   );
 }
+
+

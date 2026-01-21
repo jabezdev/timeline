@@ -20,8 +20,8 @@ import { WorkspaceSection } from './WorkspaceSection';
 import { SidebarHeader, SidebarWorkspace } from './Sidebar';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { Plus, PanelLeftOpen } from 'lucide-react';
-import { AddItemDialog } from './AddItemDialog';
-import { ItemDialog } from './ItemDialog';
+import { CreateItemPopover } from './CreateItemPopover';
+import { ItemSheet } from './ItemSheet';
 import { TimelineItem, Milestone, SubProject, Project } from '@/types/timeline';
 import { SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT } from '@/lib/constants';
 import { SubProjectBar } from './SubProjectRow';
@@ -104,7 +104,6 @@ function TimelineContent() {
   );
 
   // local UI state
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
@@ -336,6 +335,7 @@ function TimelineContent() {
                         onToggleWorkspace={() => handleToggleWorkspace(id)}
                         onToggleProject={(projectId) => handleToggleProject(workspaceProjects.get(id)?.find(p => p.id === projectId)!)} // Need project object for workspace Id
                         isSidebarCollapsed={isSidebarCollapsed}
+                        projectsMilestones={projectsMilestones}
                       />
                     </div>
 
@@ -377,28 +377,31 @@ function TimelineContent() {
           </button>
         </div>
 
-        <button
-          onClick={() => setIsAddDialogOpen(true)}
-          className="fixed bottom-4 right-4 w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center z-50"
+        <div
+          className={`absolute top-2 left-2 z-[60] ${isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
         >
-          <Plus className="w-5 h-5" />
-        </button>
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="w-8 h-8 rounded-md bg-background border border-border shadow-sm flex items-center justify-center hover:bg-secondary/50"
+            title="Expand Sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        <CreateItemPopover
+          onAddItem={handleAddItem}
+          onAddMilestone={handleAddMilestone}
+          onAddSubProject={handleAddSubProject}
+          projects={allProjects}
+          subProjects={allSubProjects}
+          activeProjectId={Array.from(openProjectIds)[0]}
+        />
       </div>
 
       <Scrollbar containerRef={timelineRef} />
 
-      <AddItemDialog
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onAddItem={handleAddItem}
-        onAddMilestone={handleAddMilestone}
-        onAddSubProject={handleAddSubProject}
-        projects={allProjects}
-        subProjects={allSubProjects}
-        activeProjectId={Array.from(openProjectIds)[0]}
-      />
-
-      <ItemDialog
+      <ItemSheet
         item={selectedItem}
         open={isItemDialogOpen}
         onOpenChange={setIsItemDialogOpen}

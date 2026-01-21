@@ -47,9 +47,12 @@ export function useTimelineSelectors(
             if (pSubProjects.has(sp.projectId)) pSubProjects.get(sp.projectId)!.push(sp);
         });
 
-        // Sort items and milestones by title
-        pItems.forEach(items => items.sort((a, b) => a.title.localeCompare(b.title)));
-        pMilestones.forEach(milestones => milestones.sort((a, b) => a.title.localeCompare(b.title)));
+        // Sort items and milestones by title (Natural Sort)
+        const naturalSort = (a: { title: string }, b: { title: string }) =>
+            a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+
+        pItems.forEach(items => items.sort(naturalSort));
+        pMilestones.forEach(milestones => milestones.sort(naturalSort));
 
         return {
             projectsItems: pItems,

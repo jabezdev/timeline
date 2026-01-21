@@ -45,18 +45,21 @@ export const useTimelineStore = create<TimelineStore>()(
         set((state) => {
           const isOpen = state.openProjectIds.includes(projectId);
 
-          if (isOpen) {
-            // Close project
-            return {
-              openProjectIds: [],
-            };
-          } else {
-            // Open project: Close all others, Expand parent workspace, Collapse other workspaces
-            return {
-              openProjectIds: [projectId],
-              collapsedWorkspaceIds: allWorkspaceIds.filter(id => id !== workspaceId)
-            };
-          }
+          // Always toggle, never clear others
+          const newOpenIds = isOpen
+            ? state.openProjectIds.filter(id => id !== projectId)
+            : [...state.openProjectIds, projectId];
+
+          // Ensure parent workspace is expanded if opening
+          // We don't force collapse others anymore as per user request ("Allow multiple open projects...")
+          const newCollapsedIds = !isOpen
+            ? state.collapsedWorkspaceIds.filter(id => id !== workspaceId)
+            : state.collapsedWorkspaceIds;
+
+          return {
+            openProjectIds: newOpenIds,
+            collapsedWorkspaceIds: newCollapsedIds
+          };
         }),
 
       setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),

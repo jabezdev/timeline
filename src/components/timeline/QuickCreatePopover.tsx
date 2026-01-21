@@ -5,8 +5,11 @@ import { Label } from "@/components/ui/label";
 import { useTimelineMutations } from "@/hooks/useTimelineMutations";
 import { TimelineItem, Milestone } from "@/types/timeline";
 
-import { X } from "lucide-react";
+import { Calendar as CalendarIcon, X } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 import { cn, generateId } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 
 const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -130,12 +133,22 @@ export function QuickCreatePopover({
 
                     <div className="space-y-1">
                         <Label className="text-xs">Date</Label>
-                        <Input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="h-8 text-xs"
-                        />
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" size="sm" className="w-full h-8 justify-start text-left font-normal px-2 text-xs">
+                                    <CalendarIcon className="mr-2 h-3 w-3 opacity-50 shrink-0" />
+                                    <span className="truncate">{date ? format(parseISO(date), 'MMM d') : "Date"}</span>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={date ? parseISO(date) : undefined}
+                                    onSelect={(d) => d && setDate(format(d, 'yyyy-MM-dd'))}
+                                    initialFocus
+                                />
+                            </PopoverContent>
+                        </Popover>
                     </div>
 
                     <div className="space-y-1">

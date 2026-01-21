@@ -394,7 +394,7 @@ function EditProjectPopover({ project, onEdit }: { project: Project; onEdit: (up
   );
 }
 
-function AddWorkspacePopover({ onAdd }: { onAdd: (name: string, color: number) => void }) {
+export function AddWorkspacePopover({ onAdd }: { onAdd: (name: string, color: number) => void }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState(1);
   const [open, setOpen] = useState(false);

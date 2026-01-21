@@ -7,63 +7,98 @@
 
 @layer base {
   :root {
-    /* Everforest Light Medium */
+    /* Default Theme (Zinc/Slate Mix - "Everforest Light Refined") */
     --background: 44 24% 96%;
-    --foreground: 151 17% 35%;
+    --foreground: 20 10% 20%;
+    /* Darker for better contrast */
 
-    --card: 44 24% 93%;
-    --card-foreground: 151 17% 35%;
+    --card: 44 18% 95%;
+    /* Slightly different from background */
+    --card-foreground: 20 10% 20%;
 
-    --popover: 44 24% 96%;
-    --popover-foreground: 151 17% 35%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 10% 20%;
 
-    --primary: 142 28% 42%;
+    --primary: 142 20% 35%;
+    /* Muted Green */
     --primary-foreground: 44 24% 96%;
 
-    --secondary: 44 18% 88%;
-    --secondary-foreground: 151 17% 35%;
+    --secondary: 44 12% 88%;
+    --secondary-foreground: 20 10% 20%;
 
-    --muted: 44 18% 88%;
-    --muted-foreground: 151 10% 50%;
+    --muted: 44 12% 88%;
+    --muted-foreground: 20 5% 45%;
 
-    --accent: 165 22% 45%;
-    --accent-foreground: 44 24% 96%;
+    --accent: 142 15% 90%;
+    --accent-foreground: 20 10% 20%;
 
-    --destructive: 0 43% 52%;
-    --destructive-foreground: 44 24% 96%;
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 44 18% 85%;
-    --input: 44 18% 85%;
-    --ring: 142 28% 42%;
+    --border: 20 5% 85%;
+    --input: 20 5% 85%;
+    --ring: 142 20% 35%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Custom workspace accent colors - Everforest Light */
-    --workspace-1: 190 32% 45%;
-    --workspace-2: 286 24% 55%;
-    --workspace-3: 142 28% 42%;
-    --workspace-4: 35 50% 50%;
-    --workspace-5: 0 43% 52%;
-    --workspace-6: 220 45% 50%;
-    --workspace-7: 160 40% 45%;
-    --workspace-8: 340 45% 55%;
-    --workspace-9: 50 55% 50%;
-    --workspace-10: 270 35% 50%;
-    --workspace-11: 180 35% 45%;
-    --workspace-12: 15 50% 50%;
+    /* Custom workspace accent colors - Distinguishable Palette */
+    --workspace-1: 0 70% 60%;
+    /* Red */
+    --workspace-2: 30 90% 55%;
+    /* Orange */
+    --workspace-3: 45 90% 45%;
+    /* Amber/Gold */
+    --workspace-4: 80 70% 40%;
+    /* Olive */
+    --workspace-5: 140 60% 40%;
+    /* Green */
+    --workspace-6: 170 70% 40%;
+    /* Emerald */
+    --workspace-7: 190 80% 45%;
+    /* Cyan */
+    --workspace-8: 210 70% 55%;
+    /* Sky Blue */
+    --workspace-9: 240 60% 60%;
+    /* Blue */
+    --workspace-10: 270 60% 60%;
+    /* Purple */
+    --workspace-11: 300 50% 50%;
+    /* Magenta */
+    --workspace-12: 340 60% 55%;
+    /* Pink/Rose */
 
-    /* Timeline specific - Everforest Light */
-    --timeline-line: 44 18% 85%;
-    --timeline-today: 142 28% 42%;
-    --milestone: 40 50% 52%;
-    --task: 142 28% 42%;
-    --note: 286 24% 55%;
+    /* Timeline specific */
+    --timeline-line: 20 5% 85%;
+    --timeline-today: 142 20% 35%;
+    --milestone: 40 70% 50%;
+    --task: 142 20% 35%;
+    --note: 280 50% 50%;
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.08);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.12), 0 4px 6px -4px rgb(0 0 0 / 0.08);
-    --shadow-glow: 0 0 24px hsl(142 28% 42% / 0.15);
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.06);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+    --shadow-glow: 0 0 20px hsl(142 20% 35% / 0.15);
+  }
+
+  /* Theme Templates */
+  .theme-rose {
+    --primary: 340 75% 55%;
+    --primary-foreground: 340 100% 98%;
+    --ring: 340 75% 55%;
+    /* Add other overrides if needed */
+  }
+
+  .theme-blue {
+    --primary: 221 83% 53%;
+    --primary-foreground: 210 40% 98%;
+    --ring: 221 83% 53%;
+  }
+
+  .theme-orange {
+    --primary: 24 95% 53%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --ring: 24 95% 53%;
   }
 
   .dark {

@@ -53,6 +53,7 @@ export function UnifiedItemView({
             {...dragHandleProps}
             onClick={(e) => {
                 if (!isDragging && onClick) {
+                    e.stopPropagation();
                     onClick(item);
                 }
             }}
