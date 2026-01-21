@@ -399,7 +399,8 @@ function TimelineContent() {
         />
       </div>
 
-      <Scrollbar containerRef={timelineRef} />
+      <Scrollbar containerRef={timelineRef} orientation="horizontal" />
+      <Scrollbar containerRef={timelineRef} orientation="vertical" />
 
       <ItemSheet
         item={selectedItem}

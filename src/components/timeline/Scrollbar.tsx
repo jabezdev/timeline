@@ -6,15 +6,16 @@ import { useTimelineStore } from '@/hooks/useTimelineStore';
 interface ScrollbarProps {
     containerRef: React.RefObject<HTMLDivElement>;
     className?: string;
+    orientation?: 'horizontal' | 'vertical';
 }
 
-export function Scrollbar({ containerRef, className }: ScrollbarProps) {
-    const [thumbWidth, setThumbWidth] = useState(0);
-    const [thumbLeft, setThumbLeft] = useState(0);
+export function Scrollbar({ containerRef, className, orientation = 'horizontal' }: ScrollbarProps) {
+    const [thumbSize, setThumbSize] = useState(0);
+    const [thumbOffset, setThumbOffset] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
     const isDragging = useRef(false);
-    const startX = useRef(0);
-    const startScrollLeft = useRef(0);
+    const startPos = useRef(0);
+    const startScroll = useRef(0);
     const scrollbarRef = useRef<HTMLDivElement>(null);
 
     const { isSidebarCollapsed } = useTimelineStore();
@@ -28,33 +29,49 @@ export function Scrollbar({ containerRef, className }: ScrollbarProps) {
 
         const updateScrollbar = () => {
             if (!container) return;
-            const { clientWidth, scrollWidth, scrollLeft } = container;
+
+            const isHorizontal = orientation === 'horizontal';
+            const clientSize = isHorizontal ? container.clientWidth : container.clientHeight;
+            const scrollSize = isHorizontal ? container.scrollWidth : container.scrollHeight;
+            const scrollPos = isHorizontal ? container.scrollLeft : container.scrollTop;
 
             // If content fits, hide scrollbar
-            if (scrollWidth <= clientWidth) {
+            if (scrollSize <= clientSize) {
                 setIsVisible(false);
                 return;
             }
 
             setIsVisible(true);
 
-            // Calculate thumb width ratio
-            // We want thumb to represent the visible viewport ratio
-            const widthRatio = clientWidth / scrollWidth;
-            const newThumbWidth = Math.max(widthRatio * (clientWidth - sidebarWidth), 40); // Min width 40px
+            // Calculate thumb size ratio
+            // For horizontal: subtract sidebar from visible area
+            // For vertical: sidebar doesn't affect height, but sticky header might (HEADER_HEIGHT = 40 usually, or min-content)
+            // Actually, vertical container includes the header in scroll?
+            // Timeline.tsx structure: 
+            // container (overflow-auto) -> 
+            //    start content
+            //    sticky header (top-0)
+            //    virtual body
+            // So scrollTop includes header.
 
-            // Calculate thumb position ratio
-            // "Available" track width for movement = clientWidth - sidebarWidth - thumbWidth
-            // "Available" scroll width = scrollWidth - clientWidth
-            const trackWidth = clientWidth - sidebarWidth;
-            const maxScroll = scrollWidth - clientWidth;
-            const maxThumbLeft = trackWidth - newThumbWidth;
+            const availableSize = isHorizontal ? clientSize - sidebarWidth : clientSize;
 
-            const scrollRatio = scrollLeft / maxScroll;
-            const newThumbLeft = scrollRatio * maxThumbLeft;
+            const sizeRatio = clientSize / scrollSize;
+            const newThumbSize = Math.max(sizeRatio * availableSize, 40); // Min size 40px
 
-            setThumbWidth(newThumbWidth);
-            setThumbLeft(newThumbLeft);
+            const maxScroll = scrollSize - clientSize;
+
+            // Available track for movement
+            // Horizontal: width - sidebar - thumb
+            // Vertical: height - thumb
+            const trackSize = availableSize;
+            const maxThumbPos = trackSize - newThumbSize;
+
+            const scrollRatio = scrollPos / maxScroll;
+            const newThumbOffset = scrollRatio * maxThumbPos;
+
+            setThumbSize(newThumbSize);
+            setThumbOffset(newThumbOffset);
         };
 
         // Listen to scroll
@@ -73,37 +90,50 @@ export function Scrollbar({ containerRef, className }: ScrollbarProps) {
             container.removeEventListener('scroll', updateScrollbar);
             resizeObserver.disconnect();
         };
-    }, [containerRef, sidebarWidth]);
+    }, [containerRef, sidebarWidth, orientation]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
         isDragging.current = true;
-        startX.current = e.clientX;
+        startPos.current = orientation === 'horizontal' ? e.clientX : e.clientY;
+
         if (containerRef.current) {
-            startScrollLeft.current = containerRef.current.scrollLeft;
+            startScroll.current = orientation === 'horizontal' ? containerRef.current.scrollLeft : containerRef.current.scrollTop;
         }
 
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = 'none';
+
+        // Add class to body to force cursor style? Optional.
     };
 
     const handleMouseMove = (e: MouseEvent) => {
         if (!isDragging.current || !containerRef.current) return;
 
-        const deltaX = e.clientX - startX.current;
+        const currentPos = orientation === 'horizontal' ? e.clientX : e.clientY;
+        const delta = currentPos - startPos.current;
         const container = containerRef.current;
-        const { clientWidth, scrollWidth } = container;
 
-        const trackWidth = clientWidth - sidebarWidth;
-        const maxThumbLeft = trackWidth - thumbWidth;
-        const maxScroll = scrollWidth - clientWidth;
+        const isHorizontal = orientation === 'horizontal';
+        const clientSize = isHorizontal ? container.clientWidth : container.clientHeight;
+        const scrollSize = isHorizontal ? container.scrollWidth : container.scrollHeight;
 
-        // Calculate how much 1px of thumb moves corresponds to scroll px
-        // ratio = maxScroll / maxThumbLeft
-        const scrollPerPx = maxScroll / maxThumbLeft;
+        const availableSize = isHorizontal ? clientSize - sidebarWidth : clientSize;
+        const maxScroll = scrollSize - clientSize;
 
-        container.scrollLeft = startScrollLeft.current + (deltaX * scrollPerPx);
+        // Re-calculate thumb size to know max movement (could store in state, but safe to calc)
+        // actually state has it.
+        const maxThumbPos = availableSize - thumbSize;
+
+        // ratio = maxScroll / maxThumbPos
+        const scrollPerPx = maxScroll / maxThumbPos;
+
+        if (isHorizontal) {
+            container.scrollLeft = startScroll.current + (delta * scrollPerPx);
+        } else {
+            container.scrollTop = startScroll.current + (delta * scrollPerPx);
+        }
     };
 
     const handleMouseUp = () => {
@@ -115,15 +145,23 @@ export function Scrollbar({ containerRef, className }: ScrollbarProps) {
 
     if (!isVisible) return null;
 
+    const isHorizontal = orientation === 'horizontal';
+
     return (
         <div
             className={cn(
-                "absolute bottom-4 z-50 h-2 bg-transparent hover:h-3 transition-all duration-200 ease-in-out group",
+                "absolute z-50 bg-transparent transition-all duration-200 ease-in-out group",
+                isHorizontal
+                    ? "bottom-4 h-2 hover:h-3"
+                    : "right-1 top-12 w-2 hover:w-3", // Top-12 to clear header? Header is sticky. 
                 className
             )}
-            style={{
+            style={isHorizontal ? {
                 left: sidebarWidth,
-                width: `calc(100% - ${sidebarWidth}px - 16px)`, // 16px padding right
+                width: `calc(100% - ${sidebarWidth}px - 16px)`,
+            } : {
+                height: `calc(100% - 48px)`, // Subtract top offset
+                top: 48 // Approx header height padding
             }}
             ref={scrollbarRef}
         >
@@ -132,10 +170,17 @@ export function Scrollbar({ containerRef, className }: ScrollbarProps) {
 
             {/* Thumb */}
             <div
-                className="absolute top-0 h-full bg-muted-foreground/50 hover:bg-muted-foreground/80 rounded-full cursor-grab active:cursor-grabbing backdrop-blur-sm transition-colors"
-                style={{
-                    width: thumbWidth,
-                    transform: `translateX(${thumbLeft}px)`,
+                className="absolute bg-muted-foreground/50 hover:bg-muted-foreground/80 rounded-full cursor-grab active:cursor-grabbing backdrop-blur-sm transition-colors"
+                style={isHorizontal ? {
+                    height: '100%',
+                    top: 0,
+                    width: thumbSize,
+                    transform: `translateX(${thumbOffset}px)`,
+                } : {
+                    width: '100%',
+                    left: 0,
+                    height: thumbSize,
+                    transform: `translateY(${thumbOffset}px)`,
                 }}
                 onMouseDown={handleMouseDown}
             />

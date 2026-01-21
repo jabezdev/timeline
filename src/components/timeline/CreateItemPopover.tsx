@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, addDays, addWeeks, addMonths, parseISO } from "date-fns";
 import { Calendar as CalendarIcon, Check, Plus, FolderKanban, Milestone as MilestoneIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Project, SubProject } from '@/types/timeline';
@@ -38,6 +39,11 @@ export function CreateItemPopover({
     const [selectedSubProjectId, setSelectedSubProjectId] = useState<string>('none');
     const [color, setColor] = useState<number>(1); // Default color
 
+    // Recurring State
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurrenceInterval, setRecurrenceInterval] = useState<'day' | 'week' | 'month'>('week');
+    const [recurrenceCount, setRecurrenceCount] = useState(1);
+
     // Reset when opening
     useEffect(() => {
         if (open) {
@@ -51,28 +57,52 @@ export function CreateItemPopover({
     const handleSubmit = () => {
         if (!title.trim() || !date) return;
         if (!selectedProjectId) return;
+        if (type === 'subProject' && !endDate) return;
 
-        const dateStr = format(date, 'yyyy-MM-dd');
+        const count = isRecurring ? Math.max(1, recurrenceCount) : 1;
 
-        if (type === 'item') {
-            onAddItem(
-                title,
-                dateStr,
-                selectedProjectId,
-                selectedSubProjectId === 'none' ? undefined : selectedSubProjectId,
-                color
-            );
-        } else if (type === 'milestone') {
-            onAddMilestone(selectedProjectId, title, dateStr, color);
-        } else if (type === 'subProject') {
-            if (!endDate) return; // End date required for subproject
-            onAddSubProject(
-                selectedProjectId,
-                title,
-                dateStr,
-                format(endDate, 'yyyy-MM-dd'),
-                color
-            );
+        for (let i = 0; i < count; i++) {
+            let currentDate = date;
+            let currentEndDate = endDate;
+
+            if (i > 0) {
+                switch (recurrenceInterval) {
+                    case 'day':
+                        currentDate = addDays(date, i);
+                        if (currentEndDate) currentEndDate = addDays(endDate!, i);
+                        break;
+                    case 'week':
+                        currentDate = addWeeks(date, i);
+                        if (currentEndDate) currentEndDate = addWeeks(endDate!, i);
+                        break;
+                    case 'month':
+                        currentDate = addMonths(date, i);
+                        if (currentEndDate) currentEndDate = addMonths(endDate!, i);
+                        break;
+                }
+            }
+
+            const dateStr = format(currentDate, 'yyyy-MM-dd');
+
+            if (type === 'item') {
+                onAddItem(
+                    title,
+                    dateStr,
+                    selectedProjectId,
+                    selectedSubProjectId === 'none' ? undefined : selectedSubProjectId,
+                    color
+                );
+            } else if (type === 'milestone') {
+                onAddMilestone(selectedProjectId, title, dateStr, color);
+            } else if (type === 'subProject') {
+                onAddSubProject(
+                    selectedProjectId,
+                    title,
+                    dateStr,
+                    format(currentEndDate!, 'yyyy-MM-dd'),
+                    color
+                );
+            }
         }
         setOpen(false);
     };
@@ -170,6 +200,47 @@ export function CreateItemPopover({
                             </SelectContent>
                         </Select>
                     )}
+
+                    <div className="pt-2 border-t border-border space-y-2">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="create-recurring"
+                                checked={isRecurring}
+                                onCheckedChange={(c) => setIsRecurring(!!c)}
+                                className="w-4 h-4"
+                            />
+                            <label
+                                htmlFor="create-recurring"
+                                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Recurring
+                            </label>
+                        </div>
+
+                        {isRecurring && (
+                            <div className="flex gap-2">
+                                <Select value={recurrenceInterval} onValueChange={(v: any) => setRecurrenceInterval(v)}>
+                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="day">Daily</SelectItem>
+                                        <SelectItem value="week">Weekly</SelectItem>
+                                        <SelectItem value="month">Monthly</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={50}
+                                    value={recurrenceCount}
+                                    onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
+                                    className="h-8 w-16 text-xs"
+                                    placeholder="Count"
+                                />
+                            </div>
+                        )}
+                    </div>
 
                     <Button className="w-full h-8 text-xs" onClick={handleSubmit} disabled={!title || !date || (type === 'subProject' && !endDate)}>
                         Create

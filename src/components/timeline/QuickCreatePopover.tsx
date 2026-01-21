@@ -6,10 +6,18 @@ import { useTimelineMutations } from "@/hooks/useTimelineMutations";
 import { TimelineItem, Milestone } from "@/types/timeline";
 
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays, addWeeks, addMonths } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { cn, generateId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 
 const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -39,6 +47,11 @@ export function QuickCreatePopover({
     const [date, setDate] = useState(initialDate);
     const [color, setColor] = useState<number>(defaultColor);
 
+    // Recurring State
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurrenceInterval, setRecurrenceInterval] = useState<'day' | 'week' | 'month'>('week');
+    const [recurrenceCount, setRecurrenceCount] = useState(1);
+
     const mutations = useTimelineMutations();
 
 
@@ -57,30 +70,43 @@ export function QuickCreatePopover({
             return;
         }
 
-        const id = generateId();
+        const count = isRecurring ? Math.max(1, recurrenceCount) : 1;
+        const baseDate = parseISO(date);
 
+        for (let i = 0; i < count; i++) {
+            let currentDate = baseDate;
+            if (i > 0) {
+                switch (recurrenceInterval) {
+                    case 'day': currentDate = addDays(baseDate, i); break;
+                    case 'week': currentDate = addWeeks(baseDate, i); break;
+                    case 'month': currentDate = addMonths(baseDate, i); break;
+                }
+            }
+            const dateStr = format(currentDate, 'yyyy-MM-dd');
+            const id = generateId();
 
-        if (type === 'item') {
-            const newItem: TimelineItem = {
-                id,
-                title,
-                date,
-                projectId,
-                subProjectId,
-                color: color?.toString(), // Ensure string if type expects string
-                completed: false,
-                content: ''
-            };
-            mutations.addItem.mutate(newItem);
-        } else {
-            const newMilestone: Milestone = {
-                id,
-                title,
-                date,
-                projectId,
-                color: color?.toString(),
-            };
-            mutations.addMilestone.mutate(newMilestone);
+            if (type === 'item') {
+                const newItem: TimelineItem = {
+                    id,
+                    title,
+                    date: dateStr,
+                    projectId,
+                    subProjectId,
+                    color: color?.toString(), // Ensure string if type expects string
+                    completed: false,
+                    content: ''
+                };
+                mutations.addItem.mutate(newItem);
+            } else {
+                const newMilestone: Milestone = {
+                    id,
+                    title,
+                    date: dateStr,
+                    projectId,
+                    color: color?.toString(),
+                };
+                mutations.addMilestone.mutate(newMilestone);
+            }
         }
 
         onOpenChange(false);
@@ -166,6 +192,47 @@ export function QuickCreatePopover({
                                 />
                             ))}
                         </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-border space-y-2">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="recurring"
+                                checked={isRecurring}
+                                onCheckedChange={(c) => setIsRecurring(!!c)}
+                                className="w-4 h-4"
+                            />
+                            <label
+                                htmlFor="recurring"
+                                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                                Recurring
+                            </label>
+                        </div>
+
+                        {isRecurring && (
+                            <div className="flex gap-2">
+                                <Select value={recurrenceInterval} onValueChange={(v: any) => setRecurrenceInterval(v)}>
+                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="day">Daily</SelectItem>
+                                        <SelectItem value="week">Weekly</SelectItem>
+                                        <SelectItem value="month">Monthly</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={50}
+                                    value={recurrenceCount}
+                                    onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
+                                    className="h-8 w-16 text-xs"
+                                    placeholder="Count"
+                                />
+                            </div>
+                        )}
                     </div>
                     {/* No buttons, just like QuickEdit */}
                 </div>
