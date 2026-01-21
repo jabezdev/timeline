@@ -1,4 +1,4 @@
-import { useMemo, useRef, useLayoutEffect, useState } from 'react';
+import { useMemo, useRef, useLayoutEffect, useState, memo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -110,7 +110,7 @@ interface ProjectRowProps {
   onSubProjectClick: (subProject: SubProject) => void;
 }
 
-export function ProjectRow({
+export const ProjectRow = memo(function ProjectRow({
   project,
   items: propItems,
   milestones: propMilestones,
@@ -123,6 +123,7 @@ export function ProjectRow({
   onItemClick,
   onSubProjectClick
 }: ProjectRowProps) {
+  // ... (rest of logic same as before, already edited earlier)
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
 
   // Pre-calculate items by date for O(1) lookup
@@ -163,57 +164,12 @@ export function ProjectRow({
   }, [propSubProjects]);
 
   // Ref for the expanded content
+  // We no longer rely on manual measurement for sidebar sync, defaulting to deterministic calculation in Sidebar
   const expandedContentRef = useRef<HTMLDivElement>(null);
-  const setProjectHeight = useTimelineStore((state) => state.setProjectHeight);
-  const measureTimeoutRef = useRef<number | null>(null);
-  const lastMeasuredHeight = useRef<number>(0);
 
-  // Measure and report height to store for sidebar sync
-  // Use useLayoutEffect to measure before paint for smoother sync
-  useLayoutEffect(() => {
-    if (!isOpen) {
-      if (lastMeasuredHeight.current !== 0) {
-        setProjectHeight(project.id, 0);
-        lastMeasuredHeight.current = 0;
-      }
-      return;
-    }
+  // Note: We used to measure height here and sync to store, but it caused massive re-render storms.
+  // We now rely on 'calculateProjectExpandedHeight' being consistent between Sidebar and ProjectRow.
 
-    const measureHeight = () => {
-      if (expandedContentRef.current) {
-        const height = expandedContentRef.current.scrollHeight;
-        if (Math.abs(height - lastMeasuredHeight.current) > 1) {
-          setProjectHeight(project.id, height);
-          lastMeasuredHeight.current = height;
-        }
-      }
-    };
-
-    // Debounced measurement to avoid multiple updates during animations
-    const debouncedMeasure = () => {
-      if (measureTimeoutRef.current) {
-        clearTimeout(measureTimeoutRef.current);
-      }
-      measureTimeoutRef.current = window.setTimeout(measureHeight, 50);
-    };
-
-    // Measure immediately for initial sync
-    measureHeight();
-
-    // Use ResizeObserver with debouncing for dynamic content changes
-    let resizeObserver: ResizeObserver | null = null;
-    if (expandedContentRef.current) {
-      resizeObserver = new ResizeObserver(debouncedMeasure);
-      resizeObserver.observe(expandedContentRef.current);
-    }
-
-    return () => {
-      if (measureTimeoutRef.current) {
-        clearTimeout(measureTimeoutRef.current);
-      }
-      resizeObserver?.disconnect();
-    };
-  }, [isOpen, project.id, propItems, propSubProjects, setProjectHeight]);
 
   return (
     <div className="flex flex-col border-b border-border/50">
@@ -282,4 +238,4 @@ export function ProjectRow({
       )}
     </div>
   );
-}
+});

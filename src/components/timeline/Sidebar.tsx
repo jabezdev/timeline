@@ -132,18 +132,16 @@ interface SidebarWorkspaceProps {
   isSidebarCollapsed: boolean;
 }
 
-export function SidebarWorkspace({
+// Header component for flat list
+export function SidebarWorkspaceHeader({
   workspace,
   isCollapsed,
-  projects,
+  projects, // Still needed for metrics and collapsed indicators
   projectsItems,
   projectsMilestones,
-  projectsSubProjects,
-  openProjectIds,
   onToggleWorkspace,
-  onToggleProject,
   isSidebarCollapsed
-}: SidebarWorkspaceProps) {
+}: Omit<SidebarWorkspaceProps, 'projectsSubProjects' | 'openProjectIds' | 'onToggleProject'>) {
   const projectCount = projects.length;
   const mutations = useTimelineMutations();
   const [isAddProjectOpen, setIsAddProjectOpen] = useState(false);
@@ -272,23 +270,6 @@ export function SidebarWorkspace({
           })}
         </div>
       )}
-
-      {/* Projects */}
-      {!isCollapsed && (
-        <div >
-          {projects.map(project => (
-            <SidebarProject
-              key={project.id}
-              project={project}
-              items={projectsItems.get(project.id) || []}
-              subProjects={projectsSubProjects.get(project.id) || []}
-              isOpen={openProjectIds.includes(project.id)}
-              onToggle={() => onToggleProject(project.id, workspace.id)}
-              workspaceColor={workspace.color}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -302,7 +283,7 @@ interface SidebarProjectProps {
   workspaceColor: string;
 }
 
-function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspaceColor }: SidebarProjectProps) {
+export function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspaceColor }: SidebarProjectProps) {
   const itemCount = items.length;
   const completedCount = items.filter(t => t.completed).length;
 
@@ -313,11 +294,9 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
     return totalHeight;
   }, [project, items, subProjects, isOpen]);
 
-  // Also read measured height from store for dynamic content sync
-  const measuredHeight = useTimelineStore((state) => state.projectHeights[project.id] || 0);
-
-  // Prefer measured height when available, but ensure we don't collapse below computed minimum (e.g. empty state)
-  const projectHeight = Math.max(measuredHeight || 0, computedHeight);
+  // Use deterministic computed height.
+  // This matches the calculation logic in ProjectRow's rendering.
+  const projectHeight = computedHeight;
 
   const wasOpenRef = useRef(isOpen);
   useEffect(() => {

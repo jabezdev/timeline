@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import { AuthProvider } from "./components/auth/AuthProvider";
 import { RequireAuth } from "./components/auth/RequireAuth";
 import NotFound from "./pages/NotFound";
+import MobileLayout from "./components/mobile/MobileLayout";
 
 import { ThemeProvider } from "next-themes";
 
@@ -46,6 +47,11 @@ const App = () => (
                 </RequireAuth>
               } />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="/mobile" element={
+                <RequireAuth>
+                  <MobileLayout />
+                </RequireAuth>
+              } />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

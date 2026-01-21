@@ -1,7 +1,7 @@
 import { Workspace, Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
 import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT } from '@/lib/constants';
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { addDays, format } from 'date-fns';
 
 interface WorkspaceSectionProps {
@@ -19,20 +19,18 @@ interface WorkspaceSectionProps {
   onSubProjectClick: (subProject: SubProject) => void;
 }
 
-export function WorkspaceSection({
+// This component renders ONLY the header (summary row) for the workspace.
+// The projects are now rendered by the parent flat list.
+
+export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
   workspace,
   isCollapsed,
   projects,
   projectsItems,
   projectsMilestones,
-  projectsSubProjects,
-  openProjectIds,
   startDate,
   visibleDays,
-  onToggleItemComplete,
-  onItemClick,
-  onSubProjectClick
-}: WorkspaceSectionProps) {
+}: Omit<WorkspaceSectionProps, 'onToggleItemComplete' | 'onItemClick' | 'onSubProjectClick' | 'openProjectIds' | 'projectsSubProjects'>) {
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
 
   // Aggregate items and milestones by date for the collapsed view
@@ -63,7 +61,7 @@ export function WorkspaceSection({
     <div className="border-b border-border">
       {/* Workspace header - Summary Row (Persistent) */}
       <div
-        className={`flex border-b border-border/50 items-center ${isCollapsed ? 'bg-secondary/20' : 'bg-secondary/5'}`}
+        className={`flex items-center ${isCollapsed ? 'bg-secondary/20' : 'bg-secondary/5'}`}
         style={{
           height: WORKSPACE_HEADER_HEIGHT,
           width: visibleDays * CELL_WIDTH
@@ -77,12 +75,6 @@ export function WorkspaceSection({
           if (items.length === 0 && milestones.length === 0) {
             return <div key={dateStr} style={{ width: CELL_WIDTH }} className="h-full border-r border-border/50 last:border-r-0" />;
           }
-
-          // Combined list for "Same Row" mixing
-          // Since we don't have time-of-day, we just list them. 
-          // Milestones usually more significant, maybe emphasize or shuffle? 
-          // Simple concatenation is fine for "same row" visual.
-          // Or we can just map them in a single flex container.
 
           return (
             <div
@@ -104,43 +96,26 @@ export function WorkspaceSection({
                 />
               ))}
               {/* Render Items */}
-              {items.map(i => (
-                <div
-                  key={i.id}
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${i.completed ? 'opacity-30' : 'opacity-80'}`}
-                  style={{
-                    backgroundColor: i.completed ? 'currentColor' : `hsl(var(--workspace-${workspace.color}))`,
-                    color: `hsl(var(--workspace-${workspace.color}))`
-                  }}
-                  title={`Task: ${i.title}`}
-                />
-              ))}
+              {items.map(i => {
+                const itemColor = i.color
+                  ? (i.color.startsWith('#') ? i.color : `hsl(var(--workspace-${i.color}))`)
+                  : `hsl(var(--workspace-${workspace.color}))`;
+
+                return (
+                  <div
+                    key={i.id}
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${i.completed ? 'opacity-30' : 'opacity-80'}`}
+                    style={{
+                      backgroundColor: itemColor
+                    }}
+                    title={`Task: ${i.title}`}
+                  />
+                );
+              })}
             </div>
           );
         })}
       </div>
-
-      {/* Projects */}
-      {!isCollapsed && (
-        <div className="overflow-hidden">
-          {projects.map(project => (
-            <ProjectRow
-              key={project.id}
-              project={project}
-              items={projectsItems.get(project.id) || []}
-              milestones={projectsMilestones.get(project.id) || []}
-              subProjects={projectsSubProjects.get(project.id) || []}
-              isOpen={openProjectIds.has(project.id)}
-              startDate={startDate}
-              visibleDays={visibleDays}
-              workspaceColor={workspace.color}
-              onToggleItemComplete={onToggleItemComplete}
-              onItemClick={onItemClick}
-              onSubProjectClick={onSubProjectClick}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
-}
+});

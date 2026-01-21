@@ -16,8 +16,9 @@ import {
 } from '@dnd-kit/core';
 import { addDays, subDays, parseISO, format, differenceInDays } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
-import { WorkspaceSection } from './WorkspaceSection';
-import { SidebarHeader, SidebarWorkspace } from './Sidebar';
+import { WorkspaceHeaderRow } from './WorkspaceSection'; // Updated Import
+import { ProjectRow } from './ProjectRow'; // Explicit Import for flat use
+import { SidebarHeader, SidebarWorkspaceHeader, SidebarProject } from './Sidebar'; // Updated Import
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { Plus, PanelLeftOpen } from 'lucide-react';
 import { CreateItemPopover } from './CreateItemPopover';
@@ -37,6 +38,7 @@ import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
 import { useTimelineDragDrop } from './hooks/useTimelineDragDrop';
 import { useTimelineScroll } from './hooks/useTimelineScroll';
 import { useTimelineVirtualization } from './hooks/useTimelineVirtualization';
+import { useFlattenedRows } from '@/hooks/useFlattenedRows'; // New Hook
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 
@@ -87,19 +89,25 @@ function TimelineContent() {
 
   } = useTimelineDragDrop();
 
-  // 5. Virtualization
+  // 5. Virtualization (Flat)
   const {
-    workspaces: workspacesMap, // Need to extract from state for virtualization
+    workspaces: workspacesMap,
+    items: allItemsMap // Need items for lookups if not using selectors? Selectors are easier.
   } = timelineState;
 
-  const { rowVirtualizer } = useTimelineVirtualization(
+  // Generate flat list of rows
+  const flatRows = useFlattenedRows(
     sortedWorkspaceIds,
-    workspacesMap,
+    workspaceProjects,
+    collapsedWorkspaceIds
+  );
+
+  const { rowVirtualizer } = useTimelineVirtualization(
+    flatRows,
     workspaceProjects,
     projectsItems,
     projectsSubProjects,
     openProjectIds,
-    collapsedWorkspaceIds,
     timelineRef
   );
 
@@ -108,15 +116,10 @@ function TimelineContent() {
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
-  // Sidebar Collapse State
-  // Sidebar Collapse State (Moved to Store)
-
   // Action Handlers using Mutations
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
-    // Generate ID or let backend do it? API usually needs full object.
     const newItem: TimelineItem = {
       id: generateId(),
-
       title,
       date,
       projectId,
@@ -131,7 +134,6 @@ function TimelineContent() {
   const handleAddMilestone = (projectId: string, title: string, date: string, color?: number) => {
     const newMilestone: Milestone = {
       id: generateId(),
-
       title,
       date,
       projectId,
@@ -143,7 +145,6 @@ function TimelineContent() {
   const handleAddSubProject = (projectId: string, title: string, startDate: string, endDate: string, color?: number) => {
     const newSub: SubProject = {
       id: generateId(),
-
       title,
       startDate,
       endDate,
@@ -153,9 +154,7 @@ function TimelineContent() {
     mutations.addSubProject.mutate(newSub);
   };
 
-  // 5. Logic
-
-  // Handlers for workspace/project expansion
+  // Logic
   const handleToggleWorkspace = (workspaceId: string) => {
     toggleWorkspace(workspaceId);
   };
@@ -165,8 +164,6 @@ function TimelineContent() {
   };
 
   const handleExpandAll = () => {
-    // If ANY workspace is collapsed, expand all.
-    // If ALL are expanded, collapse all.
     const areAllExpanded = sortedWorkspaceIds.every(id => !collapsedWorkspaceIds.includes(id));
     setAllWorkspacesCollapsed(areAllExpanded, sortedWorkspaceIds);
   };
@@ -178,14 +175,12 @@ function TimelineContent() {
     setIsItemDialogOpen(true);
   };
 
-  // ... (keeping other handlers like ItemDelete, ItemSave same) ...
   const handleItemDelete = (item: TimelineItem | Milestone | SubProject) => {
     if ('completed' in item) {
       mutations.deleteItem.mutate(item.id);
     } else if ('startDate' in item) {
-      // Trigger custom dialog
       setSubProjectToDelete(item as SubProject);
-      setIsItemDialogOpen(false); // Close the detail view
+      setIsItemDialogOpen(false);
       return;
     } else {
       mutations.deleteMilestone.mutate(item.id);
@@ -200,8 +195,6 @@ function TimelineContent() {
     } else if ('startDate' in updatedItem) {
       let childItemsToUpdate: Partial<TimelineItem>[] = [];
 
-      // Calculate cascading updates if startDate changed
-      // We use selectedItem as the "Original" state
       if (selectedItem && 'startDate' in selectedItem) {
         const originalSP = selectedItem as SubProject;
         const newSP = updatedItem as SubProject;
@@ -243,7 +236,6 @@ function TimelineContent() {
     }
   };
 
-
   return (
     <DndContext
       sensors={sensors}
@@ -282,8 +274,6 @@ function TimelineContent() {
                 />
               </div>
 
-
-
               {/* Scrolling Timeline Header */}
               <div className="flex-1 bg-background">
                 <TimelineHeader
@@ -293,7 +283,7 @@ function TimelineContent() {
               </div>
             </div>
 
-            {/* --- VIRTUALIZED BODY --- */}
+            {/* --- VIRTUALIZED BODY (FLAT) --- */}
             <div
               style={{
                 height: `${rowVirtualizer.getTotalSize()}px`,
@@ -302,10 +292,8 @@ function TimelineContent() {
               }}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const id = sortedWorkspaceIds[virtualRow.index];
-                if (!workspacesMap[id]) return null;
-
-                const isWorkspaceCollapsed = collapsedWorkspaceIds.includes(id);
+                const row = flatRows[virtualRow.index];
+                if (!row) return null;
 
                 return (
                   <div
@@ -324,38 +312,58 @@ function TimelineContent() {
                       className="sticky left-0 z-50 bg-background border-r border-border shrink-0 overflow-hidden"
                       style={{ width: currentSidebarWidth }}
                     >
-                      <SidebarWorkspace
-                        key={id}
-                        workspace={workspacesMap[id]}
-                        isCollapsed={isWorkspaceCollapsed}
-                        projects={workspaceProjects.get(id) || []}
-                        projectsItems={projectsItems}
-                        projectsSubProjects={projectsSubProjects}
-                        openProjectIds={Array.from(openProjectIds)}
-                        onToggleWorkspace={() => handleToggleWorkspace(id)}
-                        onToggleProject={(projectId) => handleToggleProject(workspaceProjects.get(id)?.find(p => p.id === projectId)!)} // Need project object for workspace Id
-                        isSidebarCollapsed={isSidebarCollapsed}
-                        projectsMilestones={projectsMilestones}
-                      />
+                      {row.type === 'workspace-header' ? (
+                        <SidebarWorkspaceHeader
+                          workspace={workspacesMap[row.workspaceId]}
+                          isCollapsed={collapsedWorkspaceIds.includes(row.workspaceId)}
+                          projects={workspaceProjects.get(row.workspaceId) || []}
+                          projectsItems={projectsItems}
+                          projectsMilestones={projectsMilestones}
+                          onToggleWorkspace={() => handleToggleWorkspace(row.workspaceId)}
+                          isSidebarCollapsed={isSidebarCollapsed}
+                        />
+                      ) : (
+                        <SidebarProject
+                          project={allProjects.find(p => p.id === row.projectId)!} // Ideally look up from map, but array find is okay-ish if array is not huge. 
+                          // Optimization: create projectId -> Project map or Use workspaceProjects.find
+                          // Using workspaceProjects:
+                          // project={workspaceProjects.get(row.workspaceId)?.find(p => p.id === row.projectId)!}
+                          items={projectsItems.get(row.projectId) || []}
+                          subProjects={projectsSubProjects.get(row.projectId) || []}
+                          isOpen={openProjectIds.has(row.projectId)}
+                          onToggle={() => handleToggleProject((workspaceProjects.get(row.workspaceId)?.find(p => p.id === row.projectId)!) as Project)}
+                          workspaceColor={workspacesMap[row.workspaceId]?.color}
+                        />
+                      )}
                     </div>
 
                     {/* Timeline Content Cell */}
                     <div className="flex-1 min-w-0">
-                      <WorkspaceSection
-                        key={id}
-                        workspace={workspacesMap[id]}
-                        isCollapsed={isWorkspaceCollapsed}
-                        projects={workspaceProjects.get(id) || []}
-                        projectsItems={projectsItems}
-                        projectsMilestones={projectsMilestones}
-                        projectsSubProjects={projectsSubProjects}
-                        openProjectIds={new Set(openProjectIds)}
-                        startDate={startDate}
-                        visibleDays={visibleDays}
-                        onToggleItemComplete={handleToggleItemComplete}
-                        onItemClick={handleItemClick}
-                        onSubProjectClick={handleItemClick}
-                      />
+                      {row.type === 'workspace-header' ? (
+                        <WorkspaceHeaderRow
+                          workspace={workspacesMap[row.workspaceId]}
+                          isCollapsed={collapsedWorkspaceIds.includes(row.workspaceId)}
+                          projects={workspaceProjects.get(row.workspaceId) || []}
+                          projectsItems={projectsItems}
+                          projectsMilestones={projectsMilestones}
+                          startDate={startDate}
+                          visibleDays={visibleDays}
+                        />
+                      ) : (
+                        <ProjectRow
+                          project={workspaceProjects.get(row.workspaceId)?.find(p => p.id === row.projectId)!} // Determine efficient lookup later if needed
+                          items={projectsItems.get(row.projectId) || []}
+                          milestones={projectsMilestones.get(row.projectId) || []}
+                          subProjects={projectsSubProjects.get(row.projectId) || []}
+                          isOpen={openProjectIds.has(row.projectId)}
+                          startDate={startDate}
+                          visibleDays={visibleDays}
+                          workspaceColor={parseInt(workspacesMap[row.workspaceId]?.color || '1')}
+                          onToggleItemComplete={handleToggleItemComplete}
+                          onItemClick={handleItemClick}
+                          onSubProjectClick={handleItemClick}
+                        />
+                      )}
                     </div>
                   </div>
                 );
@@ -363,6 +371,7 @@ function TimelineContent() {
             </div>
           </div>
         </div>
+
 
         {/* Floating Expand Button (Visible only when collapsed) */}
         <div
