@@ -203,9 +203,10 @@ function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspa
 
   // Compute the expected height based on project structure
   const computedHeight = useMemo(() => {
+    if (!isOpen) return 0;
     const { totalHeight } = calculateProjectExpandedHeight(project, items, subProjects);
     return totalHeight;
-  }, [project, items, subProjects]);
+  }, [project, items, subProjects, isOpen]);
 
   // Also read measured height from store for dynamic content sync
   const measuredHeight = useTimelineStore((state) => state.projectHeights[project.id] || 0);

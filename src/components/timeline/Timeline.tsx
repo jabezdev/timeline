@@ -28,6 +28,7 @@ import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
 import { generateId } from '@/lib/utils';
+import { Scrollbar } from './Scrollbar';
 
 
 
@@ -383,6 +384,8 @@ function TimelineContent() {
           <Plus className="w-5 h-5" />
         </button>
       </div>
+
+      <Scrollbar containerRef={timelineRef} />
 
       <AddItemDialog
         isOpen={isAddDialogOpen}
