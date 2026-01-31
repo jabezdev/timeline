@@ -1,6 +1,6 @@
 import { Workspace, Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { ProjectRow } from './ProjectRow';
-import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT } from '@/lib/constants';
+import { WORKSPACE_HEADER_HEIGHT, EMPTY_ITEMS_ARRAY, EMPTY_MILESTONES_ARRAY } from '@/lib/constants';
 import { useMemo, memo } from 'react';
 import { addDays, format } from 'date-fns';
 
@@ -58,60 +58,61 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
   }, [projects, projectsItems, projectsMilestones]);
 
   return (
-    <div className="border-b border-border">
-      {/* Workspace header - Summary Row (Persistent) */}
+    <div className="border-b-2 border-border">
+      {/* Workspace header - Summary Row (Persistent) - using flex for equal columns */}
       <div
-        className={`flex items-center ${isCollapsed ? 'bg-secondary/20' : 'bg-secondary/5'}`}
-        style={{
-          height: WORKSPACE_HEADER_HEIGHT,
-          width: visibleDays * CELL_WIDTH
-        }}
+        className={`flex w-full items-center ${isCollapsed ? 'bg-secondary/20' : 'bg-secondary/5'}`}
+        style={{ height: WORKSPACE_HEADER_HEIGHT }}
       >
         {days.map(day => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          const items = summaryItems.get(dateStr) || [];
-          const milestones = summaryMilestones.get(dateStr) || [];
+          const items = summaryItems.get(dateStr) ?? EMPTY_ITEMS_ARRAY;
+          const milestones = summaryMilestones.get(dateStr) ?? EMPTY_MILESTONES_ARRAY;
 
           if (items.length === 0 && milestones.length === 0) {
-            return <div key={dateStr} style={{ width: CELL_WIDTH }} className="h-full border-r border-border/50 last:border-r-0" />;
+            return <div key={dateStr} className="flex-1 min-w-0 h-full border-r border-border/50 last:border-r-0 overflow-hidden" />;
           }
 
           return (
             <div
               key={dateStr}
-              style={{ width: CELL_WIDTH }}
-              className="h-full border-r border-border/50 last:border-r-0 flex items-center justify-center content-center flex-wrap gap-0.5 px-0.5"
+              className="flex-1 min-w-0 h-full border-r border-border/50 last:border-r-0 flex items-center justify-center overflow-hidden"
             >
-              {/* Render Milestones */}
-              {milestones.map(m => (
-                <div
-                  key={m.id}
-                  className="w-2 h-2 rounded-full border-[2px] border-current box-border bg-transparent shrink-0"
-                  style={{
-                    color: m.color
-                      ? (m.color.startsWith('#') ? m.color : `hsl(var(--workspace-${m.color}))`)
-                      : `hsl(var(--workspace-${workspace.color}))`
-                  }}
-                  title={`Milestone: ${m.title}`}
-                />
-              ))}
-              {/* Render Items */}
-              {items.map(i => {
-                const itemColor = i.color
-                  ? (i.color.startsWith('#') ? i.color : `hsl(var(--workspace-${i.color}))`)
-                  : `hsl(var(--workspace-${workspace.color}))`;
-
-                return (
+              <div
+                className="flex items-center justify-center gap-x-1 max-w-full max-h-full overflow-hidden"
+                style={{ width: '100%', height: '100%' }}
+              >
+                {/* Render Milestones */}
+                {milestones.map(m => (
                   <div
-                    key={i.id}
-                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${i.completed ? 'opacity-30' : 'opacity-80'}`}
+                    key={m.id}
+                    className="w-2 h-2 rounded-full border-[2px] border-current box-border bg-transparent shrink-0"
                     style={{
-                      backgroundColor: itemColor
+                      color: m.color
+                        ? (m.color.startsWith('#') ? m.color : `hsl(var(--workspace-${m.color}))`)
+                        : `hsl(var(--workspace-${workspace.color}))`
                     }}
-                    title={`Task: ${i.title}`}
+                    title={`Milestone: ${m.title}`}
                   />
-                );
-              })}
+                ))}
+                {/* Render Items - only incomplete tasks */}
+                {items.filter(i => !i.completed).map(i => {
+                  const itemColor = i.color
+                    ? (i.color.startsWith('#') ? i.color : `hsl(var(--workspace-${i.color}))`)
+                    : `hsl(var(--workspace-${workspace.color}))`;
+
+                  return (
+                    <div
+                      key={i.id}
+                      className="w-1.5 h-1.5 rounded-full shrink-0 opacity-80"
+                      style={{
+                        backgroundColor: itemColor
+                      }}
+                      title={`Task: ${i.title}`}
+                    />
+                  );
+                })}
+              </div>
             </div>
           );
         })}

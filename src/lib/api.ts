@@ -85,6 +85,43 @@ export const api = {
         return state;
     },
 
+    // --- PER-PROJECT DATA FETCHING (for lazy loading) ---
+    
+    async fetchProjectItems(projectId: string, startDate: string, endDate: string): Promise<TimelineItem[]> {
+        const { data: items } = await supabase
+            .from('timeline_items')
+            .select('*')
+            .eq('project_id', projectId)
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('title', { ascending: true });
+        
+        return items?.map(transformItem) ?? [];
+    },
+
+    async fetchProjectMilestones(projectId: string, startDate: string, endDate: string): Promise<Milestone[]> {
+        const { data: milestones } = await supabase
+            .from('milestones')
+            .select('*')
+            .eq('project_id', projectId)
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('title', { ascending: true });
+        
+        return milestones?.map(transformMilestone) ?? [];
+    },
+
+    async fetchProjectSubProjects(projectId: string, startDate: string, endDate: string): Promise<SubProject[]> {
+        const { data: subProjects } = await supabase
+            .from('sub_projects')
+            .select('*')
+            .eq('project_id', projectId)
+            .lte('start_date', endDate)
+            .gte('end_date', startDate);
+        
+        return subProjects?.map(transformSubProject) ?? [];
+    },
+
     // --- WRITE ---
 
     async createWorkspace(w: Workspace) {
@@ -227,6 +264,7 @@ export const api = {
         if ('date' in updates) dbUpdates.date = updates.date;
         if ('completed' in updates) dbUpdates.completed = updates.completed;
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
+        if ('projectId' in updates) dbUpdates.project_id = updates.projectId;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('completedAt' in updates) dbUpdates.completed_at = updates.completedAt;
         return supabase.from('timeline_items').update(dbUpdates).eq('id', id);

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Milestone } from '@/types/timeline';
@@ -11,7 +12,7 @@ interface MilestoneItemProps {
   isCompact?: boolean;
 }
 
-export function MilestoneItemView({
+export const MilestoneItemView = memo(function MilestoneItemView({
   milestone,
   onClick,
   isDragging,
@@ -79,13 +80,12 @@ export function MilestoneItemView({
       </span>
     </div>
   );
-}
+});
 
 
 
-// ...
-
-export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }: MilestoneItemProps) {
+// Memoized MilestoneItem with sortable behavior
+export const MilestoneItem = memo(function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }: MilestoneItemProps) {
   const {
     attributes,
     listeners,
@@ -118,5 +118,5 @@ export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }:
       </QuickEditPopover>
     </div>
   );
-}
+});
 

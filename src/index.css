@@ -151,9 +151,16 @@
     @apply border-border;
   }
 
-  body {
+  html, body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: var(--font-family, 'Inter', sans-serif);
+    overflow: hidden;
+    height: 100%;
+  }
+  
+  #root {
+    height: 100%;
+    overflow: hidden;
   }
 
   /* Custom scrollbar */
@@ -341,4 +348,57 @@
   .prose input[type="checkbox"]:hover {
     border-color: hsl(var(--primary));
   }
+}
+
+/* =========================================
+   PERFORMANCE OPTIMIZATIONS
+   ========================================= */
+
+/* CSS Grid for timeline layout - better browser optimization than flexbox */
+.timeline-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--cell-width, 180px);
+}
+
+/* Content visibility for off-screen rows - browser skips rendering */
+.timeline-row {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 40px; /* Estimated height for collapsed rows */
+}
+
+.timeline-row-expanded {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 200px; /* Estimated height for expanded rows */
+}
+
+/* CSS containment for better performance */
+.timeline-cell {
+  contain: layout style paint;
+}
+
+.timeline-sidebar {
+  contain: layout style;
+}
+
+/* Reduce paint areas with will-change for frequently animated elements */
+.timeline-item-dragging {
+  will-change: transform;
+}
+
+/* GPU acceleration for scrolling containers */
+.timeline-scroll-container {
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Optimize text rendering for better performance */
+.timeline-text {
+  text-rendering: optimizeSpeed;
+}
+
+/* Reduce layout thrashing with fixed dimensions */
+.timeline-fixed-cell {
+  flex-shrink: 0;
+  flex-grow: 0;
 }

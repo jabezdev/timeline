@@ -11,7 +11,7 @@ import {
 import { subDays, parseISO, format, differenceInDays, addDays } from 'date-fns';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 
-import { CELL_WIDTH } from '@/lib/constants';
+import { SIDEBAR_WIDTH, VISIBLE_DAYS } from '@/lib/constants';
 import { TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 import { useQueryClient } from '@tanstack/react-query'; // Need to access query cache to get current lists for reorder
 import { arrayMove } from '@dnd-kit/sortable';
@@ -60,9 +60,10 @@ export function useTimelineDragDrop() {
                 return;
             }
 
-            // Calculate days moved based on DELTA x, not manual offset
-            // We need to know how many "cells" we moved.
-            const daysMoved = Math.round(delta.x / CELL_WIDTH);
+            // Calculate days moved based on DELTA x
+            // Cell width is dynamic now - estimate based on viewport
+            const estimatedCellWidth = (window.innerWidth - SIDEBAR_WIDTH) / VISIBLE_DAYS;
+            const daysMoved = Math.round(delta.x / estimatedCellWidth);
 
             const sp = activeItemData.item as SubProject;
             const originalStart = parseISO(sp.startDate);

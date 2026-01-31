@@ -1,18 +1,18 @@
 import { useMemo, useRef, useLayoutEffect, useState, memo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
 import { MilestoneItem } from './MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
-import { CELL_WIDTH, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
+import { PROJECT_HEADER_HEIGHT, EMPTY_ITEMS_ARRAY, EMPTY_MILESTONES_ARRAY } from '@/lib/constants';
 import { packSubProjects } from '@/lib/timelineUtils';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { QuickCreatePopover } from './QuickCreatePopover';
 
-// Droppable cell for milestones in the header row
-function MilestoneDropCell({
+// Memoized Droppable cell for milestones in the header row
+const MilestoneDropCell = memo(function MilestoneDropCell({
   date,
   projectId,
   milestones,
@@ -38,7 +38,7 @@ function MilestoneDropCell({
   });
 
   // Filter out completed items for collapsed view
-  const uncompletedItems = items.filter(item => !item.completed);
+  const uncompletedItems = useMemo(() => items.filter(item => !item.completed), [items]);
 
   const handleMilestoneClick = (e: React.MouseEvent, m: Milestone) => {
     e.stopPropagation();
@@ -56,23 +56,20 @@ function MilestoneDropCell({
     >
       <div
         ref={setNodeRef}
-        className={`flex flex-col justify-center px-1 border-r border-border/50 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
+        className={`flex-1 min-w-0 flex flex-col justify-center px-1 border-r border-border/50 last:border-r-0 transition-colors ${isOver ? 'bg-milestone/10' : ''
           }`}
-        style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
       >
-        {/* Render Milestones */}
+        {/* Render Milestones - No individual SortableContext */}
         <div className="flex flex-col gap-1">
-          <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-            {milestones.map(milestone => (
-              <div key={milestone.id} onClick={(e) => handleMilestoneClick(e, milestone)}>
-                <MilestoneItem
-                  milestone={milestone}
-                  workspaceColor={workspaceColor}
-                  isCompact={!isOpen && uncompletedItems.length > 0}
-                />
-              </div>
-            ))}
-          </SortableContext>
+          {milestones.map(milestone => (
+            <div key={milestone.id} onClick={(e) => handleMilestoneClick(e, milestone)}>
+              <MilestoneItem
+                milestone={milestone}
+                workspaceColor={workspaceColor}
+                isCompact={!isOpen && uncompletedItems.length > 0}
+              />
+            </div>
+          ))}
         </div>
 
         {/* If collapsed and has uncompleted items, show dots for each */}
@@ -94,7 +91,7 @@ function MilestoneDropCell({
       </div>
     </QuickCreatePopover>
   );
-}
+});
 
 interface ProjectRowProps {
   project: Project;
@@ -163,6 +160,13 @@ export const ProjectRow = memo(function ProjectRow({
     return packSubProjects(propSubProjects || []);
   }, [propSubProjects]);
 
+  // Consolidated sortable IDs for single SortableContext per project (performance optimization)
+  const allSortableIds = useMemo(() => {
+    const itemIds = propItems.map(i => i.id);
+    const milestoneIds = propMilestones.map(m => m.id);
+    return [...itemIds, ...milestoneIds];
+  }, [propItems, propMilestones]);
+
   // Ref for the expanded content
   // We no longer rely on manual measurement for sidebar sync, defaulting to deterministic calculation in Sidebar
   const expandedContentRef = useRef<HTMLDivElement>(null);
@@ -172,70 +176,72 @@ export const ProjectRow = memo(function ProjectRow({
 
 
   return (
-    <div className="flex flex-col border-b border-border/50">
-      {/* HEADER ROW - Milestones */}
-      <div className="flex" style={{ height: PROJECT_HEADER_HEIGHT }}>
-        {days.map((day) => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const dayMilestones = milestones.get(dateStr) || [];
-          const dayItems = allItems.get(dateStr) || [];
+    // Single SortableContext per project - much more efficient than one per cell
+    <SortableContext items={allSortableIds} strategy={rectSortingStrategy}>
+      <div className="flex flex-col border-b border-border w-full">
+        {/* HEADER ROW - Milestones */}
+        <div className="flex w-full" style={{ height: PROJECT_HEADER_HEIGHT }}>
+          {days.map((day) => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayMilestones = milestones.get(dateStr) ?? EMPTY_MILESTONES_ARRAY;
+            const dayItems = allItems.get(dateStr) ?? EMPTY_ITEMS_ARRAY;
 
-          return (
-            <MilestoneDropCell
-              key={day.toISOString()}
-              date={day}
-              projectId={project.id}
-              milestones={dayMilestones}
-              workspaceColor={workspaceColor}
-              onItemClick={onItemClick}
-              items={dayItems}
-              isOpen={isOpen}
-            />
-          );
-        })}
-      </div>
-
-      {/* EXPANDED CONTENT */}
-      {isOpen && (
-        <div
-          ref={expandedContentRef}
-          className="flex flex-col overflow-hidden"
-        >
-          {/* Main Items Row */}
-          <div
-            className="flex border-b border-border/30 items-stretch"
-          >
-            {days.map((day) => {
-              const dateStr = format(day, 'yyyy-MM-dd');
-              return (
-                <TimelineCell
-                  key={day.toISOString()}
-                  date={day}
-                  projectId={project.id}
-                  items={items.get(dateStr) || []}
-                  milestones={[]}
-                  workspaceColor={workspaceColor}
-                  onToggleItemComplete={onToggleItemComplete}
-                  onItemClick={onItemClick}
-                  cellWidth={CELL_WIDTH}
-                />
-              );
-            })}
-          </div>
-
-          {/* SubProjects Section - unified droppable zone spanning all lanes */}
-          <SubProjectSection
-            projectId={project.id}
-            subProjectLanes={subProjectLanes}
-            itemsBySubProject={subProjectItems}
-            days={days}
-            workspaceColor={workspaceColor}
-            onToggleItemComplete={onToggleItemComplete}
-            onItemClick={onItemClick}
-            onSubProjectClick={onSubProjectClick}
-          />
+            return (
+              <MilestoneDropCell
+                key={day.toISOString()}
+                date={day}
+                projectId={project.id}
+                milestones={dayMilestones}
+                workspaceColor={workspaceColor}
+                onItemClick={onItemClick}
+                items={dayItems}
+                isOpen={isOpen}
+              />
+            );
+          })}
         </div>
-      )}
-    </div>
+
+        {/* EXPANDED CONTENT */}
+        {isOpen && (
+          <div
+            ref={expandedContentRef}
+            className="flex flex-col overflow-hidden w-full"
+          >
+            {/* Main Items Row */}
+            <div
+              className="flex border-b border-border/30 items-stretch w-full"
+            >
+              {days.map((day) => {
+                const dateStr = format(day, 'yyyy-MM-dd');
+                return (
+                  <TimelineCell
+                    key={day.toISOString()}
+                    date={day}
+                    projectId={project.id}
+                    items={items.get(dateStr) ?? EMPTY_ITEMS_ARRAY}
+                    milestones={EMPTY_MILESTONES_ARRAY}
+                    workspaceColor={workspaceColor}
+                    onToggleItemComplete={onToggleItemComplete}
+                    onItemClick={onItemClick}
+                  />
+                );
+              })}
+            </div>
+
+            {/* SubProjects Section - unified droppable zone spanning all lanes */}
+            <SubProjectSection
+              projectId={project.id}
+              subProjectLanes={subProjectLanes}
+              itemsBySubProject={subProjectItems}
+              days={days}
+              workspaceColor={workspaceColor}
+              onToggleItemComplete={onToggleItemComplete}
+              onItemClick={onItemClick}
+              onSubProjectClick={onSubProjectClick}
+            />
+          </div>
+        )}
+      </div>
+    </SortableContext>
   );
 });

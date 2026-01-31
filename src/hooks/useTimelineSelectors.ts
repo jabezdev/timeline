@@ -16,6 +16,11 @@ export function useTimelineSelectors(
 
     const openProjectIds = useMemo(() => new Set(openProjectIdsArray), [openProjectIdsArray]);
 
+    // O(1) lookup map for projects by ID
+    const projectsById = useMemo(() => {
+        return new Map(Object.entries(projectsMap));
+    }, [projectsMap]);
+
     // Derived State: Grouping
     const { projectsItems, projectsMilestones, projectsSubProjects, allProjects } = useMemo(() => {
         const pItems = new Map<string, TimelineItem[]>();
@@ -102,6 +107,7 @@ export function useTimelineSelectors(
 
     return {
         openProjectIds,
+        projectsById,
         projectsItems,
         projectsMilestones,
         projectsSubProjects,

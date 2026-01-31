@@ -1,4 +1,4 @@
-import { Workspace, Project, SubProject, TimelineItem } from '@/types/timeline';
+import { Workspace, Project, SubProject, TimelineItem, Milestone } from '@/types/timeline';
 import { ChevronDown, ChevronRight, ChevronLeft, Building2, Calendar, ChevronsDown, ChevronsUp, PanelLeftClose, RefreshCw, FolderPlus, Plus, FilePlus } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { PreferencesPopover } from '../preferences-popover';
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import {
   SIDEBAR_WIDTH,
   COLLAPSED_SIDEBAR_WIDTH,
@@ -132,8 +132,8 @@ interface SidebarWorkspaceProps {
   isSidebarCollapsed: boolean;
 }
 
-// Header component for flat list
-export function SidebarWorkspaceHeader({
+// Header component for flat list - memoized for performance
+export const SidebarWorkspaceHeader = memo(function SidebarWorkspaceHeader({
   workspace,
   isCollapsed,
   projects, // Still needed for metrics and collapsed indicators
@@ -272,7 +272,7 @@ export function SidebarWorkspaceHeader({
       )}
     </div>
   );
-}
+});
 
 interface SidebarProjectProps {
   project: Project;
@@ -283,7 +283,7 @@ interface SidebarProjectProps {
   workspaceColor: string;
 }
 
-export function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspaceColor }: SidebarProjectProps) {
+export const SidebarProject = memo(function SidebarProject({ project, items, subProjects, isOpen, onToggle, workspaceColor }: SidebarProjectProps) {
   const itemCount = items.length;
   const completedCount = items.filter(t => t.completed).length;
 
@@ -335,6 +335,6 @@ export function SidebarProject({ project, items, subProjects, isOpen, onToggle, 
       )}
     </div>
   );
-}
+});
 
 

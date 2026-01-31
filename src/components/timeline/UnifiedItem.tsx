@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TimelineItem } from '@/types/timeline';
@@ -11,9 +12,10 @@ interface UnifiedItemProps {
     workspaceColor: number;
 }
 
-import { motion } from 'framer-motion';
+// Removed Framer Motion - layout animations are expensive with many items
+// Using plain div for better performance
 
-export function UnifiedItemView({
+export const UnifiedItemView = memo(function UnifiedItemView({
     item,
     onToggleComplete,
     onClick,
@@ -31,16 +33,7 @@ export function UnifiedItemView({
     className?: string;
 }) {
     return (
-        <motion.div
-            layout // Enable Framer Motion layout animations
-            layoutId={item.id} // Unique ID for reparenting
-            transition={{
-                type: "spring",
-                stiffness: 500,
-                damping: 30,
-                mass: 1 // Quick snappy spring
-            }}
-            initial={false} // Prevent initial mount animation
+        <div
             style={{
                 backgroundColor: item.color
                     ? (item.color.startsWith('#') ? `${item.color}20` : `hsl(var(--workspace-${item.color}) / 0.2)`)
@@ -57,16 +50,15 @@ export function UnifiedItemView({
                     onClick(item);
                 }
             }}
-            className={`group relative flex items-start gap-1.5 px-2 py-1.5 rounded-sm border cursor-grab active:cursor-grabbing touch-none ${isDragging ? 'opacity-30' : ''
+            className={`group relative flex items-start gap-1.5 px-2 py-1 shrink-0 rounded-sm border cursor-grab active:cursor-grabbing touch-none transition-opacity ${isDragging ? 'opacity-30' : ''
                 } ${item.completed ? 'opacity-60 bg-secondary/30 border-border' : 'bg-secondary/50 border-border hover:border-primary/30'} ${className || ''}`}
-
         >
             <button
                 onClick={(e) => {
                     e.stopPropagation();
                     if (onToggleComplete) onToggleComplete(item.id);
                 }}
-                className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${item.completed
+                className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 mt-0.5 ${item.completed
                     ? 'bg-primary border-primary'
                     : 'border-muted-foreground hover:border-primary'
                     }`}
@@ -82,15 +74,15 @@ export function UnifiedItemView({
                 {item.completed && <Check className="w-3 h-3 text-white" />}
             </button>
 
-            <span className={`flex-1 min-w-0 text-xs font-medium break-words whitespace-pre-wrap ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+            <span className={`flex-1 min-w-0 text-xs font-medium break-words ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                 {item.title || "Untitled"}
             </span>
-        </motion.div>
+        </div>
     );
-}
+});
 
 
-export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }: UnifiedItemProps) {
+export const UnifiedItem = memo(function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }: UnifiedItemProps) {
     const {
         attributes,
         listeners,
@@ -123,5 +115,5 @@ export function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor }:
             </QuickEditPopover>
         </div>
     );
-}
+});
 

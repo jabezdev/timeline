@@ -1,5 +1,5 @@
 import { format, addDays, isToday } from 'date-fns';
-import { HEADER_HEIGHT, SIDEBAR_WIDTH, CELL_WIDTH } from '@/lib/constants';
+import { HEADER_HEIGHT } from '@/lib/constants';
 
 interface TimelineHeaderProps {
   startDate: Date;
@@ -11,16 +11,15 @@ export function TimelineHeader({ startDate, visibleDays }: TimelineHeaderProps) 
 
   return (
     <div
-      className="flex sticky top-0 z-40 bg-background border-b border-border"
+      className="flex sticky top-0 z-40 bg-background border-b border-border w-full"
       style={{ height: HEADER_HEIGHT }}
     >
-      {/* Date columns - fixed width */}
+      {/* Date columns - flex to fill available space */}
       {days.map((day) => (
         <div
           key={day.toISOString()}
-          className={`shrink-0 px-1 flex flex-col items-center justify-center text-center border-r border-border last:border-r-0 transition-colors ${isToday(day) ? 'bg-primary/10' : ''
+          className={`flex-1 min-w-0 px-1 flex flex-col items-center justify-center text-center border-r border-border/50 last:border-r-0 transition-colors ${isToday(day) ? 'bg-primary/10' : ''
             }`}
-          style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
         >
           <div className={`text-[10px] font-medium uppercase tracking-wider ${isToday(day) ? 'text-primary' : 'text-muted-foreground'
             }`}>

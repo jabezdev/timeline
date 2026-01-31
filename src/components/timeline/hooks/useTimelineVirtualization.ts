@@ -3,20 +3,55 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { Project, TimelineItem, SubProject } from '@/types/timeline';
 import {
     WORKSPACE_HEADER_HEIGHT,
-    PROJECT_HEADER_HEIGHT
+    PROJECT_HEADER_HEIGHT,
+    EMPTY_ITEMS_ARRAY,
+    EMPTY_SUBPROJECTS_ARRAY
 } from '@/lib/constants';
 import { calculateProjectExpandedHeight } from '@/lib/timelineUtils';
 import { TimelineRow } from '@/hooks/useFlattenedRows';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
+
+/**
+ * Generate a content hash for cache invalidation
+ * This allows us to skip expensive height calculations when content hasn't changed.
+ * We include max items per day counts because that affects row heights.
+ */
+function generateContentHash(items: readonly TimelineItem[], subProjects: readonly SubProject[]): string {
+    // Calculate max items per day for main items (not in subprojects)
+    const mainItemsByDate = new Map<string, number>();
+    items.forEach(item => {
+        if (!item.subProjectId) {
+            mainItemsByDate.set(item.date, (mainItemsByDate.get(item.date) || 0) + 1);
+        }
+    });
+    const maxMainItems = mainItemsByDate.size > 0 ? Math.max(...mainItemsByDate.values()) : 0;
+    
+    // Calculate max items per subproject
+    const subProjectMaxItems = new Map<string, number>();
+    items.forEach(item => {
+        if (item.subProjectId) {
+            subProjectMaxItems.set(
+                item.subProjectId, 
+                Math.max(subProjectMaxItems.get(item.subProjectId) || 0, 1)
+            );
+        }
+    });
+    
+    // Hash includes: total items, total subprojects, max main items, number of subprojects with items
+    return `i:${items.length}-sp:${subProjects.length}-mm:${maxMainItems}-spi:${subProjectMaxItems.size}`;
+}
 
 export function useTimelineVirtualization(
     flatRows: TimelineRow[],
-    workspaceProjects: Map<string, Project[]>, // Still needed? No, row has IDs.
+    workspaceProjects: Map<string, Project[]>,
     projectsItems: Map<string, TimelineItem[]>,
     projectsSubProjects: Map<string, SubProject[]>,
     openProjectIds: Set<string>,
-    parentRef: React.RefObject<HTMLElement>
+    parentRef: React.RefObject<HTMLElement | null>
 ) {
-    // Determine the height of a specific flattened row
+    const { getCachedProjectHeight, setCachedProjectHeight } = useTimelineStore();
+
+    // Determine the height of a specific flattened row with caching
     const getRowHeight = useCallback((index: number) => {
         const row = flatRows[index];
         if (!row) return 0;
@@ -30,35 +65,32 @@ export function useTimelineVirtualization(
 
             // Add expanded content height if project is open
             if (openProjectIds.has(row.projectId)) {
-                // Get data for this project
-                // Note: We access the maps directly. Ensure these maps are stable or memoized upstream.
-                const items = projectsItems.get(row.projectId) || [];
-                const subProjects = projectsSubProjects.get(row.projectId) || [];
-
-                // We fake the 'Project' object structure because the calculator only needs it for... nothing actually? 
-                // Wait, calculateProjectExpandedHeight uses project? Let's check signature. 
-                // calculateProjectExpandedHeight(project: Project, ...)
-                // It might not use project properties. Checking lib/timelineUtils.ts...
-                // It doesn't use project props, just items and subprojects for layout.
-                // WE passed 'project' just for signature matching?
-                // Actually, I should pass a dummy project or just pass the ID if the util doesn't need the object.
-                // But for safety, I'll mock it or pass null if TS allows.
-                // Better yet: Pass a minimal object.
-
-                // To be safe, look up the project object? We don't have the project map here easily unless passed.
-                // The calculator only uses it for signature. Let's cast or update calculator later. 
-                // For now, I'll just pass a dummy as it is likely unused logic-wise.
-                // Actually, let's just make sure we are not breaking anything.
+                const items = projectsItems.get(row.projectId) ?? EMPTY_ITEMS_ARRAY;
+                const subProjects = projectsSubProjects.get(row.projectId) ?? EMPTY_SUBPROJECTS_ARRAY;
+                
+                // Generate content hash for cache lookup
+                const contentHash = generateContentHash(items, subProjects);
+                
+                // Try to get cached height first
+                const cachedHeight = getCachedProjectHeight(row.projectId, contentHash);
+                if (cachedHeight !== null) {
+                    return PROJECT_HEADER_HEIGHT + cachedHeight;
+                }
+                
+                // Calculate and cache the height
                 const dummyProject = { id: row.projectId } as Project;
-
-                const { totalHeight } = calculateProjectExpandedHeight(dummyProject, items, subProjects);
+                const { totalHeight } = calculateProjectExpandedHeight(dummyProject, items as TimelineItem[], subProjects as SubProject[]);
+                
+                // Cache for future lookups
+                setCachedProjectHeight(row.projectId, totalHeight, contentHash);
+                
                 height += totalHeight;
             }
             return height;
         }
 
         return 0;
-    }, [flatRows, openProjectIds, projectsItems, projectsSubProjects]);
+    }, [flatRows, openProjectIds, projectsItems, projectsSubProjects, getCachedProjectHeight, setCachedProjectHeight]);
 
     const rowVirtualizer = useVirtualizer({
         count: flatRows.length,

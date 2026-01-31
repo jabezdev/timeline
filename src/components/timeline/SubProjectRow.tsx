@@ -1,9 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo, memo } from 'react';
 import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { UnifiedItem } from './UnifiedItem';
-import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT } from '@/lib/constants';
+import { SUBPROJECT_HEADER_HEIGHT, SUBPROJECT_MIN_HEIGHT, ROW_PADDING, ITEM_HEIGHT, ITEM_GAP } from '@/lib/constants';
 import { GripVertical } from 'lucide-react';
 
 import { QuickEditPopover } from './QuickEditPopover';
@@ -44,6 +44,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
+  isStartClipped?: boolean;
 }>(({
   subProject,
   width,
@@ -54,12 +55,13 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   dragHandleProps,
   style,
   className,
-  children
+  children,
+  isStartClipped = false
 }, ref) => {
   return (
     <div
       ref={ref}
-      className={`rounded-sm border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+      className={`rounded-sm border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${isStartClipped ? 'rounded-l-none border-l-0' : ''} ${className || ''}`}
       style={{
         left: left !== undefined ? `${left}px` : undefined,
         width: width !== undefined ? `${width}px` : undefined,
@@ -116,12 +118,14 @@ function DraggableSubProjectBar({
   subProject,
   timelineStartDate,
   onClick,
-  rowHeight
+  rowHeight,
+  totalDays
 }: {
   subProject: SubProject;
   timelineStartDate: Date;
   onClick: (subProject: SubProject) => void;
   rowHeight: number;
+  totalDays: number;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: subProject.id,
@@ -132,21 +136,36 @@ function DraggableSubProjectBar({
   const subProjectEnd = parseISO(subProject.endDate);
 
   const startOffsetDays = differenceInDays(subProjectStart, timelineStartDate);
-  const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
+  const endOffsetDays = differenceInDays(subProjectEnd, timelineStartDate);
 
-  const left = startOffsetDays * CELL_WIDTH;
-  const width = durationDays * CELL_WIDTH;
+  // Clamp to visible area (0 to totalDays)
+  const visibleStartDay = Math.max(0, startOffsetDays);
+  const visibleEndDay = Math.min(totalDays - 1, endOffsetDays);
+  
+  // Skip if entirely outside visible range
+  if (visibleEndDay < 0 || visibleStartDay >= totalDays) {
+    return null;
+  }
+
+  const visibleDuration = visibleEndDay - visibleStartDay + 1;
+
+  // Use percentage-based positioning for flex layout
+  const leftPercent = (visibleStartDay / totalDays) * 100;
+  const widthPercent = (visibleDuration / totalDays) * 100;
+
+  // Check if the start is clipped (bar starts before visible area)
+  const isStartClipped = startOffsetDays < 0;
 
   return (
-    <div className="absolute top-1 bottom-1" style={{ left: `${left}px`, width: `${width}px` }}>
+    <div className="absolute top-1 bottom-1" style={{ left: `${leftPercent}%`, width: `${widthPercent}%` }}>
       <SubProjectBar
         ref={setNodeRef}
         subProject={subProject}
-        width={width}
         isDragging={isDragging}
         onClick={onClick}
         dragHandleProps={{ ...attributes, ...listeners }}
-        className="h-full"
+        className="h-full w-full"
+        isStartClipped={isStartClipped}
       />
     </div>
   );
@@ -180,8 +199,7 @@ function SubProjectLaneDropCell({
   return (
     <div
       ref={setNodeRef}
-      className={`shrink-0 ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
-      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
+      className={`flex-1 min-w-0 ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
     />
   );
 }
@@ -217,8 +235,8 @@ function SubProjectCell({
 
   const cellContent = (
     <div
-      className="shrink-0 px-1 py-1"
-      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: height }}
+      className="flex-1 min-w-0 px-1 py-1 border-r border-border/50 last:border-r-0"
+      style={{ minHeight: height }}
     >
       <div className="flex flex-col gap-1 h-full">
         {items.map(item => (
@@ -253,7 +271,7 @@ function SubProjectCell({
   return cellContent;
 }
 
-export function SubProjectLane({
+export const SubProjectLane = memo(function SubProjectLane({
   subProjects,
   itemsBySubProject,
   days,
@@ -261,7 +279,7 @@ export function SubProjectLane({
   onToggleItemComplete,
   onItemClick,
   onSubProjectClick,
-  rowHeight = 64,
+  rowHeight = SUBPROJECT_MIN_HEIGHT,
   laneIndex,
   projectId
 }: SubProjectLaneProps) {
@@ -269,14 +287,13 @@ export function SubProjectLane({
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
 
   return (
-    <div className="relative flex flex-col min-h-[64px]">
+    <div className="relative flex flex-col overflow-hidden w-full" style={{ minHeight: rowHeight, height: rowHeight }}>
       {/* Column dividers - full height background layer */}
       <div className="absolute inset-0 flex pointer-events-none">
         {days.map((day, index) => (
           <div
             key={day.toISOString()}
-            className={`shrink-0 ${index < days.length - 1 ? 'border-r border-border/50' : ''}`}
-            style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
+            className={`flex-1 min-w-0 ${index < days.length - 1 ? 'border-r border-border/50' : ''}`}
           />
         ))}
       </div>
@@ -313,12 +330,13 @@ export function SubProjectLane({
             timelineStartDate={timelineStartDate}
             onClick={onSubProjectClick}
             rowHeight={rowHeight}
+            totalDays={days.length}
           />
         ))}
       </div>
 
       {/* Items layer - rendered on top with padding to account for subproject header */}
-      <div className="relative flex z-30" style={{ marginTop: SUBPROJECT_HEADER_HEIGHT }}>
+      <div className="relative flex z-30 w-full" style={{ marginTop: SUBPROJECT_HEADER_HEIGHT }}>
         {days.map((day) => {
           const dateStr = format(day, 'yyyy-MM-dd');
 
@@ -351,10 +369,27 @@ export function SubProjectLane({
       </div>
     </div>
   );
+});
+
+// Helper function to calculate row height based on max items per day (same as timelineUtils)
+function calculateRowHeight(maxItemCount: number, baseHeight: number = 40): number {
+    if (maxItemCount <= 1) return baseHeight;
+    return ROW_PADDING + (maxItemCount * ITEM_HEIGHT) + ((maxItemCount) * ITEM_GAP);
+}
+
+// Helper to get max items per day for a specific subproject
+function getMaxItemsPerDayForSubProject(itemsBySubProject: Map<string, Map<string, TimelineItem[]>>, subProjectId: string): number {
+    const dateMap = itemsBySubProject.get(subProjectId);
+    if (!dateMap || dateMap.size === 0) return 0;
+    let max = 0;
+    dateMap.forEach((items) => {
+        max = Math.max(max, items.length);
+    });
+    return max;
 }
 
 // Wrapper component for all SubProject lanes - each lane has its own droppable zones
-export function SubProjectSection({
+export const SubProjectSection = memo(function SubProjectSection({
   projectId,
   subProjectLanes,
   itemsBySubProject,
@@ -365,6 +400,20 @@ export function SubProjectSection({
   onSubProjectClick
 }: SubProjectSectionProps) {
   if (subProjectLanes.length === 0) return null;
+
+  // Compute lane heights to match calculateProjectExpandedHeight logic
+  const laneHeights = useMemo(() => {
+    return subProjectLanes.map(lane => {
+      let maxItems = 0;
+      lane.forEach(subProject => {
+        const subProjectMaxItems = getMaxItemsPerDayForSubProject(itemsBySubProject, subProject.id);
+        maxItems = Math.max(maxItems, subProjectMaxItems);
+      });
+      // Lane height = header + items area, with a minimum total of SUBPROJECT_MIN_HEIGHT
+      const calculatedHeight = SUBPROJECT_HEADER_HEIGHT + calculateRowHeight(maxItems, 40);
+      return Math.max(calculatedHeight, SUBPROJECT_MIN_HEIGHT);
+    });
+  }, [subProjectLanes, itemsBySubProject]);
 
   return (
     <div className="relative">
@@ -381,8 +430,9 @@ export function SubProjectSection({
           onSubProjectClick={onSubProjectClick}
           laneIndex={index}
           projectId={projectId}
+          rowHeight={laneHeights[index]}
         />
       ))}
     </div>
   );
-}
+});

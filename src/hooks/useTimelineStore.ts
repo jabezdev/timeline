@@ -1,12 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Cache entry for project height with content hash for invalidation
+interface ProjectHeightCache {
+  height: number;
+  contentHash: string; // e.g., "items:5-subprojects:2" to detect when recalculation is needed
+}
+
 interface TimelineStore {
   // UI State
   openProjectIds: string[];
   collapsedWorkspaceIds: string[];
   isSidebarCollapsed: boolean;
   projectHeights: Record<string, number>;
+  
+  // Performance: Cached project heights with content hash
+  cachedProjectHeights: Record<string, ProjectHeightCache>;
 
   // UI Actions
   toggleWorkspace: (workspaceId: string) => void;
@@ -15,15 +24,20 @@ interface TimelineStore {
 
   setSidebarCollapsed: (collapsed: boolean) => void;
   setProjectHeight: (projectId: string, height: number) => void;
+  
+  // Performance: Set cached height with content hash
+  setCachedProjectHeight: (projectId: string, height: number, contentHash: string) => void;
+  getCachedProjectHeight: (projectId: string, contentHash: string) => number | null;
 }
 
 export const useTimelineStore = create<TimelineStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       openProjectIds: [],
       collapsedWorkspaceIds: [],
       isSidebarCollapsed: false,
       projectHeights: {},
+      cachedProjectHeights: {},
 
       toggleWorkspace: (workspaceId) =>
         set((state) => {
@@ -66,15 +80,36 @@ export const useTimelineStore = create<TimelineStore>()(
 
       setProjectHeight: (projectId, height) =>
         set((state) => {
-          if (state.projectHeights[projectId] === height) return {}; // No change, return empty (Zustand merges partial, but returning empty object or null typically stops update if using standard set patterns? Wait, zustand set merges. returning empty means no changes to properties. BUT it might still trigger listener? simpler to return state or nothing if logic allows)
-          // Verify zustand behavior: set(partial) merges. If partial is empty, Reference might not change? 
-          // Better:
-          if (state.projectHeights[projectId] === height) return state; // Returning state directly prevents update if strict equality check is used by zustand (v4+ usually does Object.is check)
-
+          if (state.projectHeights[projectId] === height) return state;
           return {
             projectHeights: { ...state.projectHeights, [projectId]: height },
           };
         }),
+      
+      // Performance: Set cached height with content hash for invalidation
+      setCachedProjectHeight: (projectId, height, contentHash) =>
+        set((state) => {
+          const existing = state.cachedProjectHeights[projectId];
+          if (existing && existing.height === height && existing.contentHash === contentHash) {
+            return state; // No change
+          }
+          return {
+            cachedProjectHeights: {
+              ...state.cachedProjectHeights,
+              [projectId]: { height, contentHash }
+            }
+          };
+        }),
+      
+      // Performance: Get cached height if content hash matches
+      getCachedProjectHeight: (projectId, contentHash) => {
+        const state = get();
+        const cached = state.cachedProjectHeights[projectId];
+        if (cached && cached.contentHash === contentHash) {
+          return cached.height;
+        }
+        return null;
+      },
     }),
     {
       name: 'timeline-ui-storage',
@@ -82,6 +117,7 @@ export const useTimelineStore = create<TimelineStore>()(
         openProjectIds: state.openProjectIds,
         collapsedWorkspaceIds: state.collapsedWorkspaceIds,
         isSidebarCollapsed: state.isSidebarCollapsed,
+        // Don't persist cached heights - they're runtime only
       }),
     }
   )

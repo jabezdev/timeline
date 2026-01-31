@@ -144,8 +144,12 @@ export function useTimelineMutations() {
 
     const updateSubProject = useMutation({
         mutationFn: async ({ id, updates, childItemsToUpdate }: { id: string, updates: Partial<SubProject>, childItemsToUpdate?: Partial<TimelineItem>[] }) => {
+            // Important: batch update items FIRST and await completion before updating subproject
+            // This ensures items are persisted before the query invalidation
             if (childItemsToUpdate && childItemsToUpdate.length > 0) {
-                await api.batchUpdateItems(childItemsToUpdate);
+                await Promise.all(childItemsToUpdate.map(async (itemUpdate) => {
+                    await api.updateItem(itemUpdate.id!, { date: itemUpdate.date });
+                }));
             }
             await api.updateSubProject(id, updates);
             return { id, updates, childItemsToUpdate };
@@ -198,7 +202,15 @@ export function useTimelineMutations() {
             });
             return { previousQueries };
         },
-        onSettled: () => queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] })
+        onError: (_err, _vars, context) => {
+            // Rollback on error
+            context?.previousQueries.forEach(([key, data]) => queryClient.setQueryData(key, data));
+            toast.error("Failed to update sub-project");
+        },
+        onSuccess: () => {
+            // Only invalidate after successful server update
+            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
+        }
     });
 
     const deleteSubProject = useMutation({

@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { format } from 'date-fns';
 import { TimelineItem, Milestone } from '@/types/timeline';
 import { UnifiedItem } from './UnifiedItem';
@@ -17,13 +16,13 @@ interface TimelineCellProps {
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
   onItemClick: (item: TimelineItem | Milestone) => void;
-  cellWidth: number;
   rowHeight?: number;
   showBorder?: boolean;
   droppableDisabled?: boolean;
 }
 
-export function TimelineCell({
+// Memoized TimelineCell - SortableContext is now at ProjectRow level for better performance
+export const TimelineCell = memo(function TimelineCell({
   date,
   projectId,
   subProjectId,
@@ -34,7 +33,6 @@ export function TimelineCell({
   workspaceColor,
   onToggleItemComplete,
   onItemClick,
-  cellWidth,
   rowHeight = 40,
   showBorder = true,
   droppableDisabled = false
@@ -52,16 +50,7 @@ export function TimelineCell({
     disabled: droppableDisabled,
   });
 
-  const handleItemClick = (e: React.MouseEvent, item: TimelineItem | Milestone) => {
-    e.stopPropagation();
-    onItemClick(item);
-  };
-
-
-
   return (
-
-
     <QuickCreatePopover
       open={isCreating}
       onOpenChange={setIsCreating}
@@ -73,36 +62,33 @@ export function TimelineCell({
     >
       <div
         ref={setNodeRef}
-        className={`px-1 py-1 shrink-0 ${showBorder ? 'border-r border-border/50 last:border-r-0' : ''
+        className={`flex-1 min-w-0 px-1 py-1 ${showBorder ? 'border-r border-border/50 last:border-r-0' : ''
           } ${isOver ? 'bg-primary/10' : ''}`}
-        style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
+        style={rowHeight ? { minHeight: rowHeight } : {}}
       >
         <div className="flex flex-col gap-1 h-full">
-          <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-            {milestones.map(milestone => (
-              <MilestoneItem
-                key={milestone.id}
-                milestone={milestone}
-                workspaceColor={workspaceColor}
-                onClick={onItemClick}
-              />
-            ))}
-          </SortableContext>
+          {/* Milestones - no individual SortableContext needed */}
+          {milestones.map(milestone => (
+            <MilestoneItem
+              key={milestone.id}
+              milestone={milestone}
+              workspaceColor={workspaceColor}
+              onClick={onItemClick}
+            />
+          ))}
 
-          <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-            {items.map(item => (
-              <UnifiedItem
-                key={item.id}
-                item={item}
-                onToggleComplete={onToggleItemComplete}
-                onClick={onItemClick}
-                workspaceColor={workspaceColor}
-              />
-            ))}
-          </SortableContext>
+          {/* Items - no individual SortableContext needed */}
+          {items.map(item => (
+            <UnifiedItem
+              key={item.id}
+              item={item}
+              onToggleComplete={onToggleItemComplete}
+              onClick={onItemClick}
+              workspaceColor={workspaceColor}
+            />
+          ))}
         </div>
       </div>
     </QuickCreatePopover>
-
   );
-}
+});
