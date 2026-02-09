@@ -1,4 +1,4 @@
-import { useMemo, memo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { addDays, format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
@@ -15,7 +15,9 @@ function MilestoneCell({
   workspaceColor,
   onItemDoubleClick,
   onQuickCreate,
-  onQuickEdit
+  onQuickEdit,
+  colorMode,
+  systemAccent
 }: {
   date: Date;
   projectId: string;
@@ -24,11 +26,15 @@ function MilestoneCell({
   onItemDoubleClick: (item: Milestone) => void;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   return (
     <div
+      ref={containerRef}
       className="relative group flex flex-col justify-start border-r border-border/50 last:border-r-0"
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
     >
@@ -46,6 +52,8 @@ function MilestoneCell({
                 onDoubleClick={onItemDoubleClick}
                 onQuickEdit={onQuickEdit}
                 minHeight={PROJECT_HEADER_HEIGHT}
+                colorMode={colorMode}
+                systemAccent={systemAccent}
               />
             </div>
           </div>
@@ -56,7 +64,7 @@ function MilestoneCell({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onQuickCreate(projectId, dateStr, undefined, workspaceColor, e.currentTarget);
+          onQuickCreate(projectId, dateStr, undefined, workspaceColor, containerRef.current || e.currentTarget);
         }}
         className="absolute top-1 right-1 w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-milestone/20 hover:bg-milestone/30 flex items-center justify-center z-10"
         title="Add milestone"
@@ -78,6 +86,8 @@ interface MilestoneHeaderRowProps {
   onItemDoubleClick: (item: Milestone) => void;
   onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
@@ -88,7 +98,9 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
   workspaceColor,
   onItemDoubleClick,
   onQuickEdit,
-  onQuickCreate
+  onQuickCreate,
+  colorMode,
+  systemAccent
 }: MilestoneHeaderRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -115,6 +127,8 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
             onItemDoubleClick={onItemDoubleClick}
             onQuickCreate={onQuickCreate}
             onQuickEdit={onQuickEdit}
+            colorMode={colorMode}
+            systemAccent={systemAccent}
           />
         );
       })}
@@ -140,6 +154,8 @@ interface ProjectRowProps {
   selectedIds: Set<string>;
   onItemClick: (id: string, multi: boolean) => void;
   onClearSelection: () => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 export const ProjectRow = memo(function ProjectRow({
@@ -157,7 +173,9 @@ export const ProjectRow = memo(function ProjectRow({
   onQuickEdit,
   selectedIds,
   onItemClick,
-  onClearSelection
+  onClearSelection,
+  colorMode,
+  systemAccent
 }: ProjectRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -205,6 +223,8 @@ export const ProjectRow = memo(function ProjectRow({
               onQuickEdit={onQuickEdit}
               selectedIds={selectedIds}
               onItemClick={onItemClick}
+              colorMode={colorMode}
+              systemAccent={systemAccent}
             />
           );
         })}
@@ -225,6 +245,8 @@ export const ProjectRow = memo(function ProjectRow({
         onQuickEdit={onQuickEdit}
         selectedIds={selectedIds}
         onItemClick={onItemClick}
+        colorMode={colorMode}
+        systemAccent={systemAccent}
       />
     </div>
   );

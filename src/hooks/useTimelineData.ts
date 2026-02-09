@@ -22,6 +22,7 @@ export function useTimelineData(startDate: Date, visibleDays: number) {
         subProjects: timeline.data?.subProjects || {},
         milestones: timeline.data?.milestones || {},
         items: timeline.data?.items || {},
+        userSettings: structure.data?.userSettings,
         currentDate: startStr,
         visibleDays,
         isSyncing: isLoading,

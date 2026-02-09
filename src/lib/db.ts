@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Workspace, Project, SubProject, Milestone, TimelineItem } from '@/types/timeline';
+import { Workspace, Project, SubProject, Milestone, TimelineItem, UserSettings } from '@/types/timeline';
 
 export class TimelineDatabase extends Dexie {
     workspaces!: Table<Workspace>;
@@ -7,7 +7,7 @@ export class TimelineDatabase extends Dexie {
     subProjects!: Table<SubProject>;
     milestones!: Table<Milestone>;
     items!: Table<TimelineItem>;
-    userSettings!: Table<{ userId: string; workspaceOrder: string[]; openProjectIds: string[] }>;
+    userSettings!: Table<UserSettings>;
 
     constructor() {
         super('TimelineDB');

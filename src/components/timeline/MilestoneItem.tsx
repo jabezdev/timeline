@@ -9,6 +9,8 @@ interface MilestoneItemProps {
   className?: string;
   minHeight?: number;
   isSelected?: boolean;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 export const MilestoneItemView = React.memo(function MilestoneItemView({
@@ -17,7 +19,9 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
   style,
   className,
   minHeight,
-  isSelected
+  isSelected,
+  colorMode = 'full',
+  systemAccent = '6'
 }: {
   milestone: Milestone;
   onClick?: (multi: boolean) => void;
@@ -25,13 +29,21 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
   className?: string;
   minHeight?: number;
   isSelected?: boolean;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }) {
-  const isHex = milestone.color?.startsWith('#');
-  const bgColor = isHex
-    ? milestone.color
-    : milestone.color
-      ? `hsl(var(--workspace-${milestone.color}))`
-      : 'hsl(var(--primary))';
+  /* effectiveColor extraction removed as it's no longer needed for monochromatic check */
+
+  const getBgColor = () => {
+    if (colorMode === 'monochromatic') {
+      return 'hsl(var(--primary))';
+    }
+
+    if (milestone.color?.startsWith('#')) return milestone.color;
+    return milestone.color ? `hsl(var(--workspace-${milestone.color}))` : 'hsl(var(--primary))';
+  };
+
+  const bgColor = getBgColor();
 
   const borderColor = 'hsl(var(--background))';
   const textColor = '#ffffff';
@@ -76,10 +88,14 @@ export const MilestoneItem = React.memo(function MilestoneItem({
   onDoubleClick,
   minHeight,
   isSelected,
-  onQuickEdit
+  onQuickEdit,
+  colorMode,
+  systemAccent
 }: MilestoneItemProps & {
   onDoubleClick?: (milestone: Milestone) => void;
   onQuickEdit?: (item: Milestone, anchorElement?: HTMLElement) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }) {
   return (
     <div className={className}>
@@ -90,7 +106,7 @@ export const MilestoneItem = React.memo(function MilestoneItem({
           e.stopPropagation();
           if (onQuickEdit) onQuickEdit(milestone, e.currentTarget);
         }}
-        onClick={(e) => {
+        onDoubleClick={(e) => {
           e.stopPropagation();
           if (onDoubleClick) onDoubleClick(milestone);
         }}
@@ -101,6 +117,8 @@ export const MilestoneItem = React.memo(function MilestoneItem({
           isSelected={isSelected}
           minHeight={minHeight}
           className="h-full"
+          colorMode={colorMode}
+          systemAccent={systemAccent}
         />
       </div>
     </div>

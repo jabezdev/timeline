@@ -32,7 +32,7 @@ interface QuickCreatePopoverProps {
     date: string; // YYYY-MM-DD
     children?: React.ReactNode;
     defaultColor?: number;
-    anchorPosition?: { x: number; y: number };
+    anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => any };
 }
 
 export function QuickCreatePopover({
@@ -45,7 +45,7 @@ export function QuickCreatePopover({
     date: initialDate,
     children,
     defaultColor = 3,
-    anchorPosition
+    anchorRect
 }: QuickCreatePopoverProps) {
     const [title, setTitle] = useState('');
     const [date, setDate] = useState(initialDate);
@@ -58,7 +58,6 @@ export function QuickCreatePopover({
     const [recurrenceCount, setRecurrenceCount] = useState(1);
 
     const mutations = useTimelineMutations();
-
 
     // Reset state when opening
     useEffect(() => {
@@ -156,24 +155,14 @@ export function QuickCreatePopover({
     });
 
     useEffect(() => {
-        if (anchorPosition) {
-            virtualAnchor.current.getBoundingClientRect = () => ({
-                width: 0,
-                height: 0,
-                top: anchorPosition.y,
-                left: anchorPosition.x,
-                right: anchorPosition.x,
-                bottom: anchorPosition.y,
-                x: anchorPosition.x,
-                y: anchorPosition.y,
-                toJSON: () => { },
-            });
+        if (anchorRect) {
+            virtualAnchor.current.getBoundingClientRect = () => anchorRect;
         }
-    }, [anchorPosition]);
+    }, [anchorRect]);
 
     return (
         <Popover open={open} onOpenChange={onOpenChangeWrapper}>
-            {anchorPosition ? (
+            {anchorRect ? (
                 <PopoverAnchor virtualRef={virtualAnchor} />
             ) : (
                 <PopoverTrigger asChild>
@@ -181,108 +170,123 @@ export function QuickCreatePopover({
                 </PopoverTrigger>
             )}
             <PopoverContent
-                className="w-72 p-3"
-                align="start"
+                className="w-[340px] p-0 overflow-hidden shadow-2xl border border-border/40 bg-background/80 backdrop-blur-xl"
+                align="center"
                 side="bottom"
                 onOpenAutoFocus={(e) => e.preventDefault()} // We'll manage focus
             >
-                <div className="space-y-3">
-                    <div className="space-y-1">
-                        <Label className="text-xs">Title</Label>
-                        <Input
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            className="h-8 text-xs"
-                            placeholder={type === 'item' ? "Task Name" : "Milestone Name"}
-                            autoFocus
-                        />
+                {/* Header / Title Input */}
+                <div className="p-4 border-b border-border/10 bg-muted/20">
+                    <Input
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        className="h-9 text-base font-semibold border-none bg-transparent shadow-none px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                        placeholder={type === 'item' ? "Task Name" : "Milestone Name"}
+                        autoFocus
+                    />
+                </div>
+
+                <div className="p-2 space-y-1">
+
+                    {/* Date Row */}
+                    <div className="flex items-center gap-2 group hover:bg-muted/30 rounded-md p-1.5 transition-colors">
+                        <div className="w-8 flex items-center justify-center text-muted-foreground">
+                            <CalendarIcon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 font-normal text-sm hover:bg-transparent">
+                                        {date ? format(parseISO(date), 'MMM d, yyyy') : "Select Date"}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                        mode="single"
+                                        selected={date ? parseISO(date) : undefined}
+                                        onSelect={(d) => d && setDate(format(d, 'yyyy-MM-dd'))}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                     </div>
 
-                    <div className="space-y-1">
-                        <Label className="text-xs">Date</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" size="sm" className="w-full h-8 justify-start text-left font-normal px-2 text-xs">
-                                    <CalendarIcon className="mr-2 h-3 w-3 opacity-50 shrink-0" />
-                                    <span className="truncate">{date ? format(parseISO(date), 'MMM d') : "Date"}</span>
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={date ? parseISO(date) : undefined}
-                                    onSelect={(d) => d && setDate(format(d, 'yyyy-MM-dd'))}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-
-
-
-                    {/* SubProject Selector (Items only) */}
+                    {/* SubProject Row (Items only) */}
                     {type === 'item' && (
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">SubProject</Label>
-                            <Select value={subProjectId || "none"} onValueChange={(v) => setSubProjectId(v === "none" ? undefined : v)}>
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select SubProject" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">
-                                        <span className="text-muted-foreground italic">None</span>
-                                    </SelectItem>
-                                    {availableSubProjects.map(sp => (
-                                        <SelectItem key={sp.id} value={sp.id}>
-                                            <span className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sp.color ? (sp.color.startsWith('#') ? sp.color : `hsl(var(--workspace-${sp.color}))`) : 'hsl(var(--primary))' }} />
-                                                {sp.title}
-                                            </span>
+                        <div className="flex items-center gap-2 group hover:bg-muted/30 rounded-md p-1.5 transition-colors">
+                            <div className="w-8 flex items-center justify-center text-muted-foreground text-[10px] font-mono">
+                                SP
+                            </div>
+                            <div className="flex-1">
+                                <Select value={subProjectId || "none"} onValueChange={(v) => setSubProjectId(v === "none" ? undefined : v)}>
+                                    <SelectTrigger className="h-7 w-full border-none shadow-none bg-transparent focus:ring-0 px-2 text-sm">
+                                        <SelectValue placeholder="No SubProject" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            <span className="text-muted-foreground italic">None</span>
                                         </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                        {availableSubProjects.map(sp => (
+                                            <SelectItem key={sp.id} value={sp.id}>
+                                                <span className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sp.color ? (sp.color.startsWith('#') ? sp.color : `hsl(var(--workspace-${sp.color}))`) : 'hsl(var(--primary))' }} />
+                                                    {sp.title}
+                                                </span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     )}
 
-                    <div className="space-y-1">
-                        <Label className="text-xs">Color</Label>
-                        <div className="grid grid-cols-6 gap-2 justify-items-center">
-                            {COLORS.map((c) => (
-                                <button
-                                    key={c}
-                                    className={cn(
-                                        "w-6 h-6 rounded-full transition-all border border-border/20",
-                                        color === c ? "ring-2 ring-offset-2 ring-primary scale-110" : "hover:scale-105"
-                                    )}
-                                    style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
-                                    onClick={() => setColor(c)}
-                                />
-                            ))}
+                    {/* Color Row */}
+                    <div className="flex items-center gap-2 p-1.5">
+                        <div className="w-8 flex items-center justify-center text-muted-foreground">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: `hsl(var(--workspace-${color}))` }} />
+                        </div>
+                        <div className="flex-1 overflow-x-auto scrollbar-hide py-1">
+                            <div className="flex items-center gap-1.5">
+                                {COLORS.map((c) => (
+                                    <button
+                                        key={c}
+                                        className={cn(
+                                            "w-5 h-5 rounded-full transition-all border border-border/20",
+                                            color === c ? "ring-2 ring-offset-1 ring-primary scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
+                                        )}
+                                        style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                                        onClick={() => setColor(c)}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="pt-2 border-t border-border space-y-2">
+                    <div className="h-px bg-border/40 my-1" />
+
+                    {/* Recurring Toggle */}
+                    <div className="px-2 py-1">
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="recurring"
                                 checked={isRecurring}
                                 onCheckedChange={(c) => setIsRecurring(!!c)}
-                                className="w-4 h-4"
+                                className="w-4 h-4 border-muted-foreground/50"
                             />
                             <label
                                 htmlFor="recurring"
-                                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-muted-foreground"
                             >
-                                Recurring
+                                Repeat this task
                             </label>
                         </div>
 
                         {isRecurring && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 mt-3 pl-6 animate-in slide-in-from-top-2 fade-in duration-200">
                                 <Select value={recurrenceInterval} onValueChange={(v: any) => setRecurrenceInterval(v)}>
-                                    <SelectTrigger className="h-8 text-xs flex-1">
+                                    <SelectTrigger className="h-7 text-xs flex-1 border-muted bg-muted/20">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -291,20 +295,34 @@ export function QuickCreatePopover({
                                         <SelectItem value="month">Monthly</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <Input
-                                    type="number"
-                                    min={1}
-                                    max={50}
-                                    value={recurrenceCount}
-                                    onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
-                                    className="h-8 w-16 text-xs"
-                                    placeholder="Count"
-                                />
+                                <div className="flex items-center gap-1">
+                                    <span className="text-xs text-muted-foreground">x</span>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={50}
+                                        value={recurrenceCount}
+                                        onChange={(e) => setRecurrenceCount(parseInt(e.target.value) || 1)}
+                                        className="h-7 w-14 text-xs border-muted bg-muted/20 text-center"
+                                        placeholder="#"
+                                    />
+                                </div>
                             </div>
                         )}
                     </div>
-                    {/* No buttons, just like QuickEdit */}
+
                 </div>
+
+                {/* Footer Actions */}
+                <div className="p-2 border-t border-border/40 bg-muted/10 flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onOpenChange(false)}>
+                        Cancel
+                    </Button>
+                    <Button size="sm" className="h-7 text-xs px-4" onClick={handleSave}>
+                        Create
+                    </Button>
+                </div>
+
             </PopoverContent>
         </Popover >
     );

@@ -9,6 +9,8 @@ interface UnifiedItemProps {
     workspaceColor: number;
     minHeight?: number;
     isSelected?: boolean;
+    colorMode?: 'full' | 'monochromatic';
+    systemAccent?: string;
 }
 
 export const UnifiedItemView = React.memo(function UnifiedItemView({
@@ -18,7 +20,9 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
     style,
     className,
     minHeight,
-    isSelected
+    isSelected,
+    colorMode = 'full',
+    systemAccent = '6'
 }: {
     item: TimelineItem;
     onToggleComplete?: (itemId: string) => void;
@@ -27,7 +31,35 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
     className?: string;
     minHeight?: number;
     isSelected?: boolean;
+    colorMode?: 'full' | 'monochromatic';
+    systemAccent?: string;
 }) {
+    // Determine effective color
+    let effectiveColor = item.color;
+    let isHex = effectiveColor?.startsWith('#') || false;
+
+    const getBgColor = (opacity: number) => {
+        if (colorMode === 'monochromatic') {
+            return `hsl(var(--primary) / ${opacity})`;
+        }
+
+        if (!effectiveColor) return undefined;
+
+        // Full mode
+        if (effectiveColor.startsWith('#')) return `${effectiveColor}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+        return `hsl(var(--workspace-${effectiveColor}) / ${opacity})`;
+    };
+
+    const getMainColor = () => {
+        if (colorMode === 'monochromatic') {
+            return `hsl(var(--primary))`;
+        }
+
+        if (!effectiveColor) return undefined;
+
+        if (effectiveColor.startsWith('#')) return effectiveColor;
+        return `hsl(var(--workspace-${effectiveColor}))`;
+    };
     return (
         <div
             className={`group/item relative ${className || ''}`}
@@ -43,14 +75,10 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                     : 'bg-secondary/30 border-border hover:border-primary/30'
                     }`}
                 style={{
-                    backgroundColor: item.color
-                        ? (item.color.startsWith('#') ? `${item.color}15` : `hsl(var(--workspace-${item.color}) / 0.15)`)
-                        : undefined,
+                    backgroundColor: getBgColor(0.15),
                     borderColor: isSelected
                         ? 'hsl(var(--primary))'
-                        : (item.color
-                            ? (item.color.startsWith('#') ? `${item.color}30` : `hsl(var(--workspace-${item.color}) / 0.3)`)
-                            : undefined),
+                        : getBgColor(0.3),
                     borderWidth: isSelected ? '2px' : '1px',
                     minHeight: minHeight ? `${minHeight}px` : undefined,
                 }}
@@ -69,12 +97,8 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                         : 'border-muted-foreground hover:border-primary'
                         }`}
                     style={{
-                        backgroundColor: item.completed && item.color
-                            ? (item.color.startsWith('#') ? item.color : `hsl(var(--workspace-${item.color}))`)
-                            : undefined,
-                        borderColor: item.color
-                            ? (item.color.startsWith('#') ? item.color : `hsl(var(--workspace-${item.color}))`)
-                            : undefined
+                        backgroundColor: item.completed ? getMainColor() : undefined,
+                        borderColor: getMainColor()
                     }}
                 >
                     {item.completed && <Check className="w-3 h-3 text-white" />}
@@ -96,7 +120,9 @@ export const UnifiedItem = React.memo(function UnifiedItem({
     onDoubleClick,
     minHeight,
     onQuickEdit,
-    isSelected
+    isSelected,
+    colorMode,
+    systemAccent
 }: UnifiedItemProps & {
     onDoubleClick?: (item: TimelineItem) => void;
     onQuickEdit?: (item: TimelineItem, anchorElement?: HTMLElement) => void;
@@ -110,7 +136,7 @@ export const UnifiedItem = React.memo(function UnifiedItem({
                     e.stopPropagation();
                     if (onQuickEdit) onQuickEdit(item, e.currentTarget);
                 }}
-                onClick={(e) => {
+                onDoubleClick={(e) => {
                     e.stopPropagation();
                     if (onDoubleClick) onDoubleClick(item);
                 }}
@@ -121,6 +147,8 @@ export const UnifiedItem = React.memo(function UnifiedItem({
                     onClick={onClick}
                     minHeight={minHeight}
                     isSelected={isSelected}
+                    colorMode={colorMode}
+                    systemAccent={systemAccent}
                 />
             </div>
         </div>

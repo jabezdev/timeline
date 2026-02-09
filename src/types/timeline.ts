@@ -59,6 +59,16 @@ export interface Workspace {
   updatedAt?: string;
 }
 
+
+export interface UserSettings {
+  userId: string;
+  workspaceOrder: string[];
+  openProjectIds: string[];
+  theme?: 'light' | 'dark' | 'system';
+  systemAccent?: string; // One of the 6 curated colors or defaults
+  colorMode?: 'full' | 'monochromatic';
+}
+
 export interface TimelineState {
   workspaces: Record<string, Workspace>;
   projects: Record<string, Project>;
@@ -66,6 +76,7 @@ export interface TimelineState {
   milestones: Record<string, Milestone>;
   items: Record<string, TimelineItem>;
   workspaceOrder: string[];
+  userSettings?: UserSettings;
 
   currentDate: string;
   visibleDays: number;

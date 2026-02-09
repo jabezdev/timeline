@@ -527,17 +527,13 @@ export function WorkspaceManagerContent() {
 
   return (
     <>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="font-medium text-sm">Workspaces & Projects</h4>
+      <div className="flex flex-col h-full space-y-3">
+        <div className="flex items-center justify-between shrink-0">
+          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Workspaces & Projects</h4>
           <AddWorkspaceDialog onAdd={addWorkspace} />
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Drag to reorder workspaces and projects.
-        </p>
-
-        <div className="max-h-[400px] overflow-y-auto pr-1">
+        <div className="flex-1 overflow-y-auto pr-1 -mr-2 scrollbar-hide">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -572,6 +568,13 @@ export function WorkspaceManagerContent() {
               })}
             </SortableContext>
           </DndContext>
+
+          {sortedWorkspaces.length === 0 && (
+            <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground/50 border-2 border-dashed border-border/50 rounded-lg h-32">
+              <span className="text-xs">No workspaces yet.</span>
+              <span className="text-[10px]">Add one to get started.</span>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { TimelineItem, Milestone, SubProject, Workspace, Project, TimelineState } from '@/types/timeline';
+import { TimelineItem, Milestone, SubProject, Workspace, Project, TimelineState, UserSettings } from '@/types/timeline';
 import { subDays, parseISO, format, differenceInDays, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { flushSync } from 'react-dom';
@@ -501,6 +501,30 @@ export function useTimelineMutations() {
                 return { previous };
             },
             onSettled: () => queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] })
+        }),
+        updateUserSettings: useMutation({
+            mutationFn: async (settings: Partial<UserSettings>) => {
+                await api.updateUserSettings(settings);
+                return settings;
+            },
+            onMutate: (settings) => {
+                void queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
+                const previous = queryClient.getQueryData(['timeline', 'structure']);
+                updateStructureCache(old => {
+                    const oldSettings = old.userSettings || { userId: 'user_1', workspaceOrder: [], openProjectIds: [] };
+                    return {
+                        ...old,
+                        userSettings: { ...oldSettings, ...settings }
+                    };
+                });
+                return { previous };
+            },
+            onError: (err, _vars, context) => {
+                queryClient.setQueryData(['timeline', 'structure'], context?.previous);
+                console.error("Failed to update user settings:", err);
+                toast.error("Failed to save settings");
+            },
+            onSettled: () => queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] })
         })
     };
 }

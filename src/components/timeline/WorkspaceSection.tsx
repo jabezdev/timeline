@@ -10,6 +10,8 @@ interface WorkspaceHeaderRowProps {
   projectsMilestones: Map<string, Milestone[]>;
   startDate: Date;
   visibleDays: number;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
@@ -19,6 +21,8 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
   projectsMilestones,
   startDate,
   visibleDays,
+  colorMode,
+  systemAccent
 }: WorkspaceHeaderRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -69,27 +73,31 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
             style={{ width: CELL_WIDTH }}
             className="h-full border-r border-border/50 last:border-r-0 flex items-center justify-center p-0.5"
           >
-            <div className="flex items-center justify-center content-center flex-wrap gap-0.5 px-1 py-0.5 rounded-sm bg-white">
+            <div className="flex items-center justify-center content-center flex-wrap gap-0.5 px-1.5 py-1 rounded-full bg-card border border-border shadow-sm z-10">
               {milestones?.map(m => (
                 <div
                   key={m.id}
-                  className="w-2 h-2 rounded-full border-[2px] border-current box-border bg-transparent shrink-0"
+                  className="w-2.5 h-2.5 rounded-full border-[2.5px] border-current box-border bg-transparent shrink-0"
                   style={{
-                    color: m.color
-                      ? (m.color.startsWith('#') ? m.color : `hsl(var(--workspace-${m.color}))`)
-                      : `hsl(var(--workspace-${workspace.color}))`
+                    color: colorMode === 'monochromatic'
+                      ? 'hsl(var(--primary))'
+                      : (m.color
+                        ? (m.color.startsWith('#') ? m.color : `hsl(var(--workspace-${m.color}))`)
+                        : `hsl(var(--workspace-${workspace.color}))`)
                   }}
                   title={`Milestone: ${m.title}`}
                 />
               ))}
               {items?.map(i => {
-                const itemColor = i.color
-                  ? (i.color.startsWith('#') ? i.color : `hsl(var(--workspace-${i.color}))`)
-                  : `hsl(var(--workspace-${workspace.color}))`;
+                const itemColor = colorMode === 'monochromatic'
+                  ? 'hsl(var(--primary))'
+                  : (i.color
+                    ? (i.color.startsWith('#') ? i.color : `hsl(var(--workspace-${i.color}))`)
+                    : `hsl(var(--workspace-${workspace.color}))`);
                 return (
                   <div
                     key={i.id}
-                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${i.completed ? 'opacity-30' : 'opacity-80'}`}
+                    className={`w-2 h-2 rounded-full shrink-0 ${i.completed ? 'opacity-40' : 'opacity-100'}`}
                     style={{ backgroundColor: itemColor }}
                     title={`Task: ${i.title}`}
                   />

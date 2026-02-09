@@ -113,13 +113,14 @@ const TimelineMainView = memo(function TimelineMainView({
 
           {/* STICKY DATE HEADER — z-50, top-0 */}
           <div className="sticky top-0 z-[60] bg-background border-b border-border flex">
-            <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border justify-between pr-2" width={sidebarWidth}>
-              <span className="text-xs font-semibold text-muted-foreground">TIMELINE</span>
+            <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border pr-2" width={sidebarWidth}>
               <TimelineControls
                 startDate={startDate}
                 onNavigate={handleNavigate}
                 onTodayClick={handleTodayClick}
-              />
+              >
+                <span className="text-xs font-semibold text-muted-foreground/70 tracking-wider">TIMELINE</span>
+              </TimelineControls>
             </SidebarCell>
             <TimelineHeader
               startDate={startDate}
@@ -141,7 +142,9 @@ const TimelineMainView = memo(function TimelineMainView({
                   className="sticky z-40 border-b border-border backdrop-blur-xl flex timeline-workspace-row"
                   style={{
                     top: HEADER_HEIGHT,
-                    backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.4)`, // More saturated/darker
+                    backgroundColor: timelineState.userSettings?.colorMode === 'monochromatic'
+                      ? `hsl(var(--primary) / 0.4)`
+                      : `hsl(var(--workspace-${workspace.color}) / 0.4)`,
                   }}
                 >
                   {/* Sidebar Cell — sticky left */}
@@ -156,6 +159,8 @@ const TimelineMainView = memo(function TimelineMainView({
                       projectsMilestones={projectsMilestones}
                       startDate={startDate}
                       visibleDays={visibleDays}
+                      colorMode={timelineState.userSettings?.colorMode || 'full'}
+                      systemAccent={timelineState.userSettings?.systemAccent || '6'}
                     />
                   </div>
                 </div>
@@ -168,7 +173,9 @@ const TimelineMainView = memo(function TimelineMainView({
                       className="sticky z-30 backdrop-blur-xl border-b border-border/30 flex"
                       style={{
                         top: HEADER_HEIGHT + WORKSPACE_HEADER_HEIGHT,
-                        backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.05)`, // Lighter/Lower opacity for contrast
+                        backgroundColor: timelineState.userSettings?.colorMode === 'monochromatic'
+                          ? `hsl(var(--primary) / 0.1)`
+                          : `hsl(var(--workspace-${workspace.color}) / 0.05)`,
                       }}
                     >
                       {/* Sidebar Cell */}
@@ -189,6 +196,8 @@ const TimelineMainView = memo(function TimelineMainView({
                           onItemDoubleClick={handleItemDoubleClick}
                           onQuickEdit={handleQuickEdit}
                           onQuickCreate={handleQuickCreate}
+                          colorMode={timelineState.userSettings?.colorMode || 'full'}
+                          systemAccent={timelineState.userSettings?.systemAccent || '6'}
                         />
                       </div>
                     </div>
@@ -197,7 +206,7 @@ const TimelineMainView = memo(function TimelineMainView({
                     <div className="relative z-0 flex">
                       {/* Sidebar Spacer for Content Row */}
                       <div
-                        className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-none"
+                        className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-auto"
                         style={{
                           width: 'var(--sidebar-width)',
                           minWidth: 'var(--sidebar-width)'
@@ -221,6 +230,8 @@ const TimelineMainView = memo(function TimelineMainView({
                           selectedIds={selectedIds}
                           onItemClick={handleItemClick}
                           onClearSelection={onClearSelection}
+                          colorMode={timelineState.userSettings?.colorMode || 'full'}
+                          systemAccent={timelineState.userSettings?.systemAccent || '6'}
                         />
                       </div>
                     </div>
@@ -377,13 +388,13 @@ function TimelineContent() {
     subProjectId?: string;
     date: string;
     workspaceColor?: number;
-    anchorPosition?: { x: number; y: number };
+    anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => any };
   }>({ open: false, projectId: '', date: '', workspaceColor: 1 });
 
   const [quickEditState, setQuickEditState] = useState<{
     open: boolean;
     item: TimelineItem | Milestone | SubProject | null;
-    anchorPosition?: { x: number; y: number };
+    anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => any };
   }>({ open: false, item: null });
 
   /* State */
@@ -426,7 +437,17 @@ function TimelineContent() {
       date,
       subProjectId,
       workspaceColor,
-      anchorPosition: rect ? { x: rect.left, y: rect.bottom } : undefined
+      anchorRect: rect ? {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        toJSON: rect.toJSON
+      } : undefined
     });
   }, []);
 
@@ -435,9 +456,16 @@ function TimelineContent() {
     setQuickEditState({
       open: true,
       item,
-      anchorPosition: rect ? {
-        x: rect.left + (rect.width / 2),
-        y: rect.top + (rect.height / 2)
+      anchorRect: rect ? {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        toJSON: rect.toJSON
       } : undefined
     });
   }, []);
@@ -490,10 +518,13 @@ function TimelineContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutations.addSubProject.mutate]);
 
-
-
   const handleItemClick = useCallback((id: string, multi: boolean) => {
     handleSelection(id, multi);
+    if (multi) {
+      setIsItemDialogOpen(false);
+    } else {
+      setIsItemDialogOpen(true);
+    }
   }, [handleSelection]);
 
   const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject) => {
@@ -613,17 +644,8 @@ function TimelineContent() {
           availableSubProjects={availableSubProjectsForCreate}
           date={quickCreateState.date}
           defaultColor={quickCreateState.workspaceColor}
-        >
-          <div
-            style={{
-              position: 'fixed',
-              left: quickCreateState.anchorPosition?.x,
-              top: quickCreateState.anchorPosition?.y,
-              width: 1,
-              height: 1
-            }}
-          />
-        </QuickCreatePopover>
+          anchorRect={quickCreateState.anchorRect}
+        />
       )}
 
       {/* Global Quick Edit Popover */}
@@ -633,7 +655,7 @@ function TimelineContent() {
           availableSubProjects={availableSubProjects}
           open={quickEditState.open}
           onOpenChange={(open) => setQuickEditState(prev => ({ ...prev, open }))}
-          anchorPosition={quickEditState.anchorPosition}
+          anchorRect={quickEditState.anchorRect}
         />
       )}
     </>

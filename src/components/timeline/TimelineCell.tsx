@@ -22,6 +22,8 @@ interface TimelineCellProps {
   onQuickEdit: (item: TimelineItem | Milestone, anchorElement?: HTMLElement) => void;
   selectedIds: Set<string>;
   onItemClick: (id: string, multi: boolean) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 export const TimelineCell = React.memo(function TimelineCell({
@@ -39,9 +41,12 @@ export const TimelineCell = React.memo(function TimelineCell({
   onQuickCreate,
   onQuickEdit,
   selectedIds,
-  onItemClick
+  onItemClick,
+  colorMode,
+  systemAccent
 }: TimelineCellProps) {
   const dateStr = format(date, 'yyyy-MM-dd');
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const content = (
     <div className="flex flex-col gap-0 h-full pointer-events-none">
@@ -55,6 +60,8 @@ export const TimelineCell = React.memo(function TimelineCell({
             minHeight={rowHeight}
             isSelected={selectedIds.has(milestone.id)}
             onClick={(multi: boolean) => onItemClick(milestone.id, multi)}
+            colorMode={colorMode}
+            systemAccent={systemAccent}
           />
         </div>
       ))}
@@ -69,7 +76,9 @@ export const TimelineCell = React.memo(function TimelineCell({
             workspaceColor={workspaceColor}
             minHeight={rowHeight}
             isSelected={selectedIds.has(item.id)}
-            onClick={(item) => onItemClick(item.id, false)} // UnifiedItem uses a different signature for onClick? Need to check
+            onClick={(multi) => onItemClick(item.id, multi)}
+            colorMode={colorMode}
+            systemAccent={systemAccent}
           />
         </div>
       ))}
@@ -81,16 +90,16 @@ export const TimelineCell = React.memo(function TimelineCell({
 
   return (
     <div
+      ref={containerRef}
       className={containerClass}
       style={containerStyle}
     >
       {content}
 
-      {/* Floating Quick Create Button - always available on hover */}
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onQuickCreate(projectId, dateStr, subProjectId, workspaceColor, e.currentTarget);
+          onQuickCreate(projectId, dateStr, subProjectId, workspaceColor, containerRef.current || e.currentTarget);
         }}
         className="absolute top-1 right-1 w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-primary/10 hover:bg-primary/20 flex items-center justify-center z-10"
         title="Add task"

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { TimelineState, Workspace, Project, SubProject, Milestone, TimelineItem } from '@/types/timeline';
+import { TimelineState, Workspace, Project, SubProject, Milestone, TimelineItem, UserSettings } from '@/types/timeline';
 import {
     transformWorkspace,
     transformProject,
@@ -11,27 +11,46 @@ import {
 
 export const api = {
     // --- READ ---
+    // Helper to handle Supabase responses
+    async handleResponse<T>(promise: Promise<{ data: T | null; error: any }>): Promise<T> {
+        const { data, error } = await promise;
+        if (error) {
+            console.error("Supabase API Error:", error);
+            throw error;
+        }
+        return data as T;
+    },
+
+    // --- READ ---
     async fetchStructure(): Promise<Partial<TimelineState>> {
-        const { data: workspaces } = await supabase
-            .from('workspaces')
-            .select('*')
-            .order('position', { ascending: true });
+        const [workspaces, projects, settings] = await Promise.all([
+            this.handleResponse(supabase
+                .from('workspaces')
+                .select('*')
+                .order('position', { ascending: true })),
+            this.handleResponse(supabase
+                .from('projects')
+                .select('*')
+                .order('position', { ascending: true })),
+            this.handleResponse(supabase
+                .from('user_settings')
+                .select('*')
+                .maybeSingle())
+        ]);
 
-        const { data: projects } = await supabase
-            .from('projects')
-            .select('*')
-            .order('position', { ascending: true });
-
-        const { data: settings } = await supabase
-            .from('user_settings')
-            .select('*')
-            .maybeSingle();
 
         const state: Partial<TimelineState> = {
             workspaces: {},
             projects: {},
             workspaceOrder: [],
-            openProjectIds: settings?.open_project_ids || [],
+            userSettings: settings ? {
+                userId: settings.user_id,
+                workspaceOrder: settings.workspace_order || [],
+                openProjectIds: settings.open_project_ids || [],
+                theme: settings.theme,
+                systemAccent: settings.system_accent,
+                colorMode: settings.color_mode
+            } : undefined
         };
 
         // Populate workspaces
@@ -49,28 +68,25 @@ export const api = {
     },
 
     async fetchTimelineData(startDate: string, endDate: string): Promise<Partial<TimelineState>> {
-        // Timeline Items: date within range
-        const { data: items } = await supabase
-            .from('timeline_items')
-            .select('*')
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('title', { ascending: true });
-
-        // Milestones: date within range
-        const { data: milestones } = await supabase
-            .from('milestones')
-            .select('*')
-            .gte('date', startDate)
-            .lte('date', endDate)
-            .order('title', { ascending: true });
-
-        // SubProjects: Overlapping range
-        const { data: subProjects } = await supabase
-            .from('sub_projects')
-            .select('*')
-            .lte('start_date', endDate)
-            .gte('end_date', startDate);
+        const [items, milestones, subProjects] = await Promise.all([
+            this.handleResponse(supabase
+                .from('timeline_items')
+                .select('*')
+                .gte('date', startDate)
+                .lte('date', endDate)
+                .order('title', { ascending: true })),
+            this.handleResponse(supabase
+                .from('milestones')
+                .select('*')
+                .gte('date', startDate)
+                .lte('date', endDate)
+                .order('title', { ascending: true })),
+            this.handleResponse(supabase
+                .from('sub_projects')
+                .select('*')
+                .lte('start_date', endDate)
+                .gte('end_date', startDate))
+        ]);
 
         const state: Partial<TimelineState> = {
             subProjects: {},
@@ -91,14 +107,14 @@ export const api = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        return supabase.from('workspaces').upsert({
+        return this.handleResponse(supabase.from('workspaces').upsert({
             id: w.id,
             user_id: user.id,
             name: w.name,
             color: w.color,
             is_hidden: w.isHidden,
             position: w.position,
-        });
+        }));
     },
 
     async updateWorkspace(id: string, updates: Partial<Workspace>) {
@@ -108,22 +124,22 @@ export const api = {
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
         if ('position' in updates) dbUpdates.position = updates.position;
 
-        return supabase.from('workspaces').update(dbUpdates).eq('id', id);
+        return this.handleResponse(supabase.from('workspaces').update(dbUpdates).eq('id', id));
     },
 
     async deleteWorkspace(id: string) {
-        return supabase.from('workspaces').delete().eq('id', id);
+        return this.handleResponse(supabase.from('workspaces').delete().eq('id', id));
     },
 
     async createProject(p: Project) {
-        return supabase.from('projects').upsert({
+        return this.handleResponse(supabase.from('projects').upsert({
             id: p.id,
             name: p.name,
             workspace_id: p.workspaceId,
             color: p.color,
             position: p.position,
             is_hidden: p.isHidden,
-        });
+        }));
     },
 
     async updateProject(id: string, updates: Partial<Project>) {
@@ -134,7 +150,7 @@ export const api = {
         if ('workspaceId' in updates) dbUpdates.workspace_id = updates.workspaceId;
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
 
-        return supabase.from('projects').update(dbUpdates).eq('id', id);
+        return this.handleResponse(supabase.from('projects').update(dbUpdates).eq('id', id));
     },
 
     async reorderProjects(projects: Partial<Project>[]) {
@@ -145,16 +161,16 @@ export const api = {
 
         // Parallelize updates
         return Promise.all(updates.map(u =>
-            supabase.from('projects').update({ position: u.position }).eq('id', u.id!)
+            this.handleResponse(supabase.from('projects').update({ position: u.position }).eq('id', u.id!))
         ));
     },
 
     async deleteProject(id: string) {
-        return supabase.from('projects').delete().eq('id', id);
+        return this.handleResponse(supabase.from('projects').delete().eq('id', id));
     },
 
     async createSubProject(s: SubProject) {
-        return supabase.from('sub_projects').upsert({
+        return this.handleResponse(supabase.from('sub_projects').upsert({
             id: s.id,
             title: s.title,
             start_date: s.startDate,
@@ -162,7 +178,7 @@ export const api = {
             project_id: s.projectId,
             color: s.color,
             description: s.description,
-        });
+        }));
     },
 
     async updateSubProject(id: string, updates: Partial<SubProject>) {
@@ -173,15 +189,15 @@ export const api = {
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('description' in updates) dbUpdates.description = updates.description;
 
-        return supabase.from('sub_projects').update(dbUpdates).eq('id', id);
+        return this.handleResponse(supabase.from('sub_projects').update(dbUpdates).eq('id', id));
     },
 
     async deleteSubProject(id: string) {
-        return supabase.from('sub_projects').delete().eq('id', id);
+        return this.handleResponse(supabase.from('sub_projects').delete().eq('id', id));
     },
 
     async createMilestone(m: Milestone) {
-        return supabase.from('milestones').upsert({
+        return this.handleResponse(supabase.from('milestones').upsert({
             id: m.id,
             title: m.title,
             date: m.date,
@@ -189,7 +205,7 @@ export const api = {
             content: m.content,
             color: m.color,
             position: m.position,
-        });
+        }));
     },
 
     async updateMilestone(id: string, updates: Partial<Milestone>) {
@@ -198,15 +214,15 @@ export const api = {
         if ('date' in updates) dbUpdates.date = updates.date;
         if ('content' in updates) dbUpdates.content = updates.content;
         if ('color' in updates) dbUpdates.color = updates.color;
-        return supabase.from('milestones').update(dbUpdates).eq('id', id);
+        return this.handleResponse(supabase.from('milestones').update(dbUpdates).eq('id', id));
     },
 
     async deleteMilestone(id: string) {
-        return supabase.from('milestones').delete().eq('id', id);
+        return this.handleResponse(supabase.from('milestones').delete().eq('id', id));
     },
 
     async createItem(i: TimelineItem) {
-        return supabase.from('timeline_items').upsert({
+        return this.handleResponse(supabase.from('timeline_items').upsert({
             id: i.id,
             title: i.title,
             content: i.content,
@@ -217,7 +233,7 @@ export const api = {
             color: i.color,
             completed_at: i.completedAt,
             position: i.position,
-        });
+        }));
     },
 
     async updateItem(id: string, updates: Partial<TimelineItem>) {
@@ -229,11 +245,11 @@ export const api = {
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('completedAt' in updates) dbUpdates.completed_at = updates.completedAt;
-        return supabase.from('timeline_items').update(dbUpdates).eq('id', id);
+        return this.handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id));
     },
 
     async deleteItem(id: string) {
-        return supabase.from('timeline_items').delete().eq('id', id);
+        return this.handleResponse(supabase.from('timeline_items').delete().eq('id', id));
     },
 
     // User Settings
@@ -241,11 +257,11 @@ export const api = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        return supabase.from('user_settings').upsert({
+        return this.handleResponse(supabase.from('user_settings').upsert({
             user_id: user.id,
             workspace_order: workspaceOrder,
             open_project_ids: openProjectIds
-        });
+        }));
     },
 
     async reorderWorkspaces(workspaces: Partial<Workspace>[]) {
@@ -254,7 +270,7 @@ export const api = {
             position: w.position,
         }));
         return Promise.all(updates.map(u =>
-            supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!)
+            this.handleResponse(supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!))
         ));
     },
 
@@ -264,7 +280,7 @@ export const api = {
             position: m.position,
         }));
         return Promise.all(updates.map(u =>
-            supabase.from('milestones').update({ position: u.position }).eq('id', u.id!)
+            this.handleResponse(supabase.from('milestones').update({ position: u.position }).eq('id', u.id!))
         ));
     },
 
@@ -274,7 +290,7 @@ export const api = {
             position: i.position,
         }));
         return Promise.all(updates.map(u =>
-            supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!)
+            this.handleResponse(supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!))
         ));
     },
 
@@ -302,7 +318,25 @@ export const api = {
             if ('completedAt' in rest) dbUpdates.completed_at = rest.completedAt;
             if ('position' in rest) dbUpdates.position = rest.position;
 
-            return supabase.from('timeline_items').update(dbUpdates).eq('id', id!);
+            return this.handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id!));
+        }));
+    },
+
+    async updateUserSettings(settings: Partial<UserSettings>) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const dbUpdates: any = {};
+        if ('theme' in settings) dbUpdates.theme = settings.theme;
+        if ('systemAccent' in settings) dbUpdates.system_accent = settings.systemAccent;
+        if ('colorMode' in settings) dbUpdates.color_mode = settings.colorMode;
+        if ('workspaceOrder' in settings) dbUpdates.workspace_order = settings.workspaceOrder;
+        if ('openProjectIds' in settings) dbUpdates.open_project_ids = settings.openProjectIds;
+
+        // Ensure user exists in settings table
+        return this.handleResponse(supabase.from('user_settings').upsert({
+            user_id: user.id,
+            ...dbUpdates
         }));
     }
 };

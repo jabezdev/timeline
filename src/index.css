@@ -66,6 +66,18 @@
     /* Magenta */
     --workspace-12: 340 60% 55%;
     /* Pink/Rose */
+    --workspace-13: 0 0% 0%;
+    /* Black (Light Mode) / White (Dark Mode) */
+    --workspace-14: 240 5% 65%;
+    /* Neutral/Slate */
+
+    /* Curated System Accents */
+    --accent-ocean: 199 89% 48%;   /* #0ea5e9 Sky 500 */
+    --accent-forest: 142 71% 45%;  /* #16a34a Green 600 */
+    --accent-violet: 258 90% 66%;  /* #a78bfa Violet 400 */
+    --accent-sunset: 15 79% 65%;   /* #fb923c Orange 400 */
+    --accent-berry: 330 81% 60%;   /* #db2777 Pink 600 */
+    --accent-slate: 215 16% 47%;   /* #64748b Slate 500 */
 
     /* Timeline specific */
     --timeline-line: 20 5% 85%;
@@ -136,7 +148,13 @@
     --timeline-today: 83 35% 63%;
     --milestone: 40 56% 68%;
     --task: 83 35% 63%;
+    --timeline-today: 83 35% 63%;
+    --milestone: 40 56% 68%;
+    --task: 83 35% 63%;
     --note: 331 41% 72%;
+
+    /* Workspace 13 overrides for Dark Mode (White) */
+    --workspace-13: 0 0% 100%;
 
     /* Shadows */
     --shadow-sm: 0 2px 8px hsl(222 47% 4% / 0.4);
@@ -240,6 +258,14 @@
 
   .workspace-accent-12 {
     --workspace-accent: var(--workspace-12);
+  }
+
+  .workspace-accent-13 {
+    --workspace-accent: var(--workspace-13);
+  }
+
+  .workspace-accent-14 {
+    --workspace-accent: var(--workspace-14);
   }
 
   .timeline-grid {

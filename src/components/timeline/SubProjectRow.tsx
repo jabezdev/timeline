@@ -20,6 +20,8 @@ interface SubProjectLaneProps {
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
   selectedIds: Set<string>;
   onItemClick: (id: string, multi: boolean) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 interface SubProjectSectionProps {
@@ -36,6 +38,8 @@ interface SubProjectSectionProps {
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
   selectedIds: Set<string>;
   onItemClick: (id: string, multi: boolean) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }
 
 export const SubProjectBar = React.forwardRef<HTMLDivElement, {
@@ -49,6 +53,8 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   children?: React.ReactNode;
   sidebarWidth?: number;
   onQuickEdit?: (item: SubProject, anchorElement?: HTMLElement) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }>(({
   subProject,
   width,
@@ -59,8 +65,39 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   className,
   children,
   sidebarWidth = SIDEBAR_WIDTH,
-  onQuickEdit
+  onQuickEdit,
+  colorMode,
+  systemAccent
 }, ref) => {
+
+  const effectiveVar = colorMode === 'monochromatic'
+    ? 'var(--primary)'
+    : (subProject.color ? (subProject.color.startsWith('#') ? undefined : `var(--workspace-${subProject.color})`) : 'var(--primary)'); // Default fallback
+
+  let borderColor, bgColor, headerBg;
+
+  if (colorMode === 'monochromatic') {
+    // Monochromatic overrides everything
+    // Use effectiveVar which is var(--primary)
+    borderColor = `hsl(${effectiveVar} / 0.3)`;
+    bgColor = `hsl(${effectiveVar} / 0.08)`;
+    headerBg = `hsl(${effectiveVar} / 0.2)`;
+  } else {
+    // Normal mode
+    if (subProject.color && subProject.color.startsWith('#')) {
+      borderColor = `${subProject.color}30`;
+      bgColor = `${subProject.color}08`;
+      headerBg = `${subProject.color}20`;
+    } else if (subProject.color) { // Workspace color index
+      borderColor = `hsl(var(--workspace-${subProject.color}) / 0.3)`;
+      bgColor = `hsl(var(--workspace-${subProject.color}) / 0.08)`;
+      headerBg = `hsl(var(--workspace-${subProject.color}) / 0.2)`;
+    } else { // Default
+      borderColor = 'hsl(var(--primary) / 0.2)';
+      bgColor = 'hsl(var(--primary) / 0.05)';
+      headerBg = 'hsl(var(--primary) / 0.15)';
+    }
+  }
 
   return (
     <div
@@ -70,12 +107,8 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
         left: left !== undefined ? `${left}px` : undefined,
         width: width !== undefined ? `${width}px` : undefined,
         height: height !== undefined ? `${height}px` : undefined,
-        borderColor: subProject.color
-          ? (subProject.color.startsWith('#') ? `${subProject.color}30` : `hsl(var(--workspace-${subProject.color}) / 0.3)`)
-          : 'hsl(var(--primary) / 0.2)',
-        backgroundColor: subProject.color
-          ? (subProject.color.startsWith('#') ? `${subProject.color}08` : `hsl(var(--workspace-${subProject.color}) / 0.08)`)
-          : 'hsl(var(--primary) / 0.05)',
+        borderColor,
+        backgroundColor: bgColor,
         ...style
       }}
     >
@@ -86,9 +119,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
           className="sticky w-fit max-w-[250px] flex items-center h-full pl-2.5 pr-2"
           style={{
             left: 'var(--sidebar-width)',
-            backgroundColor: subProject.color
-              ? (subProject.color.startsWith('#') ? `${subProject.color}20` : `hsl(var(--workspace-${subProject.color}) / 0.2)`)
-              : 'hsl(var(--primary) / 0.15)',
+            backgroundColor: headerBg,
           }}
         >
           {/* Title - Clickable to Edit */}
@@ -128,7 +159,9 @@ function StaticSubProjectBar({
   totalVisibleDays,
   onDoubleClick,
   sidebarWidth,
-  onQuickEdit
+  onQuickEdit,
+  colorMode,
+  systemAccent
 }: {
   subProject: SubProject;
   timelineStartDate: Date;
@@ -136,6 +169,8 @@ function StaticSubProjectBar({
   onDoubleClick: (subProject: SubProject) => void;
   sidebarWidth: number;
   onQuickEdit: (item: SubProject, anchorElement?: HTMLElement) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }) {
   const subProjectStart = parseISO(subProject.startDate);
   const subProjectEnd = parseISO(subProject.endDate);
@@ -162,6 +197,8 @@ function StaticSubProjectBar({
         onQuickEdit={onQuickEdit}
         className="h-full"
         sidebarWidth={sidebarWidth}
+        colorMode={colorMode}
+        systemAccent={systemAccent}
       />
     </div>
   );
@@ -179,7 +216,9 @@ function SubProjectCell({
   onQuickCreate,
   onQuickEdit,
   selectedIds,
-  onItemClick
+  onItemClick,
+  colorMode,
+  systemAccent
 }: {
   date: Date;
   projectId: string;
@@ -193,6 +232,8 @@ function SubProjectCell({
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
   selectedIds: Set<string>;
   onItemClick: (id: string, multi: boolean) => void;
+  colorMode?: 'full' | 'monochromatic';
+  systemAccent?: string;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
 
@@ -214,6 +255,8 @@ function SubProjectCell({
               minHeight={height}
               isSelected={selectedIds.has(item.id)}
               onClick={(multi: boolean) => onItemClick(item.id, multi)}
+              colorMode={colorMode}
+              systemAccent={systemAccent}
             />
           </div>
         ))}
@@ -237,7 +280,9 @@ export function SubProjectLane({
   onQuickCreate,
   onQuickEdit,
   selectedIds,
-  onItemClick
+  onItemClick,
+  colorMode,
+  systemAccent
 }: SubProjectLaneProps) {
   const timelineStartDate = days[0];
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
@@ -266,6 +311,8 @@ export function SubProjectLane({
             onDoubleClick={onSubProjectDoubleClick}
             onQuickEdit={onQuickEdit}
             sidebarWidth={sidebarWidth}
+            colorMode={colorMode}
+            systemAccent={systemAccent}
           />
         ))}
       </div>
@@ -301,6 +348,8 @@ export function SubProjectLane({
               onQuickEdit={onQuickEdit}
               selectedIds={selectedIds}
               onItemClick={onItemClick}
+              colorMode={colorMode}
+              systemAccent={systemAccent}
             />
           );
         })}
@@ -323,7 +372,9 @@ export function SubProjectSection({
   onQuickCreate,
   onQuickEdit,
   selectedIds,
-  onItemClick
+  onItemClick,
+  colorMode,
+  systemAccent
 }: SubProjectSectionProps) {
   if (subProjectLanes.length === 0) return null;
 
@@ -346,6 +397,8 @@ export function SubProjectSection({
           onQuickEdit={onQuickEdit}
           selectedIds={selectedIds}
           onItemClick={onItemClick}
+          colorMode={colorMode}
+          systemAccent={systemAccent}
         />
       ))}
     </div>

@@ -29,10 +29,11 @@ interface QuickEditPopoverProps {
     className?: string;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
-    anchorPosition?: { x: number; y: number };
+
+    anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => any };
 }
 
-export function QuickEditPopover({ item, availableSubProjects = [], children, className, open: controlledOpen, onOpenChange: setControlledOpen, anchorPosition }: QuickEditPopoverProps) {
+export function QuickEditPopover({ item, availableSubProjects = [], children, className, open: controlledOpen, onOpenChange: setControlledOpen, anchorRect }: QuickEditPopoverProps) {
     const [internalOpen, setInternalOpen] = useState(false);
 
     const isControlled = controlledOpen !== undefined;
@@ -163,24 +164,14 @@ export function QuickEditPopover({ item, availableSubProjects = [], children, cl
     });
 
     useEffect(() => {
-        if (anchorPosition) {
-            virtualAnchor.current.getBoundingClientRect = () => ({
-                width: 0,
-                height: 0,
-                top: anchorPosition.y,
-                left: anchorPosition.x,
-                right: anchorPosition.x,
-                bottom: anchorPosition.y,
-                x: anchorPosition.x,
-                y: anchorPosition.y,
-                toJSON: () => { },
-            });
+        if (anchorRect) {
+            virtualAnchor.current.getBoundingClientRect = () => anchorRect;
         }
-    }, [anchorPosition]);
+    }, [anchorRect]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            {anchorPosition ? (
+            {anchorRect ? (
                 <PopoverAnchor virtualRef={virtualAnchor} />
             ) : (
                 <PopoverAnchor asChild>
@@ -190,9 +181,9 @@ export function QuickEditPopover({ item, availableSubProjects = [], children, cl
                 </PopoverAnchor>
             )}
             <PopoverContent
-                className="w-72 p-3"
+                className="w-[340px] p-0 overflow-hidden shadow-2xl border border-border/40 bg-background/80 backdrop-blur-xl"
                 align="center"
-                side="right"
+                side="bottom"
                 sideOffset={8}
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
@@ -200,69 +191,74 @@ export function QuickEditPopover({ item, availableSubProjects = [], children, cl
                     // Default close behavior
                 }}
             >
-                <div className="space-y-3">
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Title</Label>
-                        <Input
-                            value={title}
-                            onChange={handleTitleChange}
-                            className="h-8 text-xs font-medium"
-                            autoFocus
-                            placeholder="Item title"
-                        />
-                    </div>
+                {/* Header / Title Input */}
+                <div className="p-4 border-b border-border/10 bg-muted/20">
+                    <Input
+                        value={title}
+                        onChange={handleTitleChange}
+                        className="h-9 text-base font-semibold border-none bg-transparent shadow-none px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                        placeholder="Item Title"
+                        autoFocus
+                    />
+                </div>
 
-                    {/* Quick Date Actions */}
-                    <div className="flex items-center justify-between gap-1">
-                        <div className="flex bg-secondary/50 rounded-md p-0.5">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => shiftDate(-1, 'weeks')} title="-1 Week">
-                                <ChevronsLeft className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => shiftDate(-1, 'days')} title="-1 Day">
-                                <ChevronLeft className="h-3 w-3" />
-                            </Button>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                            {date ? format(parseISO(date), 'MMM d') : ''}
-                        </span>
-                        <div className="flex bg-secondary/50 rounded-md p-0.5">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => shiftDate(1, 'days')} title="+1 Day">
-                                <ChevronRight className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => shiftDate(1, 'weeks')} title="+1 Week">
-                                <ChevronsRight className="h-3 w-3" />
-                            </Button>
-                        </div>
-                    </div>
+                <div className="p-2 space-y-1">
 
-                    <div className="flex gap-2">
-                        <div className="space-y-1 flex-1 min-w-0">
-                            <Label className="text-xs text-muted-foreground">{isSubProject ? 'Start' : 'Date'}</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="outline" size="sm" className="w-full h-8 justify-start text-left font-normal px-2 text-xs">
-                                        <CalendarIcon className="mr-2 h-3 w-3 opacity-50 shrink-0" />
-                                        <span className="truncate">{date ? format(parseISO(date), 'MMM d, yyyy') : "Date"}</span>
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                        mode="single"
-                                        selected={date ? parseISO(date) : undefined}
-                                        onSelect={(d) => d && handleDateChange(format(d, 'yyyy-MM-dd'))}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                    {/* Quick Date Actions Row - Integrated */}
+                    <div className="flex items-center gap-2 group hover:bg-muted/30 rounded-md p-1.5 transition-colors">
+                        <div className="w-8 flex items-center justify-center text-muted-foreground">
+                            <CalendarIcon className="w-4 h-4" />
                         </div>
-                        {isSubProject && (
-                            <div className="space-y-1 flex-1 min-w-0">
-                                <Label className="text-xs">End</Label>
+
+                        <div className="flex-1 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-0.5">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => shiftDate(-1, 'weeks')} title="-1 Week">
+                                    <ChevronsLeft className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => shiftDate(-1, 'days')} title="-1 Day">
+                                    <ChevronLeft className="h-3 w-3" />
+                                </Button>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
                                 <Popover>
                                     <PopoverTrigger asChild>
-                                        <Button variant="outline" size="sm" className="w-full h-8 justify-start text-left font-normal px-2 text-xs">
-                                            <CalendarIcon className="mr-2 h-3 w-3 opacity-50 shrink-0" />
-                                            <span className="truncate">{endDate ? format(parseISO(endDate), 'MMM d') : "End"}</span>
+                                        <Button variant="ghost" size="sm" className="h-7 w-full justify-center px-2 font-normal text-sm hover:bg-transparent">
+                                            {date ? format(parseISO(date), 'MMM d, yyyy') : "Date"}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={date ? parseISO(date) : undefined}
+                                            onSelect={(d) => d && handleDateChange(format(d, 'yyyy-MM-dd'))}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <div className="flex items-center gap-0.5">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => shiftDate(1, 'days')} title="+1 Day">
+                                    <ChevronRight className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={() => shiftDate(1, 'weeks')} title="+1 Week">
+                                    <ChevronsRight className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {isSubProject && (
+                        <div className="flex items-center gap-2 group hover:bg-muted/30 rounded-md p-1.5 transition-colors">
+                            <div className="w-8 flex items-center justify-center text-muted-foreground text-[10px]">
+                                END
+                            </div>
+                            <div className="flex-1">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-7 w-full justify-start px-2 font-normal text-sm hover:bg-transparent">
+                                            {endDate ? format(parseISO(endDate), 'MMM d, yyyy') : "End Date"}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
@@ -276,75 +272,84 @@ export function QuickEditPopover({ item, availableSubProjects = [], children, cl
                                     </PopoverContent>
                                 </Popover>
                             </div>
-                        )}
-                    </div>
-
-                    {/* SubProject Selector (Items only) */}
-                    {isItem && (
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">SubProject</Label>
-                            <Select value={subProjectId || "none"} onValueChange={handleSubProjectChange}>
-                                <SelectTrigger className="h-8 text-xs">
-                                    <SelectValue placeholder="Select SubProject" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">
-                                        <span className="text-muted-foreground italic">None</span>
-                                    </SelectItem>
-                                    {availableSubProjects.map(sp => (
-                                        <SelectItem key={sp.id} value={sp.id}>
-                                            <span className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sp.color ? (sp.color.startsWith('#') ? sp.color : `hsl(var(--workspace-${sp.color}))`) : 'hsl(var(--primary))' }} />
-                                                {sp.title}
-                                            </span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
                         </div>
                     )}
 
+                    {/* SubProject (Items only) */}
+                    {isItem && (
+                        <div className="flex items-center gap-2 group hover:bg-muted/30 rounded-md p-1.5 transition-colors">
+                            <div className="w-8 flex items-center justify-center text-muted-foreground text-[10px] font-mono">
+                                SP
+                            </div>
+                            <div className="flex-1">
+                                <Select value={subProjectId || "none"} onValueChange={handleSubProjectChange}>
+                                    <SelectTrigger className="h-7 w-full border-none shadow-none bg-transparent focus:ring-0 px-2 text-sm">
+                                        <SelectValue placeholder="No SubProject" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">
+                                            <span className="text-muted-foreground italic">None</span>
+                                        </SelectItem>
+                                        {availableSubProjects.map(sp => (
+                                            <SelectItem key={sp.id} value={sp.id}>
+                                                <span className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sp.color ? (sp.color.startsWith('#') ? sp.color : `hsl(var(--workspace-${sp.color}))`) : 'hsl(var(--primary))' }} />
+                                                    {sp.title}
+                                                </span>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    )}
 
-
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Color</Label>
-                        <div className="grid grid-cols-6 gap-2 justify-items-center bg-secondary/20 p-2 rounded-md">
-                            {COLORS.map((c) => (
+                    {/* Color Row */}
+                    <div className="flex items-center gap-2 p-1.5">
+                        <div className="w-8 flex items-center justify-center text-muted-foreground">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color ? `hsl(var(--workspace-${color}))` : 'transparent', border: !color ? '1px solid currentColor' : 'none' }} />
+                        </div>
+                        <div className="flex-1 overflow-x-auto scrollbar-hide py-1">
+                            <div className="flex items-center gap-1.5">
+                                {COLORS.map((c) => (
+                                    <button
+                                        key={c}
+                                        className={cn(
+                                            "w-5 h-5 rounded-full transition-all border border-border/20",
+                                            color === String(c) ? "ring-2 ring-offset-1 ring-primary scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
+                                        )}
+                                        style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                                        onClick={() => handleColorChange(String(c))}
+                                    />
+                                ))}
                                 <button
-                                    key={c}
                                     className={cn(
-                                        "w-5 h-5 rounded-full transition-all border border-border/20",
-                                        color === String(c) ? "ring-2 ring-offset-2 ring-primary scale-110" : "hover:scale-110 opacity-80 hover:opacity-100"
+                                        "w-5 h-5 rounded-full border border-border flex items-center justify-center text-[10px] opacity-70 hover:opacity-100 hover:bg-secondary",
+                                        !color ? "ring-2 ring-offset-1 ring-primary" : ""
                                     )}
-                                    style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
-                                    onClick={() => handleColorChange(String(c))}
-                                />
-                            ))}
-                            <button
-                                className={cn(
-                                    "w-5 h-5 rounded-full border border-border flex items-center justify-center text-[10px]",
-                                    !color ? "ring-2 ring-offset-2 ring-primary" : "hover:bg-secondary"
-                                )}
-                                onClick={() => handleColorChange(undefined)}
-                                title="None"
-                            >
-                                <X className="w-3 h-3 text-muted-foreground" />
-                            </button>
+                                    onClick={() => handleColorChange(undefined)}
+                                    title="None"
+                                >
+                                    <X className="w-3 h-3 text-muted-foreground" />
+                                </button>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="pt-2 border-t border-border flex justify-end">
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-8 w-full text-xs"
-                            onClick={handleDelete}
-                        >
-                            <Trash2 className="w-3 h-3 mr-2" />
-                            Delete
-                        </Button>
-                    </div>
                 </div>
+
+                {/* Footer Actions */}
+                <div className="p-2 border-t border-border/40 bg-muted/10 flex justify-end">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={handleDelete}
+                    >
+                        <Trash2 className="w-3 h-3 mr-1.5" />
+                        Delete
+                    </Button>
+                </div>
+
             </PopoverContent>
         </Popover >
     );
