@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { startOfWeek, addDays, subDays, differenceInDays, parseISO, format, isValid } from 'date-fns';
 import { CELL_WIDTH } from '@/lib/constants';
@@ -24,20 +24,35 @@ export function useTimelineScroll(visibleDays: number = 21) {
     }, [searchParams]);
 
     // Helper to update URL
-    const setStartDate = (newDateOrUpdater: Date | ((prev: Date) => Date)) => {
+    const setStartDate = useCallback((newDateOrUpdater: Date | ((prev: Date) => Date)) => {
         let newDate: Date;
+        // Logic to resolve value
+        // We cannot use 'startDate' from closure if we want stability unless we list it in dependency.
+        // But we can use functional update for setSearchParams? No, setSearchParams takes new params.
+        // We need startDate to compute new params if we are updating it.
+        // Wait, if setStartDate changes, handleNavigate will change. 
+        // startDate changes frequently? NO, only on navigate.
+        // During resize, startDate is stable. So it is fine to depend on startDate.
+
+        // Actually, let's use the functional form of setStartDate logic inside handleNavigate
+        // to avoid dependency on startDate in handleNavigate?
+        // But setStartDate updates URL.
+
+        // Let's just wrap setStartDate
+        let computedDate: Date;
         if (typeof newDateOrUpdater === 'function') {
-            newDate = newDateOrUpdater(startDate);
+            // We need current startDate. 
+            // If we use startDate from closure, this function changes when startDate changes.
+            // That is acceptable.
+            computedDate = newDateOrUpdater(startDate);
         } else {
-            newDate = newDateOrUpdater;
+            computedDate = newDateOrUpdater;
         }
 
-        // Update URL, keeping other params if any (though currently none exist)
-        // We use replace: false to allow back button
-        setSearchParams({ start: format(newDate, 'yyyy-MM-dd') }, { replace: false });
-    };
+        setSearchParams({ start: format(computedDate, 'yyyy-MM-dd') }, { replace: false });
+    }, [startDate, setSearchParams]);
 
-    const handleNavigate = (direction: 'prev' | 'next') => {
+    const handleNavigate = useCallback((direction: 'prev' | 'next') => {
         if (!timelineRef.current) {
             setStartDate(prev =>
                 direction === 'next'
@@ -57,29 +72,17 @@ export function useTimelineScroll(visibleDays: number = 21) {
             pendingScrollRef.current = { type: 'instant', value: Math.max(0, currentScrollLeft - (7 * CELL_WIDTH)) };
             setStartDate(prev => addDays(prev, 7));
         }
-    };
+    }, [setStartDate, timelineRef]); // setStartDate depends on startDate. So handleNavigate depends on startDate.
 
-    const handleTodayClick = () => {
+    const handleTodayClick = useCallback(() => {
         const today = new Date();
         const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
         const targetStartDate = subDays(startOfCurrentWeek, 7);
 
-        // We want to navigate to the view where today is 1 week in.
-
-        const daysSinceCurrentStart = differenceInDays(targetStartDate, startDate);
-
-        // If we are already at the correct start date week, just scroll if needed?
-        // Actually, existing logic checks if "Today" is in view.
-        // But here we want to RESET to the standard "Today View" which is (Today - 1 week).
-
         setStartDate(targetStartDate);
 
-        // We might want to scroll to 0 (start) of this new view?
-        // Let's assume the default mount effect or scroll restoration handles it?
-        // Actually, if we set the start date, the content shifts.
-        // We probably want to scroll to the beginning (left=0) so the user sees the 1 week buffer?
         pendingScrollRef.current = { type: 'smooth', value: 0 };
-    };
+    }, [setStartDate]);
 
     // Handle Pending Scroll after Render
     useEffect(() => {

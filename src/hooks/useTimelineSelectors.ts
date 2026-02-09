@@ -1,5 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Project, TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
+
+// Helper for shallow array equality check
+function areArraysEqual(arr1: any[], arr2: any[]) {
+    if (arr1.length !== arr2.length) return false;
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) return false;
+    }
+    return true;
+}
 
 export function useTimelineSelectors(state: TimelineState) {
     const {
@@ -11,48 +20,110 @@ export function useTimelineSelectors(state: TimelineState) {
         workspaceOrder,
     } = state;
 
-    // Derived State: Grouping
-    const { projectsItems, projectsMilestones, projectsSubProjects, allProjects } = useMemo(() => {
-        const pItems = new Map<string, TimelineItem[]>();
-        const pMilestones = new Map<string, Milestone[]>();
-        const pSubProjects = new Map<string, SubProject[]>();
-        const allProjs: Array<Project & { workspaceName: string }> = [];
+    // Cache Refs to store the previous version of arrays
+    const cache = useRef({
+        projectsItems: new Map<string, TimelineItem[]>(),
+        projectsMilestones: new Map<string, Milestone[]>(),
+        projectsSubProjects: new Map<string, SubProject[]>(),
+    });
 
+    // Derived State: All Projects List (Stable, depends only on structure)
+    const allProjects = useMemo(() => {
+        const projs: Array<Project & { workspaceName: string }> = [];
         Object.values(projectsMap).forEach(p => {
             const ws = workspacesMap[p.workspaceId];
             if (ws) {
-                pItems.set(p.id, []);
-                pMilestones.set(p.id, []);
-                pSubProjects.set(p.id, []);
-                allProjs.push({ ...p, workspaceName: ws.name });
+                projs.push({ ...p, workspaceName: ws.name });
             }
         });
+        return projs;
+    }, [workspacesMap, projectsMap]);
 
+    // Derived State: Grouping and Stabilization
+    const { projectsItems, projectsMilestones, projectsSubProjects } = useMemo(() => {
+        // 1. Compute fresh groupings
+        const tempItems = new Map<string, TimelineItem[]>();
+        const tempMilestones = new Map<string, Milestone[]>();
+        const tempSubProjects = new Map<string, SubProject[]>();
+
+        // Initialize maps for all projects to ensure every project has an entry
+        Object.keys(projectsMap).forEach(pid => {
+            tempItems.set(pid, []);
+            tempMilestones.set(pid, []);
+            tempSubProjects.set(pid, []);
+        });
+
+        // Fill data
         Object.values(itemsMap).forEach(i => {
-            if (pItems.has(i.projectId)) pItems.get(i.projectId)!.push(i);
+            if (projectsMap[i.projectId]) { // Only add if project exists
+                if (!tempItems.has(i.projectId)) tempItems.set(i.projectId, []);
+                tempItems.get(i.projectId)!.push(i);
+            }
         });
-
         Object.values(milestonesMap).forEach(m => {
-            if (pMilestones.has(m.projectId)) pMilestones.get(m.projectId)!.push(m);
+            if (projectsMap[m.projectId]) {
+                if (!tempMilestones.has(m.projectId)) tempMilestones.set(m.projectId, []);
+                tempMilestones.get(m.projectId)!.push(m);
+            }
         });
-
         Object.values(subProjectsMap).forEach(sp => {
-            if (pSubProjects.has(sp.projectId)) pSubProjects.get(sp.projectId)!.push(sp);
+            if (projectsMap[sp.projectId]) {
+                if (!tempSubProjects.has(sp.projectId)) tempSubProjects.set(sp.projectId, []);
+                tempSubProjects.get(sp.projectId)!.push(sp);
+            }
         });
 
         const naturalSort = (a: { title: string }, b: { title: string }) =>
             a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
 
-        pItems.forEach(items => items.sort(naturalSort));
-        pMilestones.forEach(milestones => milestones.sort(naturalSort));
+        // Sort
+        tempItems.forEach(items => items.sort(naturalSort));
+        tempMilestones.forEach(milestones => milestones.sort(naturalSort));
+
+        // 2. Stabilization: Compare with cache and reuse arrays if unchanged
+        const stableItems = new Map<string, TimelineItem[]>();
+        const stableMilestones = new Map<string, Milestone[]>();
+        const stableSubProjects = new Map<string, SubProject[]>();
+
+        // Process Items
+        tempItems.forEach((newArr, pid) => {
+            const cachedArr = cache.current.projectsItems.get(pid);
+            if (cachedArr && areArraysEqual(newArr, cachedArr)) {
+                stableItems.set(pid, cachedArr);
+            } else {
+                stableItems.set(pid, newArr);
+                cache.current.projectsItems.set(pid, newArr);
+            }
+        });
+
+        // Process Milestones
+        tempMilestones.forEach((newArr, pid) => {
+            const cachedArr = cache.current.projectsMilestones.get(pid);
+            if (cachedArr && areArraysEqual(newArr, cachedArr)) {
+                stableMilestones.set(pid, cachedArr);
+            } else {
+                stableMilestones.set(pid, newArr);
+                cache.current.projectsMilestones.set(pid, newArr);
+            }
+        });
+
+        // Process SubProjects
+        tempSubProjects.forEach((newArr, pid) => {
+            const cachedArr = cache.current.projectsSubProjects.get(pid);
+            if (cachedArr && areArraysEqual(newArr, cachedArr)) {
+                stableSubProjects.set(pid, cachedArr);
+            } else {
+                stableSubProjects.set(pid, newArr);
+                cache.current.projectsSubProjects.set(pid, newArr);
+            }
+        });
 
         return {
-            projectsItems: pItems,
-            projectsMilestones: pMilestones,
-            projectsSubProjects: pSubProjects,
-            allProjects: allProjs
+            projectsItems: stableItems,
+            projectsMilestones: stableMilestones,
+            projectsSubProjects: stableSubProjects
         };
-    }, [workspacesMap, projectsMap, itemsMap, milestonesMap, subProjectsMap]);
+    }, [projectsMap, itemsMap, milestonesMap, subProjectsMap]);
 
     // Derived State: Workspace -> Projects list (ordered)
     const workspaceProjects = useMemo(() => {

@@ -52,21 +52,14 @@ export function useTimelineDragDrop() {
             return;
         }
 
-        // Case 1: SubProject (Free Drag) - Keep existing logic
+        // Case 1: SubProject (Free Drag)
         if (activeItemData.type === 'subProject') {
-            // We only care about X delta for date shifting
-            // We ignore where it is dropped (over) as long as it's a valid drop area,
-            // but effectively we are just using the delta.
-            // Requirement from task: "drag a subproject = ... starting and end dates moved. items within ... also moved"
-
-            // Calculate days moved based on DELTA x
             const daysMoved = Math.round(delta.x / CELL_WIDTH);
 
             const sp = activeItemData.item as SubProject;
             const originalStart = parseISO(sp.startDate);
             const originalEnd = parseISO(sp.endDate);
 
-            // New Start is simple: Old Start + Days Moved
             const newStartObj = addDays(originalStart, daysMoved);
             const duration = originalEnd.getTime() - originalStart.getTime();
             const newEndObj = new Date(newStartObj.getTime() + duration);
@@ -75,29 +68,25 @@ export function useTimelineDragDrop() {
             const newEndStr = format(newEndObj, 'yyyy-MM-dd');
 
             if (sp.startDate !== newStartStr) {
-                // Calculate item updates
                 let childItemsToUpdate: Partial<TimelineItem>[] = [];
 
-                // Use getQueriesData for fuzzy match since key includes variables
                 const queries = queryClient.getQueriesData<TimelineState>({ queryKey: ['timeline', 'data'] });
                 const allData = queries.find(([_key, data]) => data?.items)?.[1];
 
                 const relatedItems = Object.values(allData?.items || {}).filter((i: TimelineItem) => i.subProjectId === sp.id);
 
-                if (relatedItems.length > 0) {
-                    // The diff is exactly daysMoved
-                    if (daysMoved !== 0) {
-                        childItemsToUpdate = relatedItems.map((item: TimelineItem) => {
-                            const itemDate = parseISO(item.date);
-                            const newItemDate = addDays(itemDate, daysMoved);
-                            return {
-                                id: item.id,
-                                date: format(newItemDate, 'yyyy-MM-dd')
-                            };
-                        });
-                    }
+                if (relatedItems.length > 0 && daysMoved !== 0) {
+                    childItemsToUpdate = relatedItems.map((item: TimelineItem) => {
+                        const itemDate = parseISO(item.date);
+                        const newItemDate = addDays(itemDate, daysMoved);
+                        return {
+                            id: item.id,
+                            date: format(newItemDate, 'yyyy-MM-dd')
+                        };
+                    });
                 }
 
+                // Mutate immediately (flushSync will ensure DOM updates)
                 mutations.updateSubProject.mutate({
                     id: sp.id,
                     updates: { startDate: newStartStr, endDate: newEndStr },
@@ -116,18 +105,16 @@ export function useTimelineDragDrop() {
         let overProjectId: string | undefined;
         let overSubProjectId: string | undefined;
 
-        // If dropped on a Droppable Container (empty cell)
         if (overItemData && overItemData.date) {
             overDate = overItemData.date;
             overProjectId = overItemData.projectId;
             overSubProjectId = overItemData.subProjectId;
         }
-        // If dropped on another Sortable Item
         else if (overItemData && overItemData.item) {
             const targetItem = overItemData.item;
             overDate = targetItem.date;
             overProjectId = targetItem.projectId;
-            overSubProjectId = (targetItem as TimelineItem).subProjectId; // Undefined for milestones
+            overSubProjectId = (targetItem as TimelineItem).subProjectId;
         }
 
         if (!overDate || !overProjectId) {
@@ -135,8 +122,6 @@ export function useTimelineDragDrop() {
             return;
         }
 
-        // CONSTRAINT: Prevent Cross-Project/Workspace Drag
-        // "drag an item / milestone = date moved. can't be cross-project or cross-workspace"
         if (activeItem.projectId !== overProjectId) {
             setActiveDragItem(null);
             return;
@@ -148,7 +133,6 @@ export function useTimelineDragDrop() {
             (activeItemData.type === 'milestone' || (activeItem as TimelineItem).subProjectId === overSubProjectId);
 
         if (isSameContainer && active.id !== over.id) {
-            // REORDER within same cell
             const allData = queryClient.getQueryData(['timeline', 'data']) as any;
             if (!allData) {
                 setActiveDragItem(null);
@@ -158,7 +142,6 @@ export function useTimelineDragDrop() {
             let itemsInCell: any[] = [];
 
             if (activeItemData.type === 'item') {
-                // Filter and Sort by position to get current order
                 itemsInCell = Object.values(allData.items).filter((i: any) =>
                     i.projectId === overProjectId &&
                     i.date === overDate &&
@@ -175,7 +158,6 @@ export function useTimelineDragDrop() {
 
             if (oldIndex !== -1 && newIndex !== -1) {
                 const newOrder = arrayMove(itemsInCell, oldIndex, newIndex);
-                // Update positions
                 const updates = newOrder.map((item: any, index: number) => ({
                     id: item.id,
                     position: index
@@ -189,7 +171,6 @@ export function useTimelineDragDrop() {
             }
         }
         else if (!isSameContainer) {
-            // MOVE to new cell
             const updates: any = {
                 date: overDate,
                 projectId: overProjectId
@@ -204,8 +185,6 @@ export function useTimelineDragDrop() {
 
         setActiveDragItem(null);
     };
-
-
 
     return {
         activeDragItem,

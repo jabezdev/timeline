@@ -9,7 +9,13 @@ interface TimelineHeaderProps {
   projectsItems: Map<string, TimelineItem[]>;
 }
 
-export function TimelineHeader({ startDate, visibleDays, projectsItems }: TimelineHeaderProps) {
+// ... imports
+import { memo } from 'react';
+
+// ... interface
+
+export const TimelineHeader = memo(function TimelineHeader({ startDate, visibleDays, projectsItems }: TimelineHeaderProps) {
+  // ... implementation remains same
   const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
 
   const dailyCounts = useMemo(() => {
@@ -43,7 +49,7 @@ export function TimelineHeader({ startDate, visibleDays, projectsItems }: Timeli
           <div
             key={day.toISOString()}
             className={`shrink-0 flex items-stretch justify-between text-left border-r border-border last:border-r-0 transition-colors cursor-default select-none
-              ${isDayToday ? 'bg-primary text-primary-foreground' : isDayWeekend ? 'bg-secondary' : 'bg-background'}
+               ${isDayToday ? 'bg-primary text-primary-foreground' : isDayWeekend ? 'bg-secondary' : 'bg-background'}
             `}
             style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
           >
@@ -78,4 +84,4 @@ export function TimelineHeader({ startDate, visibleDays, projectsItems }: Timeli
       })}
     </div>
   );
-}
+});
