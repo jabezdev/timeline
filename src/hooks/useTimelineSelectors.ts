@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
 import { Project, TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 
-export function useTimelineSelectors(
-    state: TimelineState,
-    openProjectIdsArray: string[]
-) {
+export function useTimelineSelectors(state: TimelineState) {
     const {
         workspaces: workspacesMap,
         projects: projectsMap,
@@ -14,8 +11,6 @@ export function useTimelineSelectors(
         workspaceOrder,
     } = state;
 
-    const openProjectIds = useMemo(() => new Set(openProjectIdsArray), [openProjectIdsArray]);
-
     // Derived State: Grouping
     const { projectsItems, projectsMilestones, projectsSubProjects, allProjects } = useMemo(() => {
         const pItems = new Map<string, TimelineItem[]>();
@@ -23,10 +18,8 @@ export function useTimelineSelectors(
         const pSubProjects = new Map<string, SubProject[]>();
         const allProjs: Array<Project & { workspaceName: string }> = [];
 
-        // Initialize maps for all projects
         Object.values(projectsMap).forEach(p => {
             const ws = workspacesMap[p.workspaceId];
-            // Only include project if workspace exists (filter orphans)
             if (ws) {
                 pItems.set(p.id, []);
                 pMilestones.set(p.id, []);
@@ -47,7 +40,6 @@ export function useTimelineSelectors(
             if (pSubProjects.has(sp.projectId)) pSubProjects.get(sp.projectId)!.push(sp);
         });
 
-        // Sort items and milestones by title (Natural Sort)
         const naturalSort = (a: { title: string }, b: { title: string }) =>
             a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
 
@@ -63,25 +55,17 @@ export function useTimelineSelectors(
     }, [workspacesMap, projectsMap, itemsMap, milestonesMap, subProjectsMap]);
 
     // Derived State: Workspace -> Projects list (ordered)
-    // Create a map of workspaceId -> Projects (Sorted by position)
     const workspaceProjects = useMemo(() => {
         const map = new Map<string, Project[]>();
-
-        // Initialize buckets
         Object.keys(workspacesMap).forEach(wsId => map.set(wsId, []));
-
-        // Distribute projects
         Object.values(projectsMap).forEach(p => {
             if (map.has(p.workspaceId) && !p.isHidden) {
                 map.get(p.workspaceId)?.push(p);
             }
         });
-
-        // Sort each bucket
         map.forEach(projs => {
             projs.sort((a, b) => (a.position || 0) - (b.position || 0));
         });
-
         return map;
     }, [workspacesMap, projectsMap]);
 
@@ -101,7 +85,6 @@ export function useTimelineSelectors(
     }, [workspaceOrder, workspacesMap]);
 
     return {
-        openProjectIds,
         projectsItems,
         projectsMilestones,
         projectsSubProjects,

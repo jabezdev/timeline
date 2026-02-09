@@ -1,7 +1,5 @@
 import { useAuth } from '@/components/auth/AuthProvider';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();

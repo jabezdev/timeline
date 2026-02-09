@@ -7,7 +7,6 @@ import { Plus } from 'lucide-react';
 import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 export default function MobileLayout() {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -20,8 +19,7 @@ export default function MobileLayout() {
 
     // Data for "Expand All"
     const { data: timelineState } = useTimelineData(activeDate, 3);
-    const { openProjectIds } = useTimelineStore();
-    const { sortedWorkspaceIds, workspaceProjects } = useTimelineSelectors(timelineState, openProjectIds);
+    const { sortedWorkspaceIds, workspaceProjects } = useTimelineSelectors(timelineState);
 
     const handleCreate = () => {
         setEditingItem(null);

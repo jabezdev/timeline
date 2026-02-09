@@ -11,7 +11,6 @@ interface UnifiedItemProps {
     workspaceColor: number;
 }
 
-import { motion } from 'framer-motion';
 
 export function UnifiedItemView({
     item,
@@ -31,22 +30,13 @@ export function UnifiedItemView({
     className?: string;
 }) {
     return (
-        <motion.div
-            layout // Enable Framer Motion layout animations
-            layoutId={item.id} // Unique ID for reparenting
-            transition={{
-                type: "spring",
-                stiffness: 500,
-                damping: 30,
-                mass: 1 // Quick snappy spring
-            }}
-            initial={false} // Prevent initial mount animation
+        <div
             style={{
                 backgroundColor: item.color
-                    ? (item.color.startsWith('#') ? `${item.color}20` : `hsl(var(--workspace-${item.color}) / 0.2)`)
+                    ? (item.color.startsWith('#') ? `${item.color}15` : `hsl(var(--workspace-${item.color}) / 0.15)`)
                     : undefined,
                 borderColor: item.color
-                    ? (item.color.startsWith('#') ? `${item.color}50` : `hsl(var(--workspace-${item.color}) / 0.5)`)
+                    ? (item.color.startsWith('#') ? `${item.color}30` : `hsl(var(--workspace-${item.color}) / 0.3)`)
                     : undefined,
                 ...style
             }}
@@ -57,8 +47,8 @@ export function UnifiedItemView({
                     onClick(item);
                 }
             }}
-            className={`group relative flex items-start gap-1.5 px-2 py-1.5 rounded-sm border cursor-grab active:cursor-grabbing touch-none ${isDragging ? 'opacity-30' : ''
-                } ${item.completed ? 'opacity-60 bg-secondary/30 border-border' : 'bg-secondary/50 border-border hover:border-primary/30'} ${className || ''}`}
+            className={`group relative flex items-start gap-1.5 px-2 py-1.5 border cursor-grab active:cursor-grabbing touch-none min-h-8 h-auto overflow-hidden ${isDragging ? 'opacity-30' : ''
+                } ${item.completed ? 'opacity-60 bg-secondary/20 border-border' : 'bg-secondary/30 border-border hover:border-primary/30'} ${className || ''}`}
 
         >
             <button
@@ -66,7 +56,7 @@ export function UnifiedItemView({
                     e.stopPropagation();
                     if (onToggleComplete) onToggleComplete(item.id);
                 }}
-                className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-all shrink-0 ${item.completed
+                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all shrink-0 ${item.completed
                     ? 'bg-primary border-primary'
                     : 'border-muted-foreground hover:border-primary'
                     }`}
@@ -82,10 +72,10 @@ export function UnifiedItemView({
                 {item.completed && <Check className="w-3 h-3 text-white" />}
             </button>
 
-            <span className={`flex-1 min-w-0 text-xs font-medium break-words whitespace-pre-wrap ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+            <span className={`flex-1 min-w-0 text-xs font-medium whitespace-normal break-words ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                 {item.title || "Untitled"}
             </span>
-        </motion.div>
+        </div>
     );
 }
 

@@ -67,8 +67,7 @@ export interface TimelineState {
   items: Record<string, TimelineItem>;
   workspaceOrder: string[];
 
-  openProjectIds: string[]; // Changed to array for easier serialization/management
-  currentDate: string; // ISO date string YYYY-MM-DD
+  currentDate: string;
   visibleDays: number;
   isSyncing: boolean;
 }

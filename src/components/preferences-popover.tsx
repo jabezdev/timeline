@@ -26,7 +26,7 @@ const FONTS = [
   { name: "Manrope", value: "manrope", family: "'Manrope', sans-serif" },
 ]
 
-export function PreferencesPopover() {
+export function PreferencesContent() {
   const { theme, setTheme } = useTheme()
   const { signOut } = useAuth()
   const queryClient = useQueryClient()
@@ -48,6 +48,81 @@ export function PreferencesPopover() {
   }, [font])
 
   return (
+    <div className="grid gap-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium leading-none">Settings</h4>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Customize the appearance of the app.
+        </p>
+      </div>
+
+      {/* Theme */}
+      <div className="grid gap-2">
+        <Label htmlFor="theme">Theme</Label>
+        <Select value={theme} onValueChange={setTheme}>
+          <SelectTrigger id="theme">
+            <SelectValue placeholder="Select theme" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="light">Light</SelectItem>
+            <SelectItem value="dark">Dark</SelectItem>
+            <SelectItem value="system">System</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Font */}
+      <div className="grid gap-2">
+        <Label htmlFor="font">Font</Label>
+        <Select value={font} onValueChange={setFont}>
+          <SelectTrigger id="font">
+            <SelectValue placeholder="Select font" />
+          </SelectTrigger>
+          <SelectContent>
+            {FONTS.map((f) => (
+              <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.family }}>
+                {f.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Separator className="my-2" />
+
+      {/* Clear Cache */}
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-muted-foreground hover:text-foreground"
+        onClick={() => {
+          queryClient.removeQueries()
+          // Optional: You could reload the page or show a toast here
+          window.location.reload()
+        }}
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Clear Cache
+      </Button>
+
+      <Separator className="my-2" />
+
+      {/* Logout */}
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
+        onClick={() => signOut()}
+      >
+        <LogOut className="mr-2 h-4 w-4" />
+        Log out
+      </Button>
+    </div>
+  )
+}
+
+export function PreferencesPopover() {
+  return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="icon" title="Settings">
@@ -56,76 +131,7 @@ export function PreferencesPopover() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80" align="start">
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium leading-none">Settings</h4>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Customize the appearance of the app.
-            </p>
-          </div>
-
-          {/* Theme */}
-          <div className="grid gap-2">
-            <Label htmlFor="theme">Theme</Label>
-            <Select value={theme} onValueChange={setTheme}>
-              <SelectTrigger id="theme">
-                <SelectValue placeholder="Select theme" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="light">Light</SelectItem>
-                <SelectItem value="dark">Dark</SelectItem>
-                <SelectItem value="system">System</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Font */}
-          <div className="grid gap-2">
-            <Label htmlFor="font">Font</Label>
-            <Select value={font} onValueChange={setFont}>
-              <SelectTrigger id="font">
-                <SelectValue placeholder="Select font" />
-              </SelectTrigger>
-              <SelectContent>
-                {FONTS.map((f) => (
-                  <SelectItem key={f.value} value={f.value} style={{ fontFamily: f.family }}>
-                    {f.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator className="my-2" />
-
-          {/* Clear Cache */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              queryClient.removeQueries()
-              // Optional: You could reload the page or show a toast here
-              window.location.reload()
-            }}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Clear Cache
-          </Button>
-
-          <Separator className="my-2" />
-
-          {/* Logout */}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-red-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
-            onClick={() => signOut()}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
-          </Button>
-        </div>
+        <PreferencesContent />
       </PopoverContent>
     </Popover>
   )

@@ -14,38 +14,78 @@ import {
   DragOverlay,
   pointerWithin,
 } from '@dnd-kit/core';
-import { addDays, subDays, parseISO, format, differenceInDays } from 'date-fns';
+import { addDays, parseISO, format, differenceInDays } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
-import { WorkspaceHeaderRow } from './WorkspaceSection'; // Updated Import
-import { ProjectRow } from './ProjectRow'; // Explicit Import for flat use
-import { SidebarHeader, SidebarWorkspaceHeader, SidebarProject } from './Sidebar'; // Updated Import
-import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { Plus, PanelLeftOpen } from 'lucide-react';
+import { WorkspaceHeaderRow } from './WorkspaceSection';
+import { ProjectRow, MilestoneHeaderRow } from './ProjectRow';
+import { TimelineControls, WorkspaceSidebarCell, ProjectSidebarCell, SidebarCell } from './Sidebar';
 import { CreateItemPopover } from './CreateItemPopover';
 import { ItemSheet } from './ItemSheet';
 import { TimelineItem, Milestone, SubProject, Project } from '@/types/timeline';
-import { SIDEBAR_WIDTH, COLLAPSED_SIDEBAR_WIDTH, CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT } from '@/lib/constants';
+import { CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT, SIDEBAR_WIDTH } from '@/lib/constants';
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
 import { generateId } from '@/lib/utils';
 import { Scrollbar } from './Scrollbar';
 
-
-
-// Hooks
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
 import { useTimelineDragDrop } from './hooks/useTimelineDragDrop';
 import { useTimelineScroll } from './hooks/useTimelineScroll';
-import { useTimelineVirtualization } from './hooks/useTimelineVirtualization';
-import { useFlattenedRows } from '@/hooks/useFlattenedRows'; // New Hook
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
+import '@/scrollbar-hide.css';
 
 function TimelineContent() {
   const visibleDays = VISIBLE_DAYS;
+  const { sidebarWidth, setSidebarWidth } = useTimelineStore();
+  const [isResizing, setIsResizing] = useState(false);
 
-  // 1. Scroll Logic
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizing) {
+        // Cancel any pending frame to ensure we only have one update queued
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId);
+        }
+
+        animationFrameId = requestAnimationFrame(() => {
+          const newWidth = Math.max(250, Math.min(600, e.clientX));
+          setSidebarWidth(newWidth);
+        });
+      }
+    };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none'; // Prevent text selection
+    } else {
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      document.body.style.cursor = 'default';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, setSidebarWidth]);
+
   const {
     startDate,
     timelineRef,
@@ -53,21 +93,9 @@ function TimelineContent() {
     handleTodayClick,
   } = useTimelineScroll(visibleDays);
 
-  // 2. Data & Mutations
   const { data: timelineState, isLoading } = useTimelineData(startDate, visibleDays);
   const mutations = useTimelineMutations();
 
-  const {
-    collapsedWorkspaceIds,
-    toggleWorkspace,
-    setAllWorkspacesCollapsed,
-    toggleProject,
-    isSidebarCollapsed,
-    setSidebarCollapsed,
-    openProjectIds: storeOpenProjectIds
-  } = useTimelineStore();
-
-  // 3. Data Selectors (Pass State)
   const {
     projectsItems,
     projectsMilestones,
@@ -76,47 +104,22 @@ function TimelineContent() {
     workspaceProjects,
     allSubProjects,
     sortedWorkspaceIds,
-    openProjectIds
-  } = useTimelineSelectors(timelineState, storeOpenProjectIds);
+  } = useTimelineSelectors(timelineState);
 
-  // 4. Drag & Drop Logic
   const {
     activeDragItem,
     dragOverlayRef,
     sensors,
     handleDragStart,
     handleDragEnd,
-
   } = useTimelineDragDrop();
 
-  // 5. Virtualization (Flat)
-  const {
-    workspaces: workspacesMap,
-    items: allItemsMap // Need items for lookups if not using selectors? Selectors are easier.
-  } = timelineState;
+  const { workspaces: workspacesMap } = timelineState;
 
-  // Generate flat list of rows
-  const flatRows = useFlattenedRows(
-    sortedWorkspaceIds,
-    workspaceProjects,
-    collapsedWorkspaceIds
-  );
-
-  const { rowVirtualizer } = useTimelineVirtualization(
-    flatRows,
-    workspaceProjects,
-    projectsItems,
-    projectsSubProjects,
-    openProjectIds,
-    timelineRef
-  );
-
-  // local UI state
   const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
 
-  // Action Handlers using Mutations
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
     const newItem: TimelineItem = {
       id: generateId(),
@@ -153,22 +156,6 @@ function TimelineContent() {
     };
     mutations.addSubProject.mutate(newSub);
   };
-
-  // Logic
-  const handleToggleWorkspace = (workspaceId: string) => {
-    toggleWorkspace(workspaceId);
-  };
-
-  const handleToggleProject = (project: Project) => {
-    toggleProject(project.id, project.workspaceId, sortedWorkspaceIds);
-  };
-
-  const handleExpandAll = () => {
-    const areAllExpanded = sortedWorkspaceIds.every(id => !collapsedWorkspaceIds.includes(id));
-    setAllWorkspacesCollapsed(areAllExpanded, sortedWorkspaceIds);
-  };
-
-  const currentSidebarWidth = isSidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
 
   const handleItemClick = (item: TimelineItem | Milestone | SubProject) => {
     setSelectedItem(item);
@@ -244,159 +231,137 @@ function TimelineContent() {
       collisionDetection={pointerWithin}
     >
       <div className="h-screen flex bg-background overflow-hidden relative">
-        {/* 
-            SINGLE MAIN SCROLL CONTAINER 
-            This handles both vertical (sticky sidebar) and horizontal (sticky header) scrolling.
-        */}
         <div
           ref={timelineRef}
-          className="flex-1 overflow-auto scrollbar-hide w-full h-full relative"
+          className="flex-1 overflow-auto scrollbar-hide w-full h-full"
           id="timeline-scroll-container"
         >
-          {/* Internal wrapper to ensure min-width fits all content (Sidebar + TimelineColumns) */}
-          <div className="min-w-max flex flex-col relative h-full">
+          <div className="min-w-max flex flex-col">
 
-            {/* --- STICKY TOP ROW (HEADERS) --- */}
-            <div className="sticky top-0 z-40 flex bg-background h-min border-b border-border">
-              {/* Sticky Left Sidebar Header */}
-              <div
-                className={`sticky left-0 z-50 bg-background border-r border-border overflow-hidden`}
-                style={{ width: currentSidebarWidth }}
-              >
-                <SidebarHeader
+            {/* STICKY DATE HEADER — z-50, top-0 */}
+            <div className="sticky top-0 z-[60] bg-background border-b border-border flex">
+              <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border justify-between pr-2" width={sidebarWidth}>
+                <span className="text-xs font-semibold text-muted-foreground">TIMELINE</span>
+                <TimelineControls
                   startDate={startDate}
                   onNavigate={handleNavigate}
                   onTodayClick={handleTodayClick}
-                  onExpandAll={handleExpandAll}
-                  isAllExpanded={sortedWorkspaceIds.every(id => !collapsedWorkspaceIds.includes(id))}
-                  isCollapsed={isSidebarCollapsed}
-                  onToggleCollapse={() => setSidebarCollapsed(!isSidebarCollapsed)}
                 />
-              </div>
-
-              {/* Scrolling Timeline Header */}
-              <div className="flex-1 bg-background">
-                <TimelineHeader
-                  startDate={startDate}
-                  visibleDays={visibleDays}
-                />
-              </div>
+              </SidebarCell>
+              <TimelineHeader
+                startDate={startDate}
+                visibleDays={visibleDays}
+                projectsItems={projectsItems}
+              />
             </div>
 
-            {/* --- VIRTUALIZED BODY (FLAT) --- */}
-            <div
-              style={{
-                height: `${rowVirtualizer.getTotalSize()}px`,
-                position: 'relative',
-                width: '100%',
-              }}
-            >
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const row = flatRows[virtualRow.index];
-                if (!row) return null;
+            {/* BODY — Workspace-grouped sections */}
+            {sortedWorkspaceIds.map(wsId => {
+              const workspace = workspacesMap[wsId];
+              if (!workspace) return null;
+              const projects = workspaceProjects.get(wsId) || [];
 
-                return (
+              return (
+                <div key={wsId}>
+                  {/* Sticky Workspace Row — z-40, under date header */}
                   <div
-                    key={virtualRow.key}
-                    data-index={virtualRow.index}
-                    ref={rowVirtualizer.measureElement}
-                    className="flex w-full absolute left-0"
+                    className="sticky z-40 border-b border-border backdrop-blur-xl flex timeline-workspace-row"
                     style={{
-                      height: `${virtualRow.size}px`,
-                      top: 0,
-                      transform: `translateY(${virtualRow.start}px)`,
+                      top: HEADER_HEIGHT,
+                      backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.4)`, // More saturated/darker
                     }}
                   >
-                    {/* Sticky Sidebar Cell */}
-                    <div
-                      className="sticky left-0 z-50 bg-background border-r border-border shrink-0 overflow-hidden"
-                      style={{ width: currentSidebarWidth }}
-                    >
-                      {row.type === 'workspace-header' ? (
-                        <SidebarWorkspaceHeader
-                          workspace={workspacesMap[row.workspaceId]}
-                          isCollapsed={collapsedWorkspaceIds.includes(row.workspaceId)}
-                          projects={workspaceProjects.get(row.workspaceId) || []}
-                          projectsItems={projectsItems}
-                          projectsMilestones={projectsMilestones}
-                          onToggleWorkspace={() => handleToggleWorkspace(row.workspaceId)}
-                          isSidebarCollapsed={isSidebarCollapsed}
-                        />
-                      ) : (
-                        <SidebarProject
-                          project={allProjects.find(p => p.id === row.projectId)!} // Ideally look up from map, but array find is okay-ish if array is not huge. 
-                          // Optimization: create projectId -> Project map or Use workspaceProjects.find
-                          // Using workspaceProjects:
-                          // project={workspaceProjects.get(row.workspaceId)?.find(p => p.id === row.projectId)!}
-                          items={projectsItems.get(row.projectId) || []}
-                          subProjects={projectsSubProjects.get(row.projectId) || []}
-                          isOpen={openProjectIds.has(row.projectId)}
-                          onToggle={() => handleToggleProject((workspaceProjects.get(row.workspaceId)?.find(p => p.id === row.projectId)!) as Project)}
-                          workspaceColor={workspacesMap[row.workspaceId]?.color}
-                        />
-                      )}
-                    </div>
+                    {/* Sidebar Cell — sticky left */}
+                    <WorkspaceSidebarCell workspace={workspace} projects={projects} width={sidebarWidth} />
 
-                    {/* Timeline Content Cell */}
-                    <div className="flex-1 min-w-0">
-                      {row.type === 'workspace-header' ? (
-                        <WorkspaceHeaderRow
-                          workspace={workspacesMap[row.workspaceId]}
-                          isCollapsed={collapsedWorkspaceIds.includes(row.workspaceId)}
-                          projects={workspaceProjects.get(row.workspaceId) || []}
-                          projectsItems={projectsItems}
-                          projectsMilestones={projectsMilestones}
-                          startDate={startDate}
-                          visibleDays={visibleDays}
-                        />
-                      ) : (
-                        <ProjectRow
-                          project={workspaceProjects.get(row.workspaceId)?.find(p => p.id === row.projectId)!} // Determine efficient lookup later if needed
-                          items={projectsItems.get(row.projectId) || []}
-                          milestones={projectsMilestones.get(row.projectId) || []}
-                          subProjects={projectsSubProjects.get(row.projectId) || []}
-                          isOpen={openProjectIds.has(row.projectId)}
-                          startDate={startDate}
-                          visibleDays={visibleDays}
-                          workspaceColor={parseInt(workspacesMap[row.workspaceId]?.color || '1')}
-                          onToggleItemComplete={handleToggleItemComplete}
-                          onItemClick={handleItemClick}
-                          onSubProjectClick={handleItemClick}
-                        />
-                      )}
+                    {/* Summary dots fill full width */}
+                    <div className="flex-1" style={{ height: WORKSPACE_HEADER_HEIGHT }}>
+                      <WorkspaceHeaderRow
+                        workspace={workspace}
+                        projects={projects}
+                        projectsItems={projectsItems}
+                        projectsMilestones={projectsMilestones}
+                        startDate={startDate}
+                        visibleDays={visibleDays}
+                      />
                     </div>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Project Rows */}
+                  {projects.map(project => (
+                    <div key={project.id} className="border-b border-border/50">
+                      {/* Sticky Project Header with Milestones — z-30, under workspace row */}
+                      <div
+                        className="sticky z-30 backdrop-blur-xl border-b border-border/30 flex"
+                        style={{
+                          top: HEADER_HEIGHT + WORKSPACE_HEADER_HEIGHT,
+                          backgroundColor: `hsl(var(--workspace-${workspace.color}) / 0.05)`, // Lighter/Lower opacity for contrast
+                        }}
+                      >
+                        {/* Sidebar Cell */}
+                        <ProjectSidebarCell
+                          project={project}
+                          items={projectsItems.get(project.id) || []}
+                          workspaceColor={workspace.color || '1'}
+                          width={sidebarWidth}
+                        />
+
+                        <div className="flex-1" style={{ minHeight: PROJECT_HEADER_HEIGHT, height: 'auto' }}>
+                          <MilestoneHeaderRow
+                            project={project}
+                            milestones={projectsMilestones.get(project.id) || []}
+                            startDate={startDate}
+                            visibleDays={visibleDays}
+                            workspaceColor={parseInt(workspace.color || '1')}
+                            onItemClick={handleItemClick}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Timeline content (items, subprojects) — z-0 */}
+                      <div className="relative z-0 flex">
+                        {/* Sidebar Spacer for Content Row */}
+                        <div
+                          className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-none"
+                          style={{
+                            width: sidebarWidth,
+                            minWidth: sidebarWidth
+                          }}
+                        />
+
+                        <div className="flex-1">
+                          <ProjectRow
+                            project={project}
+                            items={projectsItems.get(project.id) || []}
+                            subProjects={projectsSubProjects.get(project.id) || []}
+                            startDate={startDate}
+                            visibleDays={visibleDays}
+                            workspaceColor={parseInt(workspace.color || '1')}
+                            onToggleItemComplete={handleToggleItemComplete}
+                            onItemClick={handleItemClick}
+                            onSubProjectClick={handleItemClick}
+                            sidebarWidth={sidebarWidth}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-
-        {/* Floating Expand Button (Visible only when collapsed) */}
+        {/* Resize Handle */}
         <div
-          className={`absolute top-2 left-2 z-[60] ${isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        >
-          <button
-            onClick={() => setSidebarCollapsed(false)}
-            className="w-8 h-8 rounded-md bg-background border border-border shadow-sm flex items-center justify-center hover:bg-secondary/50"
-            title="Expand Sidebar"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
-
-        <div
-          className={`absolute top-2 left-2 z-[60] ${isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-        >
-          <button
-            onClick={() => setSidebarCollapsed(false)}
-            className="w-8 h-8 rounded-md bg-background border border-border shadow-sm flex items-center justify-center hover:bg-secondary/50"
-            title="Expand Sidebar"
-          >
-            <PanelLeftOpen className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </div>
+          className={`absolute top-0 bottom-0 z-[100] w-1 hover:bg-primary/50 cursor-col-resize transition-colors ${isResizing ? 'bg-primary/50' : ''
+            }`}
+          style={{ left: sidebarWidth - 2 }} // -2 to center the 4px handle on the border
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+          }}
+        />
 
         <CreateItemPopover
           onAddItem={handleAddItem}
@@ -404,7 +369,7 @@ function TimelineContent() {
           onAddSubProject={handleAddSubProject}
           projects={allProjects}
           subProjects={allSubProjects}
-          activeProjectId={Array.from(openProjectIds)[0]}
+          activeProjectId={allProjects[0]?.id}
         />
       </div>
 
@@ -455,27 +420,17 @@ function TimelineContent() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 
-         Drop animation configuration:
-         Animating the overlay to the new position gives a "quick slide" effect.
-         We use `defaultDropAnimationSideEffects` to handle opacity transitions properly (e.g. fading out the drag styles).
-      */}
-      <DragOverlay
-        modifiers={[]}
-        dropAnimation={null}
-      >
+      <DragOverlay modifiers={[]} dropAnimation={null}>
         {activeDragItem ? (
           <div ref={dragOverlayRef}>
-            {/* Simplified Drag Preview rendering for now to avoid complexity in this file 
-                 Ideally these components also need to be updated to support normalized item or just take the item object
-             */}
             {activeDragItem.type === 'subProject' ? (
               (() => {
                 const subProject = activeDragItem.item as SubProject;
                 const subProjectStart = parseISO(subProject.startDate);
                 const subProjectEnd = parseISO(subProject.endDate);
                 const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
-                const width = durationDays * CELL_WIDTH;
+                // Clamp width to visible area to prevent huge overlays
+                const width = Math.min(durationDays * CELL_WIDTH, VISIBLE_DAYS * CELL_WIDTH);
                 const height = (activeDragItem as any).rowHeight || 64;
                 return (
                   <SubProjectBar
@@ -486,19 +441,17 @@ function TimelineContent() {
                   />
                 );
               })()
-            ) :
-              activeDragItem.type === 'item' ? (
-                <UnifiedItemView
-                  item={activeDragItem.item as TimelineItem}
-                  style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
-                />
-              ) :
-                activeDragItem.type === 'milestone' ? (
-                  <MilestoneItemView
-                    milestone={activeDragItem.item as Milestone}
-                    style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
-                  />
-                ) : null}
+            ) : activeDragItem.type === 'item' ? (
+              <UnifiedItemView
+                item={activeDragItem.item as TimelineItem}
+                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
+              />
+            ) : activeDragItem.type === 'milestone' ? (
+              <MilestoneItemView
+                milestone={activeDragItem.item as Milestone}
+                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
+              />
+            ) : null}
           </div>
         ) : null}
       </DragOverlay>
@@ -507,7 +460,5 @@ function TimelineContent() {
 }
 
 export function Timeline() {
-  return (
-    <TimelineContent />
-  );
+  return <TimelineContent />;
 }

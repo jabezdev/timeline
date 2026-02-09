@@ -3,7 +3,7 @@ import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { UnifiedItem } from './UnifiedItem';
-import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT } from '@/lib/constants';
+import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT, SIDEBAR_WIDTH } from '@/lib/constants';
 import { GripVertical } from 'lucide-react';
 
 import { QuickEditPopover } from './QuickEditPopover';
@@ -20,6 +20,7 @@ interface SubProjectLaneProps {
   rowHeight?: number;
   laneIndex: number;
   projectId: string;
+  sidebarWidth: number;
 }
 
 interface SubProjectSectionProps {
@@ -31,6 +32,7 @@ interface SubProjectSectionProps {
   onToggleItemComplete: (itemId: string) => void;
   onItemClick: (item: TimelineItem) => void;
   onSubProjectClick: (subProject: SubProject) => void;
+  sidebarWidth: number;
 }
 
 export const SubProjectBar = React.forwardRef<HTMLDivElement, {
@@ -44,6 +46,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
+  sidebarWidth?: number;
 }>(({
   subProject,
   width,
@@ -54,54 +57,63 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   dragHandleProps,
   style,
   className,
-  children
+  children,
+  sidebarWidth = SIDEBAR_WIDTH
 }, ref) => {
   return (
     <div
       ref={ref}
-      className={`rounded-sm border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+      className={`border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
       style={{
         left: left !== undefined ? `${left}px` : undefined,
         width: width !== undefined ? `${width}px` : undefined,
         height: height !== undefined ? `${height}px` : undefined,
         borderColor: subProject.color
-          ? (subProject.color.startsWith('#') ? `${subProject.color}50` : `hsl(var(--workspace-${subProject.color}) / 0.5)`)
+          ? (subProject.color.startsWith('#') ? `${subProject.color}30` : `hsl(var(--workspace-${subProject.color}) / 0.3)`)
           : 'hsl(var(--primary) / 0.2)',
         backgroundColor: subProject.color
-          ? (subProject.color.startsWith('#') ? `${subProject.color}10` : `hsl(var(--workspace-${subProject.color}) / 0.1)`)
+          ? (subProject.color.startsWith('#') ? `${subProject.color}08` : `hsl(var(--workspace-${subProject.color}) / 0.08)`)
           : 'hsl(var(--primary) / 0.05)',
         ...style
       }}
     >
-      {/* Header with Drag Handle and Title - aligned with items (px-2, gap-1.5, checkbox w-3) */}
-      <div className="h-6 shrink-0 w-full flex items-center rounded-t-sm z-20 pointer-events-auto pl-2.5 pr-2 gap-1.5">
-        {/* Drag Handle - aligned with checkbox (w-3 to match checkbox width) */}
+      {/* Header - full width provides the sticky constraint range */}
+      <div className="h-6 shrink-0 w-full z-20 pointer-events-auto">
+        {/* Sticky title container - stays visible during horizontal scroll */}
         <div
-          {...dragHandleProps}
-          className="w-3 h-3 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
-
+          className="sticky w-fit max-w-[250px] flex items-center h-full pl-2.5 pr-2 gap-1.5 transition-[left]"
+          style={{
+            left: sidebarWidth, // Stick to the sidebar edge
+            backgroundColor: subProject.color
+              ? (subProject.color.startsWith('#') ? `${subProject.color}20` : `hsl(var(--workspace-${subProject.color}) / 0.2)`)
+              : 'hsl(var(--primary) / 0.15)',
+          }}
         >
-          <GripVertical className="w-3 h-3 opacity-50" />
-        </div>
-
-        {/* Title - Clickable to Edit */}
-        <QuickEditPopover item={subProject} className="flex-1 h-full min-w-0">
+          {/* Drag Handle */}
           <div
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isDragging && onClick) {
-                onClick(subProject);
-              }
-            }}
-            className="w-full h-full flex items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-tr-sm min-w-0"
+            {...dragHandleProps}
+            className="w-3 h-3 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
           >
-            <span
-              className="text-xs font-semibold truncate text-foreground"
-            >
-              {subProject.title}
-            </span>
+            <GripVertical className="w-3 h-3 opacity-50" />
           </div>
-        </QuickEditPopover>
+
+          {/* Title - Clickable to Edit */}
+          <QuickEditPopover item={subProject} className="flex-1 h-full min-w-0">
+            <div
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isDragging && onClick) {
+                  onClick(subProject);
+                }
+              }}
+              className="w-full h-full flex items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-sm min-w-0"
+            >
+              <span className="text-xs font-semibold truncate text-foreground">
+                {subProject.title}
+              </span>
+            </div>
+          </QuickEditPopover>
+        </div>
       </div>
 
       {/* Content area - Render children or placeholder */}
@@ -115,13 +127,17 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
 function DraggableSubProjectBar({
   subProject,
   timelineStartDate,
+  totalVisibleDays,
   onClick,
-  rowHeight
+  rowHeight,
+  sidebarWidth
 }: {
   subProject: SubProject;
   timelineStartDate: Date;
+  totalVisibleDays: number;
   onClick: (subProject: SubProject) => void;
   rowHeight: number;
+  sidebarWidth: number;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: subProject.id,
@@ -134,11 +150,18 @@ function DraggableSubProjectBar({
   const startOffsetDays = differenceInDays(subProjectStart, timelineStartDate);
   const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
 
-  const left = startOffsetDays * CELL_WIDTH;
-  const width = durationDays * CELL_WIDTH;
+  // Clamp to visible day range
+  const rawLeft = startOffsetDays * CELL_WIDTH;
+  const rawRight = rawLeft + durationDays * CELL_WIDTH;
+  const maxWidth = totalVisibleDays * CELL_WIDTH;
+  const left = Math.max(0, rawLeft);
+  const right = Math.min(maxWidth, rawRight);
+  const width = Math.max(0, right - left);
+
+  if (width <= 0) return null;
 
   return (
-    <div className="absolute top-1 bottom-1" style={{ left: `${left}px`, width: `${width}px` }}>
+    <div className="absolute top-0 bottom-0" style={{ left: `${left}px`, width: `${width}px` }}>
       <SubProjectBar
         ref={setNodeRef}
         subProject={subProject}
@@ -147,6 +170,7 @@ function DraggableSubProjectBar({
         onClick={onClick}
         dragHandleProps={{ ...attributes, ...listeners }}
         className="h-full"
+        sidebarWidth={sidebarWidth}
       />
     </div>
   );
@@ -217,27 +241,29 @@ function SubProjectCell({
 
   const cellContent = (
     <div
-      className="shrink-0 px-1 py-1"
+      className="shrink-0 px-0 py-0"
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: height }}
+      onClick={() => activeSubProject && setIsCreating(true)}
     >
-      <div className="flex flex-col gap-1 h-full">
+      <div className="flex flex-col gap-0 h-full pointer-events-none">
         {items.map(item => (
-          <UnifiedItem
-            key={item.id}
-            item={item}
-            onToggleComplete={onToggleItemComplete}
-            onClick={onItemClick}
-            workspaceColor={workspaceColor}
-          />
+          <div key={item.id} className="pointer-events-auto">
+            <UnifiedItem
+              item={item}
+              onToggleComplete={onToggleItemComplete}
+              onClick={onItemClick}
+              workspaceColor={workspaceColor}
+            />
+          </div>
         ))}
       </div>
     </div>
   );
 
-  if (activeSubProject) {
+  if (activeSubProject && isCreating) {
     return (
       <QuickCreatePopover
-        open={isCreating}
+        open={true}
         onOpenChange={setIsCreating}
         type="item"
         projectId={projectId}
@@ -263,7 +289,8 @@ export function SubProjectLane({
   onSubProjectClick,
   rowHeight = 64,
   laneIndex,
-  projectId
+  projectId,
+  sidebarWidth
 }: SubProjectLaneProps) {
   const timelineStartDate = days[0];
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
@@ -311,8 +338,10 @@ export function SubProjectLane({
             key={sub.id}
             subProject={sub}
             timelineStartDate={timelineStartDate}
+            totalVisibleDays={days.length}
             onClick={onSubProjectClick}
             rowHeight={rowHeight}
+            sidebarWidth={sidebarWidth}
           />
         ))}
       </div>
@@ -362,7 +391,8 @@ export function SubProjectSection({
   workspaceColor,
   onToggleItemComplete,
   onItemClick,
-  onSubProjectClick
+  onSubProjectClick,
+  sidebarWidth
 }: SubProjectSectionProps) {
   if (subProjectLanes.length === 0) return null;
 
@@ -381,6 +411,7 @@ export function SubProjectSection({
           onSubProjectClick={onSubProjectClick}
           laneIndex={index}
           projectId={projectId}
+          sidebarWidth={sidebarWidth}
         />
       ))}
     </div>

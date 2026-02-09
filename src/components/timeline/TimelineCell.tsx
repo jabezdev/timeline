@@ -57,52 +57,64 @@ export function TimelineCell({
     onItemClick(item);
   };
 
+  const content = (
+    <div className="flex flex-col gap-0 h-full pointer-events-none">
+      <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
+        {milestones.map(milestone => (
+          <div key={milestone.id} className="pointer-events-auto">
+            <MilestoneItem
+              milestone={milestone}
+              workspaceColor={workspaceColor}
+              onClick={onItemClick}
+            />
+          </div>
+        ))}
+      </SortableContext>
 
+      <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+        {items.map(item => (
+          <div key={item.id} className="pointer-events-auto">
+            <UnifiedItem
+              item={item}
+              onToggleComplete={onToggleItemComplete}
+              onClick={onItemClick}
+              workspaceColor={workspaceColor}
+            />
+          </div>
+        ))}
+      </SortableContext>
+    </div>
+  );
+
+  const containerClass = `px-0 py-0 shrink-0 ${showBorder ? 'border-r border-border/50 last:border-r-0' : ''} ${isOver ? 'bg-primary/10' : ''}`;
+  const containerStyle = { width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) };
+
+  if (isCreating) {
+    return (
+      <QuickCreatePopover
+        open={true}
+        onOpenChange={setIsCreating}
+        type="item"
+        projectId={projectId}
+        date={dateStr}
+        subProjectId={subProjectId}
+        defaultColor={workspaceColor}
+      >
+        <div ref={setNodeRef} className={containerClass} style={containerStyle}>
+          {content}
+        </div>
+      </QuickCreatePopover>
+    );
+  }
 
   return (
-
-
-    <QuickCreatePopover
-      open={isCreating}
-      onOpenChange={setIsCreating}
-      type="item"
-      projectId={projectId}
-      date={dateStr}
-      subProjectId={subProjectId}
-      defaultColor={workspaceColor}
+    <div
+      ref={setNodeRef}
+      className={containerClass}
+      style={containerStyle}
+      onClick={() => setIsCreating(true)}
     >
-      <div
-        ref={setNodeRef}
-        className={`px-1 py-1 shrink-0 ${showBorder ? 'border-r border-border/50 last:border-r-0' : ''
-          } ${isOver ? 'bg-primary/10' : ''}`}
-        style={{ width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) }}
-      >
-        <div className="flex flex-col gap-1 h-full">
-          <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-            {milestones.map(milestone => (
-              <MilestoneItem
-                key={milestone.id}
-                milestone={milestone}
-                workspaceColor={workspaceColor}
-                onClick={onItemClick}
-              />
-            ))}
-          </SortableContext>
-
-          <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-            {items.map(item => (
-              <UnifiedItem
-                key={item.id}
-                item={item}
-                onToggleComplete={onToggleItemComplete}
-                onClick={onItemClick}
-                workspaceColor={workspaceColor}
-              />
-            ))}
-          </SortableContext>
-        </div>
-      </div>
-    </QuickCreatePopover>
-
+      {content}
+    </div>
   );
 }

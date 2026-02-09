@@ -8,7 +8,7 @@ interface MilestoneItemProps {
   milestone: Milestone;
   workspaceColor: number;
   onClick?: (milestone: Milestone) => void;
-  isCompact?: boolean;
+  className?: string; // Added className
 }
 
 export function MilestoneItemView({
@@ -18,7 +18,6 @@ export function MilestoneItemView({
   dragHandleProps,
   style,
   className,
-  isCompact
 }: {
   milestone: Milestone;
   onClick?: (milestone: Milestone) => void;
@@ -26,30 +25,21 @@ export function MilestoneItemView({
   dragHandleProps?: any;
   style?: React.CSSProperties;
   className?: string;
-  isCompact?: boolean;
 }) {
   const isHex = milestone.color?.startsWith('#');
+  // Full color (solid)
   const bgColor = isHex
-    ? `${milestone.color}26` // 15% opacity
-    : milestone.color
-      ? `hsl(var(--workspace-${milestone.color}) / 0.15)`
-      : 'hsl(var(--primary) / 0.1)';
-
-  const borderColor = isHex
-    ? `${milestone.color}4D` // 30% opacity
-    : milestone.color
-      ? `hsl(var(--workspace-${milestone.color}) / 0.3)`
-      : 'hsl(var(--border))';
-
-  const textColor = isHex
     ? milestone.color
     : milestone.color
       ? `hsl(var(--workspace-${milestone.color}))`
-      : 'hsl(var(--foreground))';
+      : 'hsl(var(--primary))';
+
+  const borderColor = 'hsl(var(--background))';
+
+  const textColor = '#ffffff';
 
   return (
     <div
-
       {...dragHandleProps}
       onClick={(e) => {
         if (!isDragging && onClick) {
@@ -57,35 +47,23 @@ export function MilestoneItemView({
           onClick(milestone);
         }
       }}
-      className={`group relative flex items-center gap-1.5 px-2 ${isCompact ? 'py-0.5 text-[10px]' : 'py-1.5'} rounded-sm border cursor-grab active:cursor-grabbing touch-none ${isDragging ? 'opacity-30' : ''
-        } ${className || ''}`}
-
+      className={`group relative flex items-center gap-1.5 px-2 py-1.5 border cursor-grab active:cursor-grabbing touch-none min-h-[28px] ${isDragging ? 'opacity-30' : ''} ${className || ''}`}
       style={{
         ...style,
         backgroundColor: bgColor,
         borderColor: borderColor,
+        color: textColor
       }}
     >
-      <Flag
-        className={`${isCompact ? 'w-2.5 h-2.5' : 'w-3 h-3'} shrink-0`}
-        style={{ color: textColor }}
-      />
-
-      <span
-        className={`${isCompact ? 'text-[10px]' : 'text-xs'} font-medium truncate`}
-        style={{ color: textColor }}
-      >
+      <Flag className="w-3 h-3 shrink-0" style={{ color: textColor }} />
+      <span className="text-xs font-medium whitespace-normal break-words" style={{ color: textColor }}>
         {milestone.title}
       </span>
     </div>
   );
 }
 
-
-
-// ...
-
-export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }: MilestoneItemProps) {
+export function MilestoneItem({ milestone, workspaceColor, onClick, className }: MilestoneItemProps) {
   const {
     attributes,
     listeners,
@@ -106,14 +84,14 @@ export function MilestoneItem({ milestone, workspaceColor, onClick, isCompact }:
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <QuickEditPopover item={milestone}>
+    <div ref={setNodeRef} style={style} className={className}>
+      <QuickEditPopover item={milestone} className="h-full">
         <MilestoneItemView
           milestone={milestone}
           onClick={onClick}
           isDragging={isDragging}
           dragHandleProps={{ ...attributes, ...listeners }}
-          isCompact={isCompact}
+          className="h-full"
         />
       </QuickEditPopover>
     </div>

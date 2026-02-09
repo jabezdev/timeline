@@ -22,8 +22,6 @@ export function useTimelineData(startDate: Date, visibleDays: number) {
         subProjects: timeline.data?.subProjects || {},
         milestones: timeline.data?.milestones || {},
         items: timeline.data?.items || {},
-        // UI State placeholders (handled elsewhere or default)
-        openProjectIds: [],
         currentDate: startStr,
         visibleDays,
         isSyncing: isLoading,

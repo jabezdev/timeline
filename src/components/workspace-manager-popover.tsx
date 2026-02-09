@@ -7,7 +7,13 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -21,10 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTimelineStore } from '@/hooks/useTimelineStore'; // Likely still used for UI state? No, we removed everything from it. Check if we need it.
-// We removed reorder/etc from store.
-// We might still need it for some UI state? WorkspaceManagerPopover doesn't seem to use UI state from store (like sidebar collapsed).
-// It uses local state for expanded.
+
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 import { Workspace, Project } from '@/types/timeline';
@@ -98,6 +101,16 @@ function SortableWorkspaceItem({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const [isAddingProject, setIsAddingProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+
+  const handleAddProjectSubmit = () => {
+    if (!newProjectName.trim()) return;
+    onAddProject(newProjectName.trim());
+    setNewProjectName('');
+    setIsAddingProject(false);
+  };
+
   const handleProjectDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
@@ -140,7 +153,7 @@ function SortableWorkspaceItem({
 
         <span className={cn("flex-1 text-sm font-medium truncate", workspace.isHidden && "text-muted-foreground/50 italic")}>{workspace.name}</span>
 
-        <EditWorkspacePopover workspace={workspace} onEdit={onEdit} />
+        <EditWorkspaceDialog workspace={workspace} onEdit={onEdit} />
 
         <button onClick={onToggleHidden} className="p-1 hover:bg-secondary rounded" title={workspace.isHidden ? "Show Workspace" : "Hide Workspace"}>
           {workspace.isHidden ? (
@@ -178,14 +191,35 @@ function SortableWorkspaceItem({
             </SortableContext>
           </DndContext>
 
-          <AddProjectPopover workspaceId={workspace.id} onAdd={onAddProject} />
+          {isAddingProject ? (
+            <div className="flex items-center gap-2 mt-2 ml-6">
+              <Input
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="Project Name"
+                className="h-7 text-xs"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddProjectSubmit(); }}
+              />
+              <Button size="sm" className="h-7" onClick={handleAddProjectSubmit}>Add</Button>
+              <Button size="sm" variant="ghost" className="h-7" onClick={() => setIsAddingProject(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingProject(true)}
+              className="flex items-center gap-2 mt-1 p-2 text-xs text-muted-foreground hover:bg-secondary rounded transition-colors ml-6 w-[calc(100%-24px)]"
+            >
+              <Plus className="w-3 h-3" />
+              Add Project
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function EditWorkspacePopover({ workspace, onEdit }: { workspace: Workspace; onEdit: (updates: Partial<Workspace>) => void }) {
+function EditWorkspaceDialog({ workspace, onEdit }: { workspace: Workspace; onEdit: (updates: Partial<Workspace>) => void }) {
   const [name, setName] = useState(workspace.name);
   const [color, setColor] = useState(Number(workspace.color));
   const [open, setOpen] = useState(false);
@@ -197,96 +231,51 @@ function EditWorkspacePopover({ workspace, onEdit }: { workspace: Workspace; onE
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <button className="p-1 hover:bg-secondary rounded">
           <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
-        <div className="space-y-4">
-          <h4 className="font-medium text-sm">Edit Organization</h4>
-          <div className="space-y-2">
-            <Label htmlFor={`edit-ws-name-${workspace.id}`}>Name</Label>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Edit Organization</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Name
+            </Label>
             <Input
-              id={`edit-ws-name-${workspace.id}`}
+              id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSubmit();
-              }}
+              className="col-span-3"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="grid grid-cols-6 gap-2 justify-items-center">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Color</Label>
+            <div className="col-span-3 grid grid-cols-6 gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className={`w-7 h-7 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                    }`}
+                  className={`w-6 h-6 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-primary' : ''}`}
                   style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
                 />
               ))}
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Save</Button>
-          </div>
         </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function AddProjectPopover({ workspaceId, onAdd }: { workspaceId: string; onAdd: (name: string) => void }) {
-  const [name, setName] = useState('');
-  const [open, setOpen] = useState(false);
-
-  const handleSubmit = () => {
-    if (!name.trim()) return;
-    onAdd(name.trim());
-    setName('');
-    setOpen(false);
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          className="flex items-center gap-2 w-full mt-1 p-2 text-xs text-muted-foreground hover:bg-secondary rounded transition-colors"
-        >
-          <Plus className="w-3 h-3" />
-          Add Project
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
-        <div className="space-y-4">
-          <h4 className="font-medium text-sm">Add Project</h4>
-          <div className="space-y-2">
-            <Label htmlFor={`add-proj-name-${workspaceId}`}>Name</Label>
-            <Input
-              id={`add-proj-name-${workspaceId}`}
-              placeholder="e.g. Website Redesign"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSubmit();
-              }}
-            />
-          </div>
+        <DialogFooter>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Add</Button>
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={!name.trim()}>Save</Button>
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -336,7 +325,7 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onTogg
 
       <span className={cn("flex-1 text-xs truncate", project.isHidden && "text-muted-foreground/50 italic")}>{project.name}</span>
 
-      <EditProjectPopover project={project} onEdit={onEdit} />
+      <EditProjectDialog project={project} onEdit={onEdit} />
 
       <button onClick={onToggleHidden} className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity" title={project.isHidden ? "Show Project" : "Hide Project"}>
         {project.isHidden ? (
@@ -352,7 +341,7 @@ function SortableProjectItem({ project, workspaceColor, onEdit, onDelete, onTogg
   );
 }
 
-function EditProjectPopover({ project, onEdit }: { project: Project; onEdit: (updates: Partial<Project>) => void }) {
+function EditProjectDialog({ project, onEdit }: { project: Project; onEdit: (updates: Partial<Project>) => void }) {
   const [name, setName] = useState(project.name);
   const [open, setOpen] = useState(false);
 
@@ -363,38 +352,39 @@ function EditProjectPopover({ project, onEdit }: { project: Project; onEdit: (up
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <button className="p-0.5 hover:bg-secondary rounded opacity-0 group-hover:opacity-100 transition-opacity">
           <Pencil className="w-3 h-3 text-muted-foreground" />
         </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
-        <div className="space-y-4">
-          <h4 className="font-medium text-sm">Edit Project</h4>
-          <div className="space-y-2">
-            <Label htmlFor={`edit-proj-name-${project.id}`}>Name</Label>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Edit Project</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Name
+            </Label>
             <Input
-              id={`edit-proj-name-${project.id}`}
+              id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSubmit();
-              }}
+              className="col-span-3"
             />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Save</Button>
-          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!name.trim()}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-export function AddWorkspacePopover({ onAdd }: { onAdd: (name: string, color: number) => void }) {
+export function AddWorkspaceDialog({ onAdd }: { onAdd: (name: string, color: number) => void }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState(1);
   const [open, setOpen] = useState(false);
@@ -408,8 +398,8 @@ export function AddWorkspacePopover({ onAdd }: { onAdd: (name: string, color: nu
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           size="sm"
           variant="ghost"
@@ -418,49 +408,49 @@ export function AddWorkspacePopover({ onAdd }: { onAdd: (name: string, color: nu
           <Plus className="w-3 h-3 mr-1" />
           Add Org
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start" side="right" onInteractOutside={(e) => e.preventDefault()}>
-        <div className="space-y-4">
-          <h4 className="font-medium text-sm">Add Organization</h4>
-          <div className="space-y-2">
-            <Label htmlFor="add-ws-name">Name</Label>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]" onClick={(e) => e.stopPropagation()}>
+        <DialogHeader>
+          <DialogTitle>Add Organization</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Name
+            </Label>
             <Input
-              id="add-ws-name"
+              id="name"
               placeholder="e.g. Acme Corp"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSubmit();
-              }}
+              className="col-span-3"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="grid grid-cols-6 gap-2 justify-items-center">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label className="text-right">Color</Label>
+            <div className="col-span-3 grid grid-cols-6 gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setColor(c)}
-                  className={`w-7 h-7 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : ''
-                    }`}
+                  className={`w-6 h-6 rounded-full transition-all ${color === c ? 'ring-2 ring-offset-2 ring-primary' : ''}`}
                   style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
                 />
               ))}
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!name.trim()}>Add</Button>
-          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={!name.trim()}>Add</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-export function WorkspaceManagerPopover() {
+export function WorkspaceManagerContent() {
   const { data: timelineState } = useTimelineData(new Date(), 14);
   const {
     workspaces,
@@ -537,65 +527,53 @@ export function WorkspaceManagerPopover() {
 
   return (
     <>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" title="Manage Workspaces">
-            <Building2 className="h-[1.2rem] w-[1.2rem]" />
-            <span className="sr-only">Manage Workspaces</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80" align="start">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm">Workspaces & Projects</h4>
-              <AddWorkspacePopover onAdd={addWorkspace} />
-            </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium text-sm">Workspaces & Projects</h4>
+          <AddWorkspaceDialog onAdd={addWorkspace} />
+        </div>
 
-            <p className="text-xs text-muted-foreground">
-              Drag to reorder workspaces and projects.
-            </p>
+        <p className="text-xs text-muted-foreground">
+          Drag to reorder workspaces and projects.
+        </p>
 
-            <div className="max-h-[400px] overflow-y-auto pr-1">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleWorkspaceDragEnd}
-              >
-                <SortableContext
-                  items={workspaceOrder}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {sortedWorkspaces.map((workspace) => {
-                    const workspaceProjects = Object.values(projects)
-                      .filter(p => p.workspaceId === workspace.id)
-                      .sort((a, b) => (a.position || 0) - (b.position || 0));
+        <div className="max-h-[400px] overflow-y-auto pr-1">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleWorkspaceDragEnd}
+          >
+            <SortableContext
+              items={workspaceOrder}
+              strategy={verticalListSortingStrategy}
+            >
+              {sortedWorkspaces.map((workspace) => {
+                const workspaceProjects = Object.values(projects)
+                  .filter(p => p.workspaceId === workspace.id)
+                  .sort((a, b) => (a.position || 0) - (b.position || 0));
 
-                    return (
-                      <SortableWorkspaceItem
-                        key={workspace.id}
-                        workspace={workspace}
-                        projects={workspaceProjects}
-                        isExpanded={expandedWorkspaces.has(workspace.id)}
-                        onToggleExpand={() => toggleExpand(workspace.id)}
-                        onEdit={(updates) => updateWorkspace(workspace.id, updates)}
-                        onDelete={() => setDeletingWorkspace(workspace)}
-                        onToggleHidden={() => updateWorkspace(workspace.id, { isHidden: !workspace.isHidden })}
-                        onAddProject={(name) => addProject(workspace.id, name)}
-                        onEditProject={(p, updates) => updateProject(p.id, updates)}
-                        onDeleteProject={(p) => setDeletingProject(p)}
-                        onToggleProjectHidden={(p) => updateProject(p.id, { isHidden: !p.isHidden })}
-                        onReorderProjects={(ids) => reorderProjects(workspace.id, ids)}
-                      />
-                    );
-                  })}
-                </SortableContext>
-              </DndContext>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-
-
+                return (
+                  <SortableWorkspaceItem
+                    key={workspace.id}
+                    workspace={workspace}
+                    projects={workspaceProjects}
+                    isExpanded={expandedWorkspaces.has(workspace.id)}
+                    onToggleExpand={() => toggleExpand(workspace.id)}
+                    onEdit={(updates) => updateWorkspace(workspace.id, updates)}
+                    onDelete={() => setDeletingWorkspace(workspace)}
+                    onToggleHidden={() => updateWorkspace(workspace.id, { isHidden: !workspace.isHidden })}
+                    onAddProject={(name) => addProject(workspace.id, name)}
+                    onEditProject={(p, updates) => updateProject(p.id, updates)}
+                    onDeleteProject={(p) => setDeletingProject(p)}
+                    onToggleProjectHidden={(p) => updateProject(p.id, { isHidden: !p.isHidden })}
+                    onReorderProjects={(ids) => reorderProjects(workspace.id, ids)}
+                  />
+                );
+              })}
+            </SortableContext>
+          </DndContext>
+        </div>
+      </div>
 
       {/* Delete Workspace Confirmation */}
       <AlertDialog open={!!deletingWorkspace} onOpenChange={(open) => !open && setDeletingWorkspace(null)}>
@@ -636,3 +614,18 @@ export function WorkspaceManagerPopover() {
   );
 }
 
+export function WorkspaceManagerPopover() {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="icon" title="Manage Workspaces">
+          <Building2 className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Manage Workspaces</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start">
+        <WorkspaceManagerContent />
+      </PopoverContent>
+    </Popover>
+  )
+}

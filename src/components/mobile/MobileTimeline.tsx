@@ -1,6 +1,5 @@
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 import { format, addDays, isSameDay, parseISO } from 'date-fns';
 import { TimelineItem, Milestone, SubProject, Project } from '@/types/timeline';
@@ -25,7 +24,6 @@ export function MobileTimeline({
     onToggleProject
 }: MobileTimelineProps) {
     const { data: timelineState } = useTimelineData(activeDate, 14);
-    const { openProjectIds } = useTimelineStore();
     const { workspaces } = timelineState;
     const mutations = useTimelineMutations();
 
@@ -35,7 +33,7 @@ export function MobileTimeline({
         projectsItems,
         projectsMilestones,
         projectsSubProjects,
-    } = useTimelineSelectors(timelineState, openProjectIds);
+    } = useTimelineSelectors(timelineState);
 
     const days = [
         activeDate,

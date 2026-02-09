@@ -86,7 +86,6 @@ export const sampleState: TimelineState = {
     'task-8': { id: 'task-8', title: 'Practice scales', content: '', date: format(addDays(today, 1), 'yyyy-MM-dd'), completed: false, projectId: 'proj-4' },
     'task-9': { id: 'task-9', title: 'Learn first song', content: '', date: format(addDays(today, 14), 'yyyy-MM-dd'), completed: false, projectId: 'proj-4' },
   },
-  openProjectIds: ['proj-1'],
   currentDate: today,
   visibleDays: 21,
 };

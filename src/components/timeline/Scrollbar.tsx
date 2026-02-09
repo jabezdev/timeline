@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { COLLAPSED_SIDEBAR_WIDTH, SIDEBAR_WIDTH } from '@/lib/constants';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 interface ScrollbarProps {
     containerRef: React.RefObject<HTMLDivElement>;
@@ -18,9 +16,6 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
     const startScroll = useRef(0);
     const scrollbarRef = useRef<HTMLDivElement>(null);
 
-    const { isSidebarCollapsed } = useTimelineStore();
-    const sidebarWidth = isSidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : SIDEBAR_WIDTH;
-
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -35,7 +30,6 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
             const scrollSize = isHorizontal ? container.scrollWidth : container.scrollHeight;
             const scrollPos = isHorizontal ? container.scrollLeft : container.scrollTop;
 
-            // If content fits, hide scrollbar
             if (scrollSize <= clientSize) {
                 setIsVisible(false);
                 return;
@@ -43,27 +37,11 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
 
             setIsVisible(true);
 
-            // Calculate thumb size ratio
-            // For horizontal: subtract sidebar from visible area
-            // For vertical: sidebar doesn't affect height, but sticky header might (HEADER_HEIGHT = 40 usually, or min-content)
-            // Actually, vertical container includes the header in scroll?
-            // Timeline.tsx structure: 
-            // container (overflow-auto) -> 
-            //    start content
-            //    sticky header (top-0)
-            //    virtual body
-            // So scrollTop includes header.
-
-            const availableSize = isHorizontal ? clientSize - sidebarWidth : clientSize;
-
+            const availableSize = clientSize;
             const sizeRatio = clientSize / scrollSize;
-            const newThumbSize = Math.max(sizeRatio * availableSize, 40); // Min size 40px
+            const newThumbSize = Math.max(sizeRatio * availableSize, 40);
 
             const maxScroll = scrollSize - clientSize;
-
-            // Available track for movement
-            // Horizontal: width - sidebar - thumb
-            // Vertical: height - thumb
             const trackSize = availableSize;
             const maxThumbPos = trackSize - newThumbSize;
 
@@ -74,23 +52,20 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
             setThumbOffset(newThumbOffset);
         };
 
-        // Listen to scroll
         container.addEventListener('scroll', updateScrollbar);
 
-        // Listen to resize
         resizeObserver = new ResizeObserver(() => {
             updateScrollbar();
         });
         resizeObserver.observe(container);
 
-        // Initial call
         updateScrollbar();
 
         return () => {
             container.removeEventListener('scroll', updateScrollbar);
             resizeObserver.disconnect();
         };
-    }, [containerRef, sidebarWidth, orientation]);
+    }, [containerRef, orientation]);
 
     const handleMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -104,8 +79,6 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = 'none';
-
-        // Add class to body to force cursor style? Optional.
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -119,14 +92,9 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
         const clientSize = isHorizontal ? container.clientWidth : container.clientHeight;
         const scrollSize = isHorizontal ? container.scrollWidth : container.scrollHeight;
 
-        const availableSize = isHorizontal ? clientSize - sidebarWidth : clientSize;
+        const availableSize = clientSize;
         const maxScroll = scrollSize - clientSize;
-
-        // Re-calculate thumb size to know max movement (could store in state, but safe to calc)
-        // actually state has it.
         const maxThumbPos = availableSize - thumbSize;
-
-        // ratio = maxScroll / maxThumbPos
         const scrollPerPx = maxScroll / maxThumbPos;
 
         if (isHorizontal) {
@@ -153,15 +121,15 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
                 "absolute z-50 bg-transparent transition-all duration-200 ease-in-out group",
                 isHorizontal
                     ? "bottom-4 h-2 hover:h-3"
-                    : "right-1 top-12 w-2 hover:w-3", // Top-12 to clear header? Header is sticky. 
+                    : "right-1 top-12 w-2 hover:w-3",
                 className
             )}
             style={isHorizontal ? {
-                left: sidebarWidth,
-                width: `calc(100% - ${sidebarWidth}px - 16px)`,
+                left: 0,
+                width: `calc(100% - 16px)`,
             } : {
-                height: `calc(100% - 48px)`, // Subtract top offset
-                top: 48 // Approx header height padding
+                height: `calc(100% - 48px)`,
+                top: 48
             }}
             ref={scrollbarRef}
         >
