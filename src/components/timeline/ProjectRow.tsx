@@ -1,17 +1,14 @@
 import { useMemo, memo } from 'react';
-import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
 import { Plus } from 'lucide-react';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
 import { MilestoneItem } from './MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
 import { CELL_WIDTH, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { packSubProjects } from '@/lib/timelineUtils';
-import { useState } from 'react';
 
-function MilestoneDropCell({
+function MilestoneCell({
   date,
   projectId,
   milestones,
@@ -30,37 +27,29 @@ function MilestoneDropCell({
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
 
-  const { setNodeRef, isOver } = useDroppable({
-    id: `milestone-${projectId}-${dateStr}`,
-    data: { projectId, date: dateStr, type: 'milestone' },
-  });
-
   return (
     <div
-      ref={setNodeRef}
-      className={`relative group flex flex-col justify-start border-r border-border/50 last:border-r-0 ${isOver ? 'bg-milestone/10' : ''}`}
+      className="relative group flex flex-col justify-start border-r border-border/50 last:border-r-0"
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
     >
       <div className="flex flex-col w-full h-full">
-        <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-          {milestones.map(milestone => (
-            <div
-              key={milestone.id}
-              className={milestones.length === 1 ? 'flex-1 h-full' : ''}
-            >
-              <div className="h-full w-full">
-                <MilestoneItem
-                  milestone={milestone}
-                  workspaceColor={workspaceColor}
-                  className={milestones.length === 1 ? 'h-full' : ''}
-                  onDoubleClick={onItemDoubleClick}
-                  onQuickEdit={onQuickEdit}
-                  minHeight={PROJECT_HEADER_HEIGHT}
-                />
-              </div>
+        {milestones.map(milestone => (
+          <div
+            key={milestone.id}
+            className={milestones.length === 1 ? 'flex-1 h-full' : ''}
+          >
+            <div className="h-full w-full">
+              <MilestoneItem
+                milestone={milestone}
+                workspaceColor={workspaceColor}
+                className={milestones.length === 1 ? 'h-full' : ''}
+                onDoubleClick={onItemDoubleClick}
+                onQuickEdit={onQuickEdit}
+                minHeight={PROJECT_HEADER_HEIGHT}
+              />
             </div>
-          ))}
-        </SortableContext>
+          </div>
+        ))}
       </div>
 
       {/* Floating Quick Create Button - always available on hover */}
@@ -117,7 +106,7 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
       {days.map((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
         return (
-          <MilestoneDropCell
+          <MilestoneCell
             key={dateStr}
             date={day}
             projectId={project.id}
@@ -148,6 +137,9 @@ interface ProjectRowProps {
   sidebarWidth: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => void;
+  selectedIds: Set<string>;
+  onItemClick: (id: string, multi: boolean) => void;
+  onClearSelection: () => void;
 }
 
 export const ProjectRow = memo(function ProjectRow({
@@ -162,7 +154,10 @@ export const ProjectRow = memo(function ProjectRow({
   onSubProjectDoubleClick,
   sidebarWidth,
   onQuickCreate,
-  onQuickEdit
+  onQuickEdit,
+  selectedIds,
+  onItemClick,
+  onClearSelection
 }: ProjectRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -208,6 +203,8 @@ export const ProjectRow = memo(function ProjectRow({
               cellWidth={CELL_WIDTH}
               onQuickCreate={onQuickCreate}
               onQuickEdit={onQuickEdit}
+              selectedIds={selectedIds}
+              onItemClick={onItemClick}
             />
           );
         })}
@@ -226,6 +223,8 @@ export const ProjectRow = memo(function ProjectRow({
         sidebarWidth={sidebarWidth}
         onQuickCreate={onQuickCreate}
         onQuickEdit={onQuickEdit}
+        selectedIds={selectedIds}
+        onItemClick={onItemClick}
       />
     </div>
   );

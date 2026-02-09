@@ -158,7 +158,7 @@ export function useTimelineMutations() {
                 const sp = old.subProjects?.[id];
                 if (!sp) return old;
 
-                let newItems = { ...old.items };
+                const newItems = { ...old.items };
 
                 // Apply child item updates if provided
                 if (childItemsToUpdate && childItemsToUpdate.length > 0) {

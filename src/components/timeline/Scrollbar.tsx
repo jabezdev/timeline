@@ -20,7 +20,7 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
         const container = containerRef.current;
         if (!container) return;
 
-        let resizeObserver: ResizeObserver;
+
 
         const updateScrollbar = () => {
             if (!container) return;
@@ -54,7 +54,7 @@ export function Scrollbar({ containerRef, className, orientation = 'horizontal' 
 
         container.addEventListener('scroll', updateScrollbar);
 
-        resizeObserver = new ResizeObserver(() => {
+        const resizeObserver = new ResizeObserver(() => {
             updateScrollbar();
         });
         resizeObserver.observe(container);

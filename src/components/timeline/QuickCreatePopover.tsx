@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/compon
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTimelineMutations } from "@/hooks/useTimelineMutations";
-import { TimelineItem, Milestone } from "@/types/timeline";
+import { TimelineItem, Milestone, SubProject } from "@/types/timeline";
 
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import { format, parseISO, addDays, addWeeks, addMonths } from "date-fns";
@@ -28,6 +28,7 @@ interface QuickCreatePopoverProps {
     type: 'item' | 'milestone';
     projectId: string;
     subProjectId?: string;
+    availableSubProjects?: SubProject[];
     date: string; // YYYY-MM-DD
     children?: React.ReactNode;
     defaultColor?: number;
@@ -39,7 +40,8 @@ export function QuickCreatePopover({
     onOpenChange,
     type,
     projectId,
-    subProjectId,
+    subProjectId: initialSubProjectId,
+    availableSubProjects = [],
     date: initialDate,
     children,
     defaultColor = 3,
@@ -48,6 +50,7 @@ export function QuickCreatePopover({
     const [title, setTitle] = useState('');
     const [date, setDate] = useState(initialDate);
     const [color, setColor] = useState<number>(defaultColor);
+    const [subProjectId, setSubProjectId] = useState<string | undefined>(initialSubProjectId);
 
     // Recurring State
     const [isRecurring, setIsRecurring] = useState(false);
@@ -63,8 +66,11 @@ export function QuickCreatePopover({
             setTitle('');
             setDate(initialDate);
             setColor(defaultColor);
+            setSubProjectId(initialSubProjectId);
+            setIsRecurring(false);
+            setRecurrenceCount(1);
         }
-    }, [open, initialDate, defaultColor]);
+    }, [open, initialDate, defaultColor, initialSubProjectId]);
 
     const handleSave = () => {
         if (!title.trim()) {
@@ -213,6 +219,33 @@ export function QuickCreatePopover({
                         </Popover>
                     </div>
 
+
+
+                    {/* SubProject Selector (Items only) */}
+                    {type === 'item' && (
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">SubProject</Label>
+                            <Select value={subProjectId || "none"} onValueChange={(v) => setSubProjectId(v === "none" ? undefined : v)}>
+                                <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select SubProject" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">
+                                        <span className="text-muted-foreground italic">None</span>
+                                    </SelectItem>
+                                    {availableSubProjects.map(sp => (
+                                        <SelectItem key={sp.id} value={sp.id}>
+                                            <span className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: sp.color ? (sp.color.startsWith('#') ? sp.color : `hsl(var(--workspace-${sp.color}))`) : 'hsl(var(--primary))' }} />
+                                                {sp.title}
+                                            </span>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+
                     <div className="space-y-1">
                         <Label className="text-xs">Color</Label>
                         <div className="grid grid-cols-6 gap-2 justify-items-center">
@@ -273,6 +306,6 @@ export function QuickCreatePopover({
                     {/* No buttons, just like QuickEdit */}
                 </div>
             </PopoverContent>
-        </Popover>
+        </Popover >
     );
 }

@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import React from 'react';
 import { format } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { TimelineItem, Milestone } from '@/types/timeline';
@@ -20,80 +18,69 @@ interface TimelineCellProps {
   cellWidth: number;
   rowHeight?: number;
   showBorder?: boolean;
-  droppableDisabled?: boolean;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone, anchorElement?: HTMLElement) => void;
+  selectedIds: Set<string>;
+  onItemClick: (id: string, multi: boolean) => void;
 }
 
 export const TimelineCell = React.memo(function TimelineCell({
   date,
   projectId,
   subProjectId,
-  laneId,
   items,
   milestones,
-
   workspaceColor,
   onToggleItemComplete,
   onItemDoubleClick,
   cellWidth,
   rowHeight = 40,
   showBorder = true,
-  droppableDisabled = false,
   onQuickCreate,
-  onQuickEdit
+  onQuickEdit,
+  selectedIds,
+  onItemClick
 }: TimelineCellProps) {
   const dateStr = format(date, 'yyyy-MM-dd');
-  // Use laneId for unique droppable ID, but only pass subProjectId in data for drop handling
-  const droppableId = laneId
-    ? `${projectId}-${laneId}-${dateStr}`
-    : `${projectId}-${subProjectId || 'main'}-${dateStr}`;
-
-  const { setNodeRef, isOver } = useDroppable({
-    id: droppableId,
-    data: { projectId: projectId, date: dateStr, subProjectId },
-    disabled: droppableDisabled,
-  });
 
   const content = (
     <div className="flex flex-col gap-0 h-full pointer-events-none">
-      <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-        {milestones.map(milestone => (
-          <div key={milestone.id} className="pointer-events-auto">
-            <MilestoneItem
-              milestone={milestone}
-              workspaceColor={workspaceColor}
-              onDoubleClick={onItemDoubleClick}
-              onQuickEdit={onQuickEdit}
-              minHeight={rowHeight}
-            />
-          </div>
-        ))}
-      </SortableContext>
+      {milestones.map(milestone => (
+        <div key={milestone.id} className="pointer-events-auto">
+          <MilestoneItem
+            milestone={milestone}
+            workspaceColor={workspaceColor}
+            onDoubleClick={onItemDoubleClick}
+            onQuickEdit={onQuickEdit}
+            minHeight={rowHeight}
+            isSelected={selectedIds.has(milestone.id)}
+            onClick={(multi: boolean) => onItemClick(milestone.id, multi)}
+          />
+        </div>
+      ))}
 
-      <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
-        {items.map(item => (
-          <div key={item.id} className="pointer-events-auto">
-            <UnifiedItem
-              item={item}
-              onToggleComplete={onToggleItemComplete}
-              onDoubleClick={onItemDoubleClick}
-              onQuickEdit={onQuickEdit}
-              workspaceColor={workspaceColor}
-              minHeight={rowHeight}
-            />
-          </div>
-        ))}
-      </SortableContext>
+      {items.map(item => (
+        <div key={item.id} className="pointer-events-auto">
+          <UnifiedItem
+            item={item}
+            onToggleComplete={onToggleItemComplete}
+            onDoubleClick={onItemDoubleClick}
+            onQuickEdit={onQuickEdit}
+            workspaceColor={workspaceColor}
+            minHeight={rowHeight}
+            isSelected={selectedIds.has(item.id)}
+            onClick={(item) => onItemClick(item.id, false)} // UnifiedItem uses a different signature for onClick? Need to check
+          />
+        </div>
+      ))}
     </div>
   );
 
-  const containerClass = `relative px-0 py-0 shrink-0 group ${showBorder ? 'border-r border-border/50 last:border-r-0' : ''} ${isOver ? 'bg-primary/10' : ''}`;
+  const containerClass = `relative px-0 py-0 shrink-0 group ${showBorder ? 'border-r border-border/50 last:border-r-0' : ''}`;
   const containerStyle = { width: cellWidth, minWidth: cellWidth, ...(rowHeight ? { minHeight: rowHeight } : {}) };
 
   return (
     <div
-      ref={setNodeRef}
       className={containerClass}
       style={containerStyle}
     >

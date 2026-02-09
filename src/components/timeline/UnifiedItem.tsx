@@ -1,60 +1,44 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { TimelineItem } from '@/types/timeline';
 import { Check } from 'lucide-react';
-import { QuickEditPopover } from './QuickEditPopover';
-import React, { useState } from 'react';
+import React from 'react';
 
 interface UnifiedItemProps {
     item: TimelineItem;
     onToggleComplete: (itemId: string) => void;
-    onClick?: (item: TimelineItem) => void;
+    onClick?: (multi: boolean) => void;
     workspaceColor: number;
     minHeight?: number;
+    isSelected?: boolean;
 }
-
 
 export const UnifiedItemView = React.memo(function UnifiedItemView({
     item,
     onToggleComplete,
     onClick,
-    isDragging,
-    dragHandleProps,
     style,
     className,
-    minHeight
+    minHeight,
+    isSelected
 }: {
     item: TimelineItem;
     onToggleComplete?: (itemId: string) => void;
-    onClick?: (item: TimelineItem) => void;
-    isDragging?: boolean;
-    dragHandleProps?: any;
+    onClick?: (multi: boolean) => void;
     style?: React.CSSProperties;
     className?: string;
     minHeight?: number;
+    isSelected?: boolean;
 }) {
     return (
         <div
-            className={`group/item relative ${isDragging ? 'opacity-30' : ''} ${className || ''}`}
+            className={`group/item relative ${className || ''}`}
             style={{
                 minHeight: minHeight ? `${minHeight}px` : undefined,
                 ...style
             }}
         >
-            {/* Left drag handle - overlays on top, hidden unless hover */}
-            <div
-                {...dragHandleProps}
-                className="absolute left-0 top-0 bottom-0 w-1.5 cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover/item:opacity-100 transition-opacity pointer-events-auto z-10 rounded-l"
-                style={{
-                    backgroundColor: item.color
-                        ? (item.color.startsWith('#') ? `${item.color}` : `hsl(var(--workspace-${item.color}))`)
-                        : 'hsl(var(--primary))'
-                }}
-            />
-
             {/* Item content - full width */}
             <div
-                className={`flex items-center gap-1.5 px-2 py-1.5 border ${item.completed
+                className={`flex items-center gap-1.5 px-2 py-1.5 border cursor-pointer ${item.completed
                     ? 'opacity-60 bg-secondary/20 border-border'
                     : 'bg-secondary/30 border-border hover:border-primary/30'
                     }`}
@@ -62,10 +46,17 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                     backgroundColor: item.color
                         ? (item.color.startsWith('#') ? `${item.color}15` : `hsl(var(--workspace-${item.color}) / 0.15)`)
                         : undefined,
-                    borderColor: item.color
-                        ? (item.color.startsWith('#') ? `${item.color}30` : `hsl(var(--workspace-${item.color}) / 0.3)`)
-                        : undefined,
+                    borderColor: isSelected
+                        ? 'hsl(var(--primary))'
+                        : (item.color
+                            ? (item.color.startsWith('#') ? `${item.color}30` : `hsl(var(--workspace-${item.color}) / 0.3)`)
+                            : undefined),
+                    borderWidth: isSelected ? '2px' : '1px',
                     minHeight: minHeight ? `${minHeight}px` : undefined,
+                }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClick?.(e.ctrlKey || e.metaKey);
                 }}
             >
                 <button
@@ -97,29 +88,21 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
     );
 });
 
-
-export const UnifiedItem = React.memo(function UnifiedItem({ item, onToggleComplete, onClick, workspaceColor, onDoubleClick, minHeight, onQuickEdit }: UnifiedItemProps & { onDoubleClick?: (item: TimelineItem) => void; onQuickEdit?: (item: TimelineItem, anchorElement?: HTMLElement) => void }) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({
-        id: item.id,
-        data: { type: 'item', item: item },
-    });
-
-    const style = {
-        transform: CSS.Translate.toString(transform),
-        transition,
-        opacity: isDragging ? 0.3 : 1,
-        zIndex: isDragging ? 999 : undefined,
-    };
-
+export const UnifiedItem = React.memo(function UnifiedItem({
+    item,
+    onToggleComplete,
+    onClick,
+    workspaceColor,
+    onDoubleClick,
+    minHeight,
+    onQuickEdit,
+    isSelected
+}: UnifiedItemProps & {
+    onDoubleClick?: (item: TimelineItem) => void;
+    onQuickEdit?: (item: TimelineItem, anchorElement?: HTMLElement) => void;
+}) {
     return (
-        <div ref={setNodeRef} style={style}>
+        <div>
             <div
                 className="pointer-events-auto"
                 onContextMenu={(e) => {
@@ -128,7 +111,7 @@ export const UnifiedItem = React.memo(function UnifiedItem({ item, onToggleCompl
                     if (onQuickEdit) onQuickEdit(item, e.currentTarget);
                 }}
                 onClick={(e) => {
-                    e.stopPropagation(); // CRITICAL: prevent cell Quick Create
+                    e.stopPropagation();
                     if (onDoubleClick) onDoubleClick(item);
                 }}
             >
@@ -136,12 +119,10 @@ export const UnifiedItem = React.memo(function UnifiedItem({ item, onToggleCompl
                     item={item}
                     onToggleComplete={onToggleComplete}
                     onClick={onClick}
-                    isDragging={isDragging}
                     minHeight={minHeight}
-                    dragHandleProps={{ ...attributes, ...listeners }}
+                    isSelected={isSelected}
                 />
             </div>
         </div>
     );
 });
-

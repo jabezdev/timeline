@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -9,13 +9,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DndContext,
-  DragOverlay,
-  pointerWithin,
-  closestCorners,
-} from '@dnd-kit/core';
-// import { timelineGridCollisionDetection } from './hooks/useTimelineCollisionStrategy';
 import { addDays, parseISO, format, differenceInDays } from 'date-fns';
 import { TimelineHeader } from './TimelineHeader';
 import { WorkspaceHeaderRow } from './WorkspaceSection';
@@ -26,15 +19,13 @@ import { ItemSheet } from './ItemSheet';
 import { TimelineItem, Milestone, SubProject, Project, TimelineState } from '@/types/timeline';
 import { CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT, SIDEBAR_WIDTH } from '@/lib/constants';
 import { SubProjectBar } from './SubProjectRow';
-import { UnifiedItemView } from './UnifiedItem';
-import { MilestoneItemView } from './MilestoneItem';
 import { QuickCreatePopover } from './QuickCreatePopover';
 import { QuickEditPopover } from './QuickEditPopover';
 import { generateId } from '@/lib/utils';
 import { Scrollbar } from './Scrollbar';
+import { useTimelineKeyboard } from '@/hooks/useTimelineKeyboard';
 
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
-import { useTimelineDragDrop } from './hooks/useTimelineDragDrop';
 import { useTimelineScroll } from './hooks/useTimelineScroll';
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
@@ -66,7 +57,10 @@ const TimelineMainView = memo(function TimelineMainView({
   setSubProjectToDelete,
   selectedItem,
   isItemDialogOpen,
-  subProjectToDelete
+  subProjectToDelete,
+  handleItemClick,
+  selectedIds,
+  onClearSelection
 }: {
   timelineState: TimelineState;
   sidebarWidth: number;
@@ -82,7 +76,7 @@ const TimelineMainView = memo(function TimelineMainView({
   handleAddMilestone: (projectId: string, title: string, date: string, color?: number) => void;
   handleAddSubProject: (projectId: string, title: string, startDate: string, endDate: string, color?: number) => void;
   handleItemDoubleClick: (item: TimelineItem | Milestone | SubProject) => void;
-  handleItemDelete: (item: TimelineItem | Milestone | SubProject) => void;
+  handleItemDelete: (item: TimelineItem | Milestone | SubProject, deleteItems?: boolean) => void;
   handleItemSave: (item: TimelineItem | Milestone | SubProject) => void;
   handleToggleItemComplete: (id: string) => void;
   timelineRef: React.RefObject<HTMLDivElement>;
@@ -92,6 +86,9 @@ const TimelineMainView = memo(function TimelineMainView({
   selectedItem: TimelineItem | Milestone | SubProject | null;
   isItemDialogOpen: boolean;
   subProjectToDelete: SubProject | null;
+  handleItemClick: (id: string, multi: boolean) => void;
+  selectedIds: Set<string>;
+  onClearSelection: () => void;
 }) {
   const {
     projectsItems,
@@ -221,6 +218,9 @@ const TimelineMainView = memo(function TimelineMainView({
                           onQuickCreate={handleQuickCreate}
                           onQuickEdit={handleQuickEdit}
                           sidebarWidth={sidebarWidth}
+                          selectedIds={selectedIds}
+                          onItemClick={handleItemClick}
+                          onClearSelection={onClearSelection}
                         />
                       </div>
                     </div>
@@ -272,16 +272,8 @@ const TimelineMainView = memo(function TimelineMainView({
             <AlertDialogAction
               onClick={() => {
                 if (subProjectToDelete) {
-                  setSubProjectToDelete(null); // Just close
-                  handleItemDelete(subProjectToDelete); // This logic needs to be passed down or handled here.
-                  // Actually logic was in handleItemDelete which calls setSubProjectToDelete. 
-                  // But the ALERT ACTIONS need to call the mutations.
-                  // The original code had the mutation logic inline in the onClick.
-                  // Since `mutations` is not passed to TimelineMainView (unless we access it there? Yes, we can call useTimelineMutations there too, or pass wrappers).
-                  // The mutations are calling hooks. We used `useTimelineMutations` in key handlers.
-                  // We should pass a `handleDeleteSubProjectConfirmed` prop or similar?
-                  // Or just let TimelineMainView use `useTimelineMutations` directly. It's a component.
-                  // YES, we can use useTimelineMutations in TimelineMainView.
+                  setSubProjectToDelete(null);
+                  handleItemDelete(subProjectToDelete, false);
                 }
               }}
               className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
@@ -290,8 +282,10 @@ const TimelineMainView = memo(function TimelineMainView({
             </AlertDialogAction>
             <AlertDialogAction
               onClick={() => {
-                // Logic will be handled in TimelineMainView's local handlers if we move the Alert there too.
-                // OR we keep Alert in TimelineMainView.
+                if (subProjectToDelete) {
+                  setSubProjectToDelete(null);
+                  handleItemDelete(subProjectToDelete, true);
+                }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
@@ -303,14 +297,6 @@ const TimelineMainView = memo(function TimelineMainView({
     </div>
   );
 });
-
-// I need to fix the Alert Dialog Logic in the above block before writing.
-// In the original code, the Alert Dialog was at the end of TimelineContent.
-// I included it in TimelineMainView.
-// But `mutations` variable needs to be available.
-// In the code block above I declared `const mutations = useTimelineMutations();` inside TimelineMainView.
-// So it should be fine.
-// I need to restore the Alert Dialog logic properly.
 
 function TimelineContent() {
   const visibleDays = VISIBLE_DAYS;
@@ -381,15 +367,6 @@ function TimelineContent() {
   const { data: timelineState, isLoading } = useTimelineData(startDate, visibleDays);
   const mutations = useTimelineMutations();
 
-  // Drag hooks
-  const {
-    activeDragItem,
-    dragOverlayRef,
-    sensors,
-    handleDragStart,
-    handleDragEnd,
-  } = useTimelineDragDrop();
-
   const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
@@ -409,6 +386,27 @@ function TimelineContent() {
     anchorPosition?: { x: number; y: number };
   }>({ open: false, item: null });
 
+  /* State */
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Filter subprojects for the item being edited
+  const availableSubProjects = useMemo(() => {
+    if (!quickEditState.item || !('projectId' in quickEditState.item)) return [];
+    const pid = quickEditState.item.projectId;
+    return Object.values(timelineState.subProjects || {})
+      .filter(sp => sp.projectId === pid)
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [quickEditState.item, timelineState.subProjects]);
+
+  // Filter subprojects for the item being created
+  const availableSubProjectsForCreate = useMemo(() => {
+    if (!quickCreateState.open || !quickCreateState.projectId) return [];
+    const pid = quickCreateState.projectId;
+    return Object.values(timelineState.subProjects || {})
+      .filter(sp => sp.projectId === pid)
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [quickCreateState.open, quickCreateState.projectId, timelineState.subProjects]);
+
   // Sync timelineState to ref for event handlers
   const timelineStateRef = useRef(timelineState);
   timelineStateRef.current = timelineState;
@@ -416,6 +414,8 @@ function TimelineContent() {
   // Sync selectedItem to ref
   const selectedItemRef = useRef(selectedItem);
   selectedItemRef.current = selectedItem;
+
+
 
   /* Handlers wrapped in useCallback for performance */
   const handleQuickCreate = useCallback((projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => {
@@ -442,6 +442,14 @@ function TimelineContent() {
     });
   }, []);
 
+  // Keyboard Hook - defined after handlers so we can use them
+  const { handleSelection, clearSelection } = useTimelineKeyboard({
+    selectedIds,
+    setSelectedIds,
+    timelineState,
+    onQuickEdit: (item) => handleQuickEdit(item)
+  });
+
   const handleAddItem = useCallback((title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
     const newItem: TimelineItem = {
       id: generateId(),
@@ -454,6 +462,7 @@ function TimelineContent() {
       content: ''
     };
     mutations.addItem.mutate(newItem);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutations.addItem.mutate]);
 
   const handleAddMilestone = useCallback((projectId: string, title: string, date: string, color?: number) => {
@@ -465,6 +474,7 @@ function TimelineContent() {
       color: color ? String(color) : undefined
     };
     mutations.addMilestone.mutate(newMilestone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutations.addMilestone.mutate]);
 
   const handleAddSubProject = useCallback((projectId: string, title: string, startDate: string, endDate: string, color?: number) => {
@@ -477,26 +487,32 @@ function TimelineContent() {
       color: color ? String(color) : undefined
     };
     mutations.addSubProject.mutate(newSub);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutations.addSubProject.mutate]);
 
-  const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject) => {
-    setSelectedItem(item);
-    setIsItemDialogOpen(true);
-  }, []);
 
-  const handleItemDelete = useCallback((item: TimelineItem | Milestone | SubProject) => {
+
+  const handleItemClick = useCallback((id: string, multi: boolean) => {
+    handleSelection(id, multi);
+  }, [handleSelection]);
+
+  const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject) => {
+    // on double click we can open quick edit or full edit? 
+    // User wanted "Enter to open QuickEdit", so double click probably same?
+    handleQuickEdit(item);
+  }, [handleQuickEdit]);
+
+  const handleItemDelete = useCallback((item: TimelineItem | Milestone | SubProject, deleteItems: boolean = false) => {
     if ('completed' in item) {
       mutations.deleteItem.mutate(item.id);
     } else if ('startDate' in item) {
-      setSubProjectToDelete(item as SubProject);
-      setIsItemDialogOpen(false);
-      return;
+      // logic for subproject delete
+      mutations.deleteSubProject.mutate({ id: item.id, deleteItems });
     } else {
       mutations.deleteMilestone.mutate(item.id);
     }
-    setSelectedItem(null);
-    setIsItemDialogOpen(false);
-  }, [mutations.deleteItem.mutate, mutations.deleteMilestone.mutate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutations.deleteItem.mutate, mutations.deleteMilestone.mutate, mutations.deleteSubProject.mutate]);
 
   const handleItemSave = useCallback((updatedItem: TimelineItem | Milestone | SubProject) => {
     const currentTimelineState = timelineStateRef.current;
@@ -536,6 +552,7 @@ function TimelineContent() {
     } else {
       mutations.updateMilestone.mutate({ id: updatedItem.id, updates: updatedItem as Milestone });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     mutations.updateItem.mutate,
     mutations.updateSubProject.mutate,
@@ -550,15 +567,11 @@ function TimelineContent() {
         updates: { completed: !item.completed, completedAt: !item.completed ? new Date().toISOString() : undefined }
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutations.updateItem.mutate]);
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      collisionDetection={closestCorners}
-    >
+    <>
       <TimelineMainView
         timelineState={timelineState}
         sidebarWidth={sidebarWidth}
@@ -574,10 +587,13 @@ function TimelineContent() {
         handleAddMilestone={handleAddMilestone}
         handleAddSubProject={handleAddSubProject}
         handleItemDoubleClick={handleItemDoubleClick}
+        handleItemClick={handleItemClick} // New prop
         handleItemDelete={handleItemDelete}
         handleItemSave={handleItemSave}
         handleToggleItemComplete={handleToggleItemComplete}
         timelineRef={timelineRef}
+        selectedIds={selectedIds}
+        onClearSelection={clearSelection}
         setSelectedItem={setSelectedItem}
         setIsItemDialogOpen={setIsItemDialogOpen}
         setSubProjectToDelete={setSubProjectToDelete}
@@ -594,6 +610,7 @@ function TimelineContent() {
           type="item"
           projectId={quickCreateState.projectId}
           subProjectId={quickCreateState.subProjectId}
+          availableSubProjects={availableSubProjectsForCreate}
           date={quickCreateState.date}
           defaultColor={quickCreateState.workspaceColor}
         >
@@ -613,50 +630,13 @@ function TimelineContent() {
       {quickEditState.item && (
         <QuickEditPopover
           item={quickEditState.item}
+          availableSubProjects={availableSubProjects}
           open={quickEditState.open}
           onOpenChange={(open) => setQuickEditState(prev => ({ ...prev, open }))}
           anchorPosition={quickEditState.anchorPosition}
         />
       )}
-
-      <DragOverlay
-        dropAnimation={null}
-      >
-        {activeDragItem ? (
-          <div ref={dragOverlayRef} className="shadow-2xl ring-2 ring-primary/50 rounded">
-            {activeDragItem.type === 'subProject' ? (
-              (() => {
-                const subProject = activeDragItem.item as SubProject;
-                const subProjectStart = parseISO(subProject.startDate);
-                const subProjectEnd = parseISO(subProject.endDate);
-                const durationDays = differenceInDays(subProjectEnd, subProjectStart) + 1;
-                const width = Math.min(durationDays * CELL_WIDTH, VISIBLE_DAYS * CELL_WIDTH);
-                const height = (activeDragItem as any).rowHeight || 64;
-                return (
-                  <SubProjectBar
-                    subProject={subProject}
-                    width={width}
-                    height={height - 8}
-                    style={{ cursor: 'grabbing' }}
-                  />
-                );
-              })()
-            ) : activeDragItem.type === 'item' ? (
-              <UnifiedItemView
-                item={activeDragItem.item as TimelineItem}
-                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
-              />
-            ) : activeDragItem.type === 'milestone' ? (
-              <MilestoneItemView
-                milestone={activeDragItem.item as Milestone}
-                style={{ cursor: 'grabbing', width: CELL_WIDTH - 8 }}
-              />
-            ) : null}
-          </div>
-        ) : null}
-      </DragOverlay>
-
-    </DndContext>
+    </>
   );
 }
 

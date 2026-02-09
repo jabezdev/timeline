@@ -1,10 +1,8 @@
-import React, { useRef, useState } from 'react';
-import { useDraggable, useDroppable, useDndContext } from '@dnd-kit/core';
+import React from 'react';
 import { SubProject, TimelineItem } from '@/types/timeline';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
 import { UnifiedItem } from './UnifiedItem';
 import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT, SIDEBAR_WIDTH } from '@/lib/constants';
-import { GripVertical } from 'lucide-react';
 
 interface SubProjectLaneProps {
   subProjects: SubProject[];
@@ -20,6 +18,8 @@ interface SubProjectLaneProps {
   sidebarWidth: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
+  selectedIds: Set<string>;
+  onItemClick: (id: string, multi: boolean) => void;
 }
 
 interface SubProjectSectionProps {
@@ -34,20 +34,16 @@ interface SubProjectSectionProps {
   sidebarWidth: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
+  selectedIds: Set<string>;
+  onItemClick: (id: string, multi: boolean) => void;
 }
-
-// Drop `QuickEditPopover` and `QuickCreatePopover` imports if not used elsewhere in this file.
-// Wait, they are used? No, I am replacing them.
-// So I should remove imports at the top. But I can't do that in this block easily if it's far away. The tool allows multi-replace but I am using single replace for the whole bottom section.
 
 export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   subProject: SubProject;
   width?: number;
   height?: number;
   left?: number;
-  isDragging?: boolean;
   onDoubleClick?: (subProject: SubProject) => void;
-  dragHandleProps?: any;
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
@@ -58,9 +54,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   width,
   height,
   left,
-  isDragging,
   onDoubleClick,
-  dragHandleProps,
   style,
   className,
   children,
@@ -71,7 +65,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   return (
     <div
       ref={ref}
-      className={`group border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+      className={`group border border-dashed flex flex-col pointer-events-none z-10 ${className || ''}`}
       style={{
         left: left !== undefined ? `${left}px` : undefined,
         width: width !== undefined ? `${width}px` : undefined,
@@ -85,24 +79,13 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
         ...style
       }}
     >
-      {/* Left drag handle - full height, absolute positioned */}
-      <div
-        {...dragHandleProps}
-        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto z-30"
-        style={{
-          backgroundColor: subProject.color
-            ? (subProject.color.startsWith('#') ? `${subProject.color}80` : `hsl(var(--workspace-${subProject.color}) / 0.8)`)
-            : 'hsl(var(--primary) / 0.8)',
-        }}
-      />
-
       {/* Header - sticky title */}
       <div className="h-6 shrink-0 w-full z-20 pointer-events-auto">
         {/* Sticky title container - stays visible during horizontal scroll */}
         <div
           className="sticky w-fit max-w-[250px] flex items-center h-full pl-2.5 pr-2"
           style={{
-            left: 'var(--sidebar-width)', // Stick to the sidebar edge
+            left: 'var(--sidebar-width)',
             backgroundColor: subProject.color
               ? (subProject.color.startsWith('#') ? `${subProject.color}20` : `hsl(var(--workspace-${subProject.color}) / 0.2)`)
               : 'hsl(var(--primary) / 0.15)',
@@ -117,7 +100,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
             }}
             onClick={(e) => {
               e.stopPropagation();
-              if (!isDragging && onDoubleClick) {
+              if (onDoubleClick) {
                 onDoubleClick(subProject);
               }
             }}
@@ -138,12 +121,12 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   );
 });
 
-function DraggableSubProjectBar({
+// Static SubProject bar (no drag, just positioning and click handlers)
+function StaticSubProjectBar({
   subProject,
   timelineStartDate,
   totalVisibleDays,
   onDoubleClick,
-  rowHeight,
   sidebarWidth,
   onQuickEdit
 }: {
@@ -151,15 +134,9 @@ function DraggableSubProjectBar({
   timelineStartDate: Date;
   totalVisibleDays: number;
   onDoubleClick: (subProject: SubProject) => void;
-  rowHeight: number;
   sidebarWidth: number;
   onQuickEdit: (item: SubProject, anchorElement?: HTMLElement) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: subProject.id,
-    data: { type: 'subProject', item: subProject, rowHeight },
-  });
-
   const subProjectStart = parseISO(subProject.startDate);
   const subProjectEnd = parseISO(subProject.endDate);
 
@@ -179,13 +156,10 @@ function DraggableSubProjectBar({
   return (
     <div className="absolute top-0 bottom-0" style={{ left: `${left}px`, width: `${width}px` }}>
       <SubProjectBar
-        ref={setNodeRef}
         subProject={subProject}
         width={width}
-        isDragging={isDragging}
         onDoubleClick={onDoubleClick}
         onQuickEdit={onQuickEdit}
-        dragHandleProps={{ ...attributes, ...listeners }}
         className="h-full"
         sidebarWidth={sidebarWidth}
       />
@@ -193,44 +167,9 @@ function DraggableSubProjectBar({
   );
 }
 
-// Droppable cell for a SubProject lane - only droppable within SubProject date ranges
-function SubProjectLaneDropCell({
-  date,
-  projectId,
-  subProject,
-  laneIndex,
-  rowHeight
-}: {
-  date: Date;
-  projectId: string;
-  subProject: SubProject | undefined;
-  laneIndex: number;
-  rowHeight: number;
-}) {
-  const dateStr = format(date, 'yyyy-MM-dd');
-  const { active } = useDndContext();
-  const isDraggingSubProject = active?.data.current?.type === 'subProject';
-
-  // Only create a droppable if this date is within a SubProject's range
-  const { setNodeRef, isOver } = useDroppable({
-    id: subProject ? `subproject-lane-${laneIndex}-${subProject.id}-${dateStr}` : `subproject-lane-${laneIndex}-empty-${dateStr}`,
-    data: { projectId, date: dateStr, subProjectId: subProject?.id },
-    disabled: !subProject && !isDraggingSubProject, // Disable droppable when outside SubProject ranges, unless dragging a subproject
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={`shrink-0 ${isOver && (subProject || isDraggingSubProject) ? 'bg-primary/10' : ''}`}
-      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
-    />
-  );
-}
-
 function SubProjectCell({
   date,
   projectId,
-  laneIndex,
   activeSubProject,
   items,
   workspaceColor,
@@ -238,11 +177,12 @@ function SubProjectCell({
   onItemDoubleClick,
   height,
   onQuickCreate,
-  onQuickEdit
+  onQuickEdit,
+  selectedIds,
+  onItemClick
 }: {
   date: Date;
   projectId: string;
-  laneIndex: number;
   activeSubProject: SubProject | undefined;
   items: TimelineItem[];
   workspaceColor: number;
@@ -251,6 +191,8 @@ function SubProjectCell({
   height: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
+  selectedIds: Set<string>;
+  onItemClick: (id: string, multi: boolean) => void;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
 
@@ -270,6 +212,8 @@ function SubProjectCell({
               onQuickEdit={onQuickEdit}
               workspaceColor={workspaceColor}
               minHeight={height}
+              isSelected={selectedIds.has(item.id)}
+              onClick={(multi: boolean) => onItemClick(item.id, multi)}
             />
           </div>
         ))}
@@ -291,7 +235,9 @@ export function SubProjectLane({
   projectId,
   sidebarWidth,
   onQuickCreate,
-  onQuickEdit
+  onQuickEdit,
+  selectedIds,
+  onItemClick
 }: SubProjectLaneProps) {
   const timelineStartDate = days[0];
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
@@ -309,40 +255,16 @@ export function SubProjectLane({
         ))}
       </div>
 
-      {/* Droppable cells - only active within SubProject date ranges, pointer-events-none to allow items to be interactive */}
-      <div className="absolute inset-0 flex z-10 pointer-events-none">
-        {days.map((day) => {
-          const activeSubProject = subProjects.find(sub =>
-            isWithinInterval(day, {
-              start: parseISO(sub.startDate),
-              end: parseISO(sub.endDate)
-            })
-          );
-
-          return (
-            <SubProjectLaneDropCell
-              key={day.toISOString()}
-              date={day}
-              projectId={projectId}
-              subProject={activeSubProject}
-              laneIndex={laneIndex}
-              rowHeight={rowHeight}
-            />
-          );
-        })}
-      </div>
-
-      {/* SubProject Bars - visual layer with drag handles */}
+      {/* SubProject Bars - visual layer */}
       <div className="absolute inset-0 pointer-events-none z-20">
         {subProjects.map(sub => (
-          <DraggableSubProjectBar
+          <StaticSubProjectBar
             key={sub.id}
             subProject={sub}
             timelineStartDate={timelineStartDate}
             totalVisibleDays={days.length}
             onDoubleClick={onSubProjectDoubleClick}
             onQuickEdit={onQuickEdit}
-            rowHeight={rowHeight}
             sidebarWidth={sidebarWidth}
           />
         ))}
@@ -369,7 +291,6 @@ export function SubProjectLane({
               key={day.toISOString()}
               date={day}
               projectId={projectId}
-              laneIndex={laneIndex}
               activeSubProject={activeSubProject}
               items={items}
               workspaceColor={workspaceColor}
@@ -378,6 +299,8 @@ export function SubProjectLane({
               height={cellHeight}
               onQuickCreate={onQuickCreate}
               onQuickEdit={onQuickEdit}
+              selectedIds={selectedIds}
+              onItemClick={onItemClick}
             />
           );
         })}
@@ -386,7 +309,7 @@ export function SubProjectLane({
   );
 }
 
-// Wrapper component for all SubProject lanes - each lane has its own droppable zones
+// Wrapper component for all SubProject lanes
 export function SubProjectSection({
   projectId,
   subProjectLanes,
@@ -398,13 +321,14 @@ export function SubProjectSection({
   onSubProjectDoubleClick,
   sidebarWidth,
   onQuickCreate,
-  onQuickEdit
+  onQuickEdit,
+  selectedIds,
+  onItemClick
 }: SubProjectSectionProps) {
   if (subProjectLanes.length === 0) return null;
 
   return (
     <div className="relative">
-      {/* Individual SubProject lanes with their own droppable zones */}
       {subProjectLanes.map((lane, index) => (
         <SubProjectLane
           key={index}
@@ -420,6 +344,8 @@ export function SubProjectSection({
           sidebarWidth={sidebarWidth}
           onQuickCreate={onQuickCreate}
           onQuickEdit={onQuickEdit}
+          selectedIds={selectedIds}
+          onItemClick={onItemClick}
         />
       ))}
     </div>
