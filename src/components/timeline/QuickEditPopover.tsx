@@ -16,12 +16,19 @@ const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 interface QuickEditPopoverProps {
     item: TimelineItem | Milestone | SubProject;
-    children: React.ReactNode;
+    children?: React.ReactNode;
     className?: string;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    anchorPosition?: { x: number; y: number };
 }
 
-export function QuickEditPopover({ item, children, className }: QuickEditPopoverProps) {
-    const [open, setOpen] = useState(false);
+export function QuickEditPopover({ item, children, className, open: controlledOpen, onOpenChange: setControlledOpen, anchorPosition }: QuickEditPopoverProps) {
+    const [internalOpen, setInternalOpen] = useState(false);
+
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
+    const setOpen = isControlled ? setControlledOpen! : setInternalOpen;
 
     // Internal state for immediate UI feedback
     const [title, setTitle] = useState(item.title);
@@ -103,39 +110,58 @@ export function QuickEditPopover({ item, children, className }: QuickEditPopover
         } else if (isMilestone) {
             mutations.deleteMilestone.mutate(item.id);
         } else if (isSubProject) {
-            // Default to deleting items? Or ask? User said "edit really quickly".
-            // SubProject deletion usually requires confirmation on items.
-            // For now, let's assume rapid delete means delete SubProject + unlink items (safe) or just delete subProject.
-            // The store signature is deleteSubProject(id, deleteItems: boolean).
-            // Let's pass 'false' (unlink) to be safe/standard for quick delete, or maybe we want a confirmation?
-            // "edit really quickly without opening each thing" -> speed.
-            // A simple delete button might be too dangerous for SubProjects if it nukes items.
-            // BUT, for tasks/milestones it's fine.
-            // Let's implement unlink (false) for SubProjects to be safe but fast.
             mutations.deleteSubProject.mutate({ id: item.id, deleteItems: false });
         }
 
         setOpen(false);
     };
 
+    const virtualAnchor = useRef<any>({
+        getBoundingClientRect: () => ({
+            width: 0,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => { },
+        }),
+    });
+
+    useEffect(() => {
+        if (anchorPosition) {
+            virtualAnchor.current.getBoundingClientRect = () => ({
+                width: 0,
+                height: 0,
+                top: anchorPosition.y,
+                left: anchorPosition.x,
+                right: anchorPosition.x,
+                bottom: anchorPosition.y,
+                x: anchorPosition.x,
+                y: anchorPosition.y,
+                toJSON: () => { },
+            });
+        }
+    }, [anchorPosition]);
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverAnchor asChild>
-                <div
-                    className={className}
-                    onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setOpen(true);
-                    }}
-                >
-                    {children}
-                </div>
-            </PopoverAnchor>
+            {anchorPosition ? (
+                <PopoverAnchor virtualRef={virtualAnchor} />
+            ) : (
+                <PopoverAnchor asChild>
+                    <div className={className}>
+                        {children}
+                    </div>
+                </PopoverAnchor>
+            )}
             <PopoverContent
                 className="w-72 p-3"
-                align="start"
-                side="bottom"
+                align="center"
+                side="right"
+                sideOffset={8}
                 onOpenAutoFocus={(e) => e.preventDefault()}
                 onClick={(e) => e.stopPropagation()}
                 onInteractOutside={(e) => {

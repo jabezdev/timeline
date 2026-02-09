@@ -6,21 +6,20 @@ import { UnifiedItem } from './UnifiedItem';
 import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT, SIDEBAR_WIDTH } from '@/lib/constants';
 import { GripVertical } from 'lucide-react';
 
-import { QuickEditPopover } from './QuickEditPopover';
-import { QuickCreatePopover } from './QuickCreatePopover';
-
 interface SubProjectLaneProps {
   subProjects: SubProject[];
   itemsBySubProject: Map<string, Map<string, TimelineItem[]>>;
   days: Date[];
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
-  onItemClick: (item: TimelineItem) => void;
-  onSubProjectClick: (subProject: SubProject) => void;
+  onItemDoubleClick: (item: TimelineItem) => void;
+  onSubProjectDoubleClick: (subProject: SubProject) => void;
   rowHeight?: number;
   laneIndex: number;
   projectId: string;
   sidebarWidth: number;
+  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
 }
 
 interface SubProjectSectionProps {
@@ -30,10 +29,16 @@ interface SubProjectSectionProps {
   days: Date[];
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
-  onItemClick: (item: TimelineItem) => void;
-  onSubProjectClick: (subProject: SubProject) => void;
+  onItemDoubleClick: (item: TimelineItem) => void;
+  onSubProjectDoubleClick: (subProject: SubProject) => void;
   sidebarWidth: number;
+  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
 }
+
+// Drop `QuickEditPopover` and `QuickCreatePopover` imports if not used elsewhere in this file.
+// Wait, they are used? No, I am replacing them.
+// So I should remove imports at the top. But I can't do that in this block easily if it's far away. The tool allows multi-replace but I am using single replace for the whole bottom section.
 
 export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   subProject: SubProject;
@@ -41,29 +46,32 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   height?: number;
   left?: number;
   isDragging?: boolean;
-  onClick?: (subProject: SubProject) => void;
+  onDoubleClick?: (subProject: SubProject) => void;
   dragHandleProps?: any;
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
   sidebarWidth?: number;
+  onQuickEdit?: (item: SubProject, anchorElement?: HTMLElement) => void;
 }>(({
   subProject,
   width,
   height,
   left,
   isDragging,
-  onClick,
+  onDoubleClick,
   dragHandleProps,
   style,
   className,
   children,
-  sidebarWidth = SIDEBAR_WIDTH
+  sidebarWidth = SIDEBAR_WIDTH,
+  onQuickEdit
 }, ref) => {
+
   return (
     <div
       ref={ref}
-      className={`border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
+      className={`group border border-dashed flex flex-col pointer-events-none ${isDragging ? 'opacity-30' : 'z-10'} ${className || ''}`}
       style={{
         left: left !== undefined ? `${left}px` : undefined,
         width: width !== undefined ? `${width}px` : undefined,
@@ -77,42 +85,48 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
         ...style
       }}
     >
-      {/* Header - full width provides the sticky constraint range */}
+      {/* Left drag handle - full height, absolute positioned */}
+      <div
+        {...dragHandleProps}
+        className="absolute left-0 top-0 bottom-0 w-1.5 cursor-grab active:cursor-grabbing touch-none opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto z-30"
+        style={{
+          backgroundColor: subProject.color
+            ? (subProject.color.startsWith('#') ? `${subProject.color}80` : `hsl(var(--workspace-${subProject.color}) / 0.8)`)
+            : 'hsl(var(--primary) / 0.8)',
+        }}
+      />
+
+      {/* Header - sticky title */}
       <div className="h-6 shrink-0 w-full z-20 pointer-events-auto">
         {/* Sticky title container - stays visible during horizontal scroll */}
         <div
-          className="sticky w-fit max-w-[250px] flex items-center h-full pl-2.5 pr-2 gap-1.5 transition-[left]"
+          className="sticky w-fit max-w-[250px] flex items-center h-full pl-2.5 pr-2"
           style={{
-            left: sidebarWidth, // Stick to the sidebar edge
+            left: 'var(--sidebar-width)', // Stick to the sidebar edge
             backgroundColor: subProject.color
               ? (subProject.color.startsWith('#') ? `${subProject.color}20` : `hsl(var(--workspace-${subProject.color}) / 0.2)`)
               : 'hsl(var(--primary) / 0.15)',
           }}
         >
-          {/* Drag Handle */}
-          <div
-            {...dragHandleProps}
-            className="w-3 h-3 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none shrink-0"
-          >
-            <GripVertical className="w-3 h-3 opacity-50" />
-          </div>
-
           {/* Title - Clickable to Edit */}
-          <QuickEditPopover item={subProject} className="flex-1 h-full min-w-0">
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isDragging && onClick) {
-                  onClick(subProject);
-                }
-              }}
-              className="w-full h-full flex items-center cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-sm min-w-0"
-            >
-              <span className="text-xs font-semibold truncate text-foreground">
-                {subProject.title}
-              </span>
-            </div>
-          </QuickEditPopover>
+          <div
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (onQuickEdit) onQuickEdit(subProject, e.currentTarget);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isDragging && onDoubleClick) {
+                onDoubleClick(subProject);
+              }
+            }}
+            className="flex-1 min-w-0 flex items-center h-full cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-sm px-1.5"
+          >
+            <span className="text-xs font-semibold truncate text-foreground">
+              {subProject.title}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -128,16 +142,18 @@ function DraggableSubProjectBar({
   subProject,
   timelineStartDate,
   totalVisibleDays,
-  onClick,
+  onDoubleClick,
   rowHeight,
-  sidebarWidth
+  sidebarWidth,
+  onQuickEdit
 }: {
   subProject: SubProject;
   timelineStartDate: Date;
   totalVisibleDays: number;
-  onClick: (subProject: SubProject) => void;
+  onDoubleClick: (subProject: SubProject) => void;
   rowHeight: number;
   sidebarWidth: number;
+  onQuickEdit: (item: SubProject, anchorElement?: HTMLElement) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: subProject.id,
@@ -167,7 +183,8 @@ function DraggableSubProjectBar({
         subProject={subProject}
         width={width}
         isDragging={isDragging}
-        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+        onQuickEdit={onQuickEdit}
         dragHandleProps={{ ...attributes, ...listeners }}
         className="h-full"
         sidebarWidth={sidebarWidth}
@@ -218,8 +235,10 @@ function SubProjectCell({
   items,
   workspaceColor,
   onToggleItemComplete,
-  onItemClick,
-  height
+  onItemDoubleClick,
+  height,
+  onQuickCreate,
+  onQuickEdit
 }: {
   date: Date;
   projectId: string;
@@ -228,22 +247,18 @@ function SubProjectCell({
   items: TimelineItem[];
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
-  onItemClick: (item: TimelineItem) => void;
+  onItemDoubleClick: (item: TimelineItem) => void;
   height: number;
+  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
 }) {
-  const [isCreating, setIsCreating] = useState(false);
   const dateStr = format(date, 'yyyy-MM-dd');
 
-  const handleItemClick = (e: React.MouseEvent, item: TimelineItem) => {
-    e.stopPropagation();
-    onItemClick(item);
-  };
-
-  const cellContent = (
+  return (
     <div
       className="shrink-0 px-0 py-0"
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: height }}
-      onClick={() => activeSubProject && setIsCreating(true)}
+      onClick={(e) => activeSubProject && onQuickCreate(projectId, dateStr, activeSubProject.id, workspaceColor, e.currentTarget)}
     >
       <div className="flex flex-col gap-0 h-full pointer-events-none">
         {items.map(item => (
@@ -251,32 +266,16 @@ function SubProjectCell({
             <UnifiedItem
               item={item}
               onToggleComplete={onToggleItemComplete}
-              onClick={onItemClick}
+              onDoubleClick={onItemDoubleClick}
+              onQuickEdit={onQuickEdit}
               workspaceColor={workspaceColor}
+              minHeight={height}
             />
           </div>
         ))}
       </div>
     </div>
   );
-
-  if (activeSubProject && isCreating) {
-    return (
-      <QuickCreatePopover
-        open={true}
-        onOpenChange={setIsCreating}
-        type="item"
-        projectId={projectId}
-        date={dateStr}
-        subProjectId={activeSubProject.id}
-        defaultColor={workspaceColor}
-      >
-        {cellContent}
-      </QuickCreatePopover>
-    );
-  }
-
-  return cellContent;
 }
 
 export function SubProjectLane({
@@ -285,12 +284,14 @@ export function SubProjectLane({
   days,
   workspaceColor,
   onToggleItemComplete,
-  onItemClick,
-  onSubProjectClick,
+  onItemDoubleClick,
+  onSubProjectDoubleClick,
   rowHeight = 64,
   laneIndex,
   projectId,
-  sidebarWidth
+  sidebarWidth,
+  onQuickCreate,
+  onQuickEdit
 }: SubProjectLaneProps) {
   const timelineStartDate = days[0];
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
@@ -339,7 +340,8 @@ export function SubProjectLane({
             subProject={sub}
             timelineStartDate={timelineStartDate}
             totalVisibleDays={days.length}
-            onClick={onSubProjectClick}
+            onDoubleClick={onSubProjectDoubleClick}
+            onQuickEdit={onQuickEdit}
             rowHeight={rowHeight}
             sidebarWidth={sidebarWidth}
           />
@@ -372,8 +374,10 @@ export function SubProjectLane({
               items={items}
               workspaceColor={workspaceColor}
               onToggleItemComplete={onToggleItemComplete}
-              onItemClick={onItemClick}
+              onItemDoubleClick={onItemDoubleClick}
               height={cellHeight}
+              onQuickCreate={onQuickCreate}
+              onQuickEdit={onQuickEdit}
             />
           );
         })}
@@ -390,9 +394,11 @@ export function SubProjectSection({
   days,
   workspaceColor,
   onToggleItemComplete,
-  onItemClick,
-  onSubProjectClick,
-  sidebarWidth
+  onItemDoubleClick,
+  onSubProjectDoubleClick,
+  sidebarWidth,
+  onQuickCreate,
+  onQuickEdit
 }: SubProjectSectionProps) {
   if (subProjectLanes.length === 0) return null;
 
@@ -407,11 +413,13 @@ export function SubProjectSection({
           days={days}
           workspaceColor={workspaceColor}
           onToggleItemComplete={onToggleItemComplete}
-          onItemClick={onItemClick}
-          onSubProjectClick={onSubProjectClick}
+          onItemDoubleClick={onItemDoubleClick}
+          onSubProjectDoubleClick={onSubProjectDoubleClick}
           laneIndex={index}
           projectId={projectId}
           sidebarWidth={sidebarWidth}
+          onQuickCreate={onQuickCreate}
+          onQuickEdit={onQuickEdit}
         />
       ))}
     </div>

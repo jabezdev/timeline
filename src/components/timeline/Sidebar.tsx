@@ -101,15 +101,15 @@ interface SidebarCellProps {
   width?: number;
 }
 
-export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, isStickyTop, width = 350 }: SidebarCellProps) {
+export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, width = 350 }: SidebarCellProps) {
   return (
     <div
       className={`sticky left-0 z-50 flex items-center border-r border-border shrink-0 bg-background ${className || ''}`}
       style={{
         height: height ?? 'auto',
         minHeight: minHeight ?? height,
-        width,
-        minWidth: width,
+        width: 'var(--sidebar-width, ' + width + 'px)',
+        minWidth: 'var(--sidebar-width, ' + width + 'px)',
       }}
     >
       <div

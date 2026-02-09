@@ -262,9 +262,30 @@
     touch-action: none;
   }
 
-
   .drag-handle:active {
     cursor: grabbing;
+  }
+
+  /* Sidebar resize optimization */
+  :root {
+    --sidebar-width: 350px;
+    /* Default value */
+  }
+
+  /* Disable transitions and enable GPU acceleration during resize */
+  .sidebar-resizing * {
+    transition: none !important;
+  }
+
+  /* Disable expensive backdrop-blur during resize */
+  .sidebar-resizing [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .sidebar-resizing [style*="--sidebar-width"],
+  .sidebar-resizing [style*="var(--sidebar-width)"] {
+    will-change: width, min-width, left;
   }
 
   /* Fix for task lists in prose */

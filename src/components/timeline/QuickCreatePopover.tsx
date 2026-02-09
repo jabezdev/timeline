@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useTimelineMutations } from "@/hooks/useTimelineMutations";
@@ -29,8 +29,9 @@ interface QuickCreatePopoverProps {
     projectId: string;
     subProjectId?: string;
     date: string; // YYYY-MM-DD
-    children: React.ReactNode;
+    children?: React.ReactNode;
     defaultColor?: number;
+    anchorPosition?: { x: number; y: number };
 }
 
 export function QuickCreatePopover({
@@ -41,7 +42,8 @@ export function QuickCreatePopover({
     subProjectId,
     date: initialDate,
     children,
-    defaultColor = 3
+    defaultColor = 3,
+    anchorPosition
 }: QuickCreatePopoverProps) {
     const [title, setTitle] = useState('');
     const [date, setDate] = useState(initialDate);
@@ -133,11 +135,45 @@ export function QuickCreatePopover({
         }
     };
 
+    const virtualAnchor = useRef<any>({
+        getBoundingClientRect: () => ({
+            width: 0,
+            height: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            x: 0,
+            y: 0,
+            toJSON: () => { },
+        }),
+    });
+
+    useEffect(() => {
+        if (anchorPosition) {
+            virtualAnchor.current.getBoundingClientRect = () => ({
+                width: 0,
+                height: 0,
+                top: anchorPosition.y,
+                left: anchorPosition.x,
+                right: anchorPosition.x,
+                bottom: anchorPosition.y,
+                x: anchorPosition.x,
+                y: anchorPosition.y,
+                toJSON: () => { },
+            });
+        }
+    }, [anchorPosition]);
+
     return (
         <Popover open={open} onOpenChange={onOpenChangeWrapper}>
-            <PopoverTrigger asChild>
-                {children}
-            </PopoverTrigger>
+            {anchorPosition ? (
+                <PopoverAnchor virtualRef={virtualAnchor} />
+            ) : (
+                <PopoverTrigger asChild>
+                    {children}
+                </PopoverTrigger>
+            )}
             <PopoverContent
                 className="w-72 p-3"
                 align="start"

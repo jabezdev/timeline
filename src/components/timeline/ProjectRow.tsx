@@ -1,6 +1,7 @@
 import { useMemo, memo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { addDays, format } from 'date-fns';
+import { Plus } from 'lucide-react';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Project, TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { TimelineCell } from './TimelineCell';
@@ -8,7 +9,6 @@ import { MilestoneItem } from './MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
 import { CELL_WIDTH, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { packSubProjects } from '@/lib/timelineUtils';
-import { QuickCreatePopover } from './QuickCreatePopover';
 import { useState } from 'react';
 
 function MilestoneDropCell({
@@ -16,15 +16,18 @@ function MilestoneDropCell({
   projectId,
   milestones,
   workspaceColor,
-  onItemClick,
+  onItemDoubleClick,
+  onQuickCreate,
+  onQuickEdit
 }: {
   date: Date;
   projectId: string;
   milestones: Milestone[];
   workspaceColor: number;
-  onItemClick: (item: Milestone) => void;
+  onItemDoubleClick: (item: Milestone) => void;
+  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
 }) {
-  const [isCreating, setIsCreating] = useState(false);
   const dateStr = format(date, 'yyyy-MM-dd');
 
   const { setNodeRef, isOver } = useDroppable({
@@ -33,38 +36,45 @@ function MilestoneDropCell({
   });
 
   return (
-    <QuickCreatePopover
-      open={isCreating}
-      onOpenChange={setIsCreating}
-      type="milestone"
-      projectId={projectId}
-      date={dateStr}
-      defaultColor={workspaceColor}
+    <div
+      ref={setNodeRef}
+      className={`relative group flex flex-col justify-start border-r border-border/50 last:border-r-0 ${isOver ? 'bg-milestone/10' : ''}`}
+      style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
     >
-      <div
-        ref={setNodeRef}
-        className={`flex flex-col justify-start border-r border-border/50 last:border-r-0 ${isOver ? 'bg-milestone/10' : ''}`}
-        style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH }}
-      >
-        <div className="flex flex-col w-full h-full">
-          <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
-            {milestones.map(milestone => (
-              <div
-                key={milestone.id}
-                onClick={(e) => { e.stopPropagation(); onItemClick(milestone); }}
-                className={milestones.length === 1 ? 'flex-1 h-full' : ''}
-              >
+      <div className="flex flex-col w-full h-full">
+        <SortableContext items={milestones.map(m => m.id)} strategy={verticalListSortingStrategy}>
+          {milestones.map(milestone => (
+            <div
+              key={milestone.id}
+              className={milestones.length === 1 ? 'flex-1 h-full' : ''}
+            >
+              <div className="h-full w-full">
                 <MilestoneItem
                   milestone={milestone}
                   workspaceColor={workspaceColor}
                   className={milestones.length === 1 ? 'h-full' : ''}
+                  onDoubleClick={onItemDoubleClick}
+                  onQuickEdit={onQuickEdit}
+                  minHeight={PROJECT_HEADER_HEIGHT}
                 />
               </div>
-            ))}
-          </SortableContext>
-        </div>
+            </div>
+          ))}
+        </SortableContext>
       </div>
-    </QuickCreatePopover>
+
+      {/* Floating Quick Create Button - always available on hover */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onQuickCreate(projectId, dateStr, undefined, workspaceColor, e.currentTarget);
+        }}
+        className="absolute top-1 right-1 w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-milestone/20 hover:bg-milestone/30 flex items-center justify-center z-10"
+        title="Add milestone"
+      >
+        <Plus className="w-3 h-3 text-milestone" />
+      </button>
+    </div>
   );
 }
 
@@ -76,7 +86,9 @@ interface MilestoneHeaderRowProps {
   startDate: Date;
   visibleDays: number;
   workspaceColor: number;
-  onItemClick: (item: Milestone) => void;
+  onItemDoubleClick: (item: Milestone) => void;
+  onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
+  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
 }
 
 export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
@@ -85,7 +97,9 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
   startDate,
   visibleDays,
   workspaceColor,
-  onItemClick,
+  onItemDoubleClick,
+  onQuickEdit,
+  onQuickCreate
 }: MilestoneHeaderRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -109,7 +123,9 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
             projectId={project.id}
             milestones={milestonesByDate.get(dateStr) || []}
             workspaceColor={workspaceColor}
-            onItemClick={onItemClick}
+            onItemDoubleClick={onItemDoubleClick}
+            onQuickCreate={onQuickCreate}
+            onQuickEdit={onQuickEdit}
           />
         );
       })}
@@ -127,9 +143,11 @@ interface ProjectRowProps {
   visibleDays: number;
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
-  onItemClick: (item: TimelineItem | Milestone) => void;
-  onSubProjectClick: (subProject: SubProject) => void;
+  onItemDoubleClick: (item: TimelineItem | Milestone) => void;
+  onSubProjectDoubleClick: (subProject: SubProject) => void;
   sidebarWidth: number;
+  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickEdit: (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => void;
 }
 
 export const ProjectRow = memo(function ProjectRow({
@@ -140,9 +158,11 @@ export const ProjectRow = memo(function ProjectRow({
   visibleDays,
   workspaceColor,
   onToggleItemComplete,
-  onItemClick,
-  onSubProjectClick,
-  sidebarWidth
+  onItemDoubleClick,
+  onSubProjectDoubleClick,
+  sidebarWidth,
+  onQuickCreate,
+  onQuickEdit
 }: ProjectRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -184,8 +204,10 @@ export const ProjectRow = memo(function ProjectRow({
               milestones={[]}
               workspaceColor={workspaceColor}
               onToggleItemComplete={onToggleItemComplete}
-              onItemClick={onItemClick}
+              onItemDoubleClick={onItemDoubleClick}
               cellWidth={CELL_WIDTH}
+              onQuickCreate={onQuickCreate}
+              onQuickEdit={onQuickEdit}
             />
           );
         })}
@@ -199,9 +221,11 @@ export const ProjectRow = memo(function ProjectRow({
         days={days}
         workspaceColor={workspaceColor}
         onToggleItemComplete={onToggleItemComplete}
-        onItemClick={onItemClick}
-        onSubProjectClick={onSubProjectClick}
+        onItemDoubleClick={onItemDoubleClick}
+        onSubProjectDoubleClick={onSubProjectDoubleClick}
         sidebarWidth={sidebarWidth}
+        onQuickCreate={onQuickCreate}
+        onQuickEdit={onQuickEdit}
       />
     </div>
   );

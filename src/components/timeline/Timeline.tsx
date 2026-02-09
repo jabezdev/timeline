@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,8 @@ import { CELL_WIDTH, VISIBLE_DAYS, HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJE
 import { SubProjectBar } from './SubProjectRow';
 import { UnifiedItemView } from './UnifiedItem';
 import { MilestoneItemView } from './MilestoneItem';
+import { QuickCreatePopover } from './QuickCreatePopover';
+import { QuickEditPopover } from './QuickEditPopover';
 import { generateId } from '@/lib/utils';
 import { Scrollbar } from './Scrollbar';
 
@@ -40,51 +42,65 @@ import '@/scrollbar-hide.css';
 function TimelineContent() {
   const visibleDays = VISIBLE_DAYS;
   const { sidebarWidth, setSidebarWidth } = useTimelineStore();
-  const [isResizing, setIsResizing] = useState(false);
 
+  // Use refs for resize state to avoid re-renders during drag
+  const isResizingRef = useRef(false);
+  const currentWidthRef = useRef(sidebarWidth);
+  const animationFrameRef = useRef<number>(0);
+
+  // Set CSS variable on mount and when sidebarWidth changes from store
   useEffect(() => {
-    let animationFrameId: number;
+    document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
+    currentWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
+
+  // Resize handler that uses refs - no state changes during drag
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.body.classList.add('sidebar-resizing');
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (isResizing) {
-        // Cancel any pending frame to ensure we only have one update queued
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId);
-        }
+      if (!isResizingRef.current) return;
 
-        animationFrameId = requestAnimationFrame(() => {
-          const newWidth = Math.max(250, Math.min(600, e.clientX));
-          setSidebarWidth(newWidth);
-        });
+      // Cancel any pending frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const newWidth = Math.max(250, Math.min(600, e.clientX));
+        currentWidthRef.current = newWidth;
+        // Update CSS variable directly - no React involved
+        document.documentElement.style.setProperty('--sidebar-width', `${newWidth}px`);
+      });
     };
+
     const handleMouseUp = () => {
-      setIsResizing(false);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
+      isResizingRef.current = false;
+
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
       }
-    };
 
-    if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none'; // Prevent text selection
-    } else {
-      document.body.style.cursor = 'default';
+      document.body.style.cursor = '';
       document.body.style.userSelect = '';
-    }
+      document.body.classList.remove('sidebar-resizing');
 
-    return () => {
+      // Remove listeners
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = '';
+
+      // Sync final width to React state (single re-render at the end)
+      setSidebarWidth(currentWidthRef.current);
     };
-  }, [isResizing, setSidebarWidth]);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [setSidebarWidth]);
 
   const {
     startDate,
@@ -119,6 +135,45 @@ function TimelineContent() {
   const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
+
+  const [quickCreateState, setQuickCreateState] = useState<{
+    open: boolean;
+    projectId: string;
+    subProjectId?: string;
+    date: string;
+    workspaceColor?: number;
+    anchorPosition?: { x: number; y: number };
+  }>({ open: false, projectId: '', date: '', workspaceColor: 1 });
+
+  const [quickEditState, setQuickEditState] = useState<{
+    open: boolean;
+    item: TimelineItem | Milestone | SubProject | null;
+    anchorPosition?: { x: number; y: number };
+  }>({ open: false, item: null });
+
+  const handleQuickCreate = (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => {
+    const rect = anchorElement?.getBoundingClientRect();
+    setQuickCreateState({
+      open: true,
+      projectId,
+      date,
+      subProjectId,
+      workspaceColor,
+      anchorPosition: rect ? { x: rect.left, y: rect.bottom } : undefined
+    });
+  };
+
+  const handleQuickEdit = (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => {
+    const rect = anchorElement?.getBoundingClientRect();
+    setQuickEditState({
+      open: true,
+      item,
+      anchorPosition: rect ? {
+        x: rect.left + (rect.width / 2), // Center horizontally
+        y: rect.top + (rect.height / 2)  // Center vertically
+      } : undefined
+    });
+  };
 
   const handleAddItem = (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => {
     const newItem: TimelineItem = {
@@ -157,7 +212,7 @@ function TimelineContent() {
     mutations.addSubProject.mutate(newSub);
   };
 
-  const handleItemClick = (item: TimelineItem | Milestone | SubProject) => {
+  const handleItemDoubleClick = (item: TimelineItem | Milestone | SubProject) => {
     setSelectedItem(item);
     setIsItemDialogOpen(true);
   };
@@ -313,7 +368,9 @@ function TimelineContent() {
                             startDate={startDate}
                             visibleDays={visibleDays}
                             workspaceColor={parseInt(workspace.color || '1')}
-                            onItemClick={handleItemClick}
+                            onItemDoubleClick={handleItemDoubleClick}
+                            onQuickEdit={handleQuickEdit}
+                            onQuickCreate={handleQuickCreate}
                           />
                         </div>
                       </div>
@@ -324,8 +381,8 @@ function TimelineContent() {
                         <div
                           className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-none"
                           style={{
-                            width: sidebarWidth,
-                            minWidth: sidebarWidth
+                            width: 'var(--sidebar-width)',
+                            minWidth: 'var(--sidebar-width)'
                           }}
                         />
 
@@ -338,8 +395,10 @@ function TimelineContent() {
                             visibleDays={visibleDays}
                             workspaceColor={parseInt(workspace.color || '1')}
                             onToggleItemComplete={handleToggleItemComplete}
-                            onItemClick={handleItemClick}
-                            onSubProjectClick={handleItemClick}
+                            onItemDoubleClick={handleItemDoubleClick}
+                            onSubProjectDoubleClick={handleItemDoubleClick}
+                            onQuickCreate={handleQuickCreate}
+                            onQuickEdit={handleQuickEdit}
                             sidebarWidth={sidebarWidth}
                           />
                         </div>
@@ -354,13 +413,9 @@ function TimelineContent() {
 
         {/* Resize Handle */}
         <div
-          className={`absolute top-0 bottom-0 z-[100] w-1 hover:bg-primary/50 cursor-col-resize transition-colors ${isResizing ? 'bg-primary/50' : ''
-            }`}
-          style={{ left: sidebarWidth - 2 }} // -2 to center the 4px handle on the border
-          onMouseDown={(e) => {
-            e.preventDefault();
-            setIsResizing(true);
-          }}
+          className="absolute top-0 bottom-0 z-[100] w-1 hover:bg-primary/50 cursor-col-resize transition-colors"
+          style={{ left: 'calc(var(--sidebar-width) - 2px)' }} // -2 to center the 4px handle on the border
+          onMouseDown={handleResizeStart}
         />
 
         <CreateItemPopover
@@ -420,9 +475,14 @@ function TimelineContent() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <DragOverlay modifiers={[]} dropAnimation={null}>
+      <DragOverlay
+        dropAnimation={{
+          duration: 200,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)', // Smooth bounce
+        }}
+      >
         {activeDragItem ? (
-          <div ref={dragOverlayRef}>
+          <div ref={dragOverlayRef} className="shadow-2xl ring-2 ring-primary/50 rounded">
             {activeDragItem.type === 'subProject' ? (
               (() => {
                 const subProject = activeDragItem.item as SubProject;
@@ -455,6 +515,40 @@ function TimelineContent() {
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Global Quick Create Popover */}
+      {quickCreateState.open && (
+        <QuickCreatePopover
+          open={quickCreateState.open}
+          onOpenChange={(open) => setQuickCreateState(prev => ({ ...prev, open }))}
+          type="item"
+          projectId={quickCreateState.projectId}
+          subProjectId={quickCreateState.subProjectId}
+          date={quickCreateState.date}
+          defaultColor={quickCreateState.workspaceColor}
+        >
+          <div
+            style={{
+              position: 'fixed',
+              left: quickCreateState.anchorPosition?.x,
+              top: quickCreateState.anchorPosition?.y,
+              width: 1,
+              height: 1
+            }}
+          />
+        </QuickCreatePopover>
+      )}
+
+      {/* Global Quick Edit Popover */}
+      {quickEditState.item && (
+        <QuickEditPopover
+          item={quickEditState.item}
+          open={quickEditState.open}
+          onOpenChange={(open) => setQuickEditState(prev => ({ ...prev, open }))}
+          anchorPosition={quickEditState.anchorPosition}
+        />
+      )}
+
     </DndContext>
   );
 }

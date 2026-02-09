@@ -54,14 +54,12 @@ export function useTimelineDragDrop() {
 
         // Case 1: SubProject (Free Drag) - Keep existing logic
         if (activeItemData.type === 'subProject') {
-            const dropData = over.data.current as { projectId: string; date: string; subProjectId?: string } | undefined;
-            if (!dropData) {
-                setActiveDragItem(null);
-                return;
-            }
+            // We only care about X delta for date shifting
+            // We ignore where it is dropped (over) as long as it's a valid drop area,
+            // but effectively we are just using the delta.
+            // Requirement from task: "drag a subproject = ... starting and end dates moved. items within ... also moved"
 
-            // Calculate days moved based on DELTA x, not manual offset
-            // We need to know how many "cells" we moved.
+            // Calculate days moved based on DELTA x
             const daysMoved = Math.round(delta.x / CELL_WIDTH);
 
             const sp = activeItemData.item as SubProject;
@@ -133,6 +131,13 @@ export function useTimelineDragDrop() {
         }
 
         if (!overDate || !overProjectId) {
+            setActiveDragItem(null);
+            return;
+        }
+
+        // CONSTRAINT: Prevent Cross-Project/Workspace Drag
+        // "drag an item / milestone = date moved. can't be cross-project or cross-workspace"
+        if (activeItem.projectId !== overProjectId) {
             setActiveDragItem(null);
             return;
         }
