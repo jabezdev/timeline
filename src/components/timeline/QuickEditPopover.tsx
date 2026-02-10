@@ -198,7 +198,6 @@ export function QuickEditPopover({ item, availableSubProjects = [], children, cl
                         onChange={handleTitleChange}
                         className="h-9 text-base font-semibold border-none bg-transparent shadow-none px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
                         placeholder="Item Title"
-                        autoFocus
                     />
                 </div>
 

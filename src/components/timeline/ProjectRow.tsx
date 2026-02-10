@@ -26,7 +26,7 @@ function MilestoneCell({
   milestones: Milestone[];
   workspaceColor: number;
   onItemDoubleClick: (item: Milestone) => void;
-  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
@@ -71,7 +71,7 @@ function MilestoneCell({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onQuickCreate(projectId, dateStr, undefined, workspaceColor, containerRef.current || e.currentTarget);
+          onQuickCreate('milestone', projectId, dateStr, undefined, workspaceColor, containerRef.current || e.currentTarget);
         }}
         className="absolute top-1 right-1 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 hover:text-orange-700 flex items-center justify-center z-10 shadow-sm scale-90 hover:scale-100 border border-orange-500/20"
         title="Add milestone"
@@ -92,7 +92,7 @@ interface MilestoneHeaderRowProps {
   workspaceColor: number;
   onItemDoubleClick: (item: Milestone) => void;
   onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
-  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
@@ -161,7 +161,7 @@ interface ProjectRowProps {
   onToggleItemComplete: (itemId: string) => void;
   onItemDoubleClick: (item: TimelineItem | Milestone) => void;
   onSubProjectDoubleClick: (subProject: SubProject) => void;
-  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => void;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
   onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;

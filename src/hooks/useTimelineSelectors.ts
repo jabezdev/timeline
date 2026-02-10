@@ -27,17 +27,32 @@ export function useTimelineSelectors(state: TimelineState) {
         projectsSubProjects: new Map<string, SubProject[]>(),
     });
 
-    // Derived State: All Projects List (Stable, depends only on structure)
+    // Derived State: All Projects List (Sorted by Workspace Order + Project Position)
     const allProjects = useMemo(() => {
-        const projs: Array<Project & { workspaceName: string }> = [];
+        const projs: Array<Project & { workspaceName: string; workspaceOrder: number }> = [];
+
+        // helper to get workspace index
+        const getWorkspaceIndex = (id: string) => workspaceOrder.indexOf(id);
+
         Object.values(projectsMap).forEach(p => {
             const ws = workspacesMap[p.workspaceId];
-            if (ws) {
-                projs.push({ ...p, workspaceName: ws.name });
+            if (ws && !p.isHidden) {
+                projs.push({
+                    ...p,
+                    workspaceName: ws.name,
+                    workspaceOrder: getWorkspaceIndex(p.workspaceId)
+                });
             }
         });
-        return projs;
-    }, [workspacesMap, projectsMap]);
+
+        // Sort: 1. Workspace Order, 2. Project Position
+        return projs.sort((a, b) => {
+            if (a.workspaceOrder !== b.workspaceOrder) {
+                return a.workspaceOrder - b.workspaceOrder;
+            }
+            return (a.position || 0) - (b.position || 0);
+        });
+    }, [workspacesMap, projectsMap, workspaceOrder]);
 
     // Derived State: Grouping and Stabilization
     const { projectsItems, projectsMilestones, projectsSubProjects } = useMemo(() => {

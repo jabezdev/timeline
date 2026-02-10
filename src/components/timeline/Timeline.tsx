@@ -65,7 +65,7 @@ const TimelineMainView = memo(function TimelineMainView({
   visibleDays: number;
   handleNavigate: (dir: 'prev' | 'next') => void;
   handleTodayClick: () => void;
-  handleQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  handleQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   handleQuickEdit: (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => void;
   handleAddItem: (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => void;
   handleAddMilestone: (projectId: string, title: string, date: string, color?: number) => void;
@@ -110,7 +110,7 @@ const TimelineMainView = memo(function TimelineMainView({
 
           {/* STICKY DATE HEADER — z-50, top-0 */}
           <div className="sticky top-0 z-[60] bg-background border-b border-border flex">
-            <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border pr-2">
+            <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border" innerClassName="pl-4 pr-1">
               <TimelineControls
                 startDate={startDate}
                 onNavigate={handleNavigate}
@@ -391,12 +391,13 @@ function TimelineContent() {
 
   const [quickCreateState, setQuickCreateState] = useState<{
     open: boolean;
+    type: 'item' | 'milestone';
     projectId: string;
     subProjectId?: string;
     date: string;
     workspaceColor?: number;
     anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => any };
-  }>({ open: false, projectId: '', date: '', workspaceColor: 1 });
+  }>({ open: false, type: 'item', projectId: '', date: '', workspaceColor: 1 });
 
   const [quickEditState, setQuickEditState] = useState<{
     open: boolean;
@@ -436,10 +437,11 @@ function TimelineContent() {
 
 
   /* Handlers wrapped in useCallback for performance */
-  const handleQuickCreate = useCallback((projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => {
+  const handleQuickCreate = useCallback((type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => {
     const rect = anchorElement?.getBoundingClientRect();
     setQuickCreateState({
       open: true,
+      type,
       projectId,
       date,
       subProjectId,
@@ -685,7 +687,7 @@ function TimelineContent() {
         <QuickCreatePopover
           open={quickCreateState.open}
           onOpenChange={(open) => setQuickCreateState(prev => ({ ...prev, open }))}
-          type="item"
+          type={quickCreateState.type}
           projectId={quickCreateState.projectId}
           subProjectId={quickCreateState.subProjectId}
           availableSubProjects={availableSubProjectsForCreate}

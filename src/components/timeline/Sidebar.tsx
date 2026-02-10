@@ -36,7 +36,7 @@ export function TimelineControls({ startDate, onNavigate, onTodayClick, children
   return (
     <div className="flex items-center w-full gap-2">
       {/* Left: Label (passed as children) */}
-      <div className="shrink-0">
+      <div className="shrink-0 min-w-0">
         {children}
       </div>
 
@@ -56,7 +56,7 @@ export function TimelineControls({ startDate, onNavigate, onTodayClick, children
       </div>
 
       {/* Right: Settings */}
-      <div className="shrink-0">
+      <div className="shrink-0 flex justify-end">
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground">
@@ -101,9 +101,10 @@ interface SidebarCellProps {
   className?: string;
   isStickyTop?: boolean;
   width?: number;
+  innerClassName?: string;
 }
 
-export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, width = 350 }: SidebarCellProps) {
+export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, width = 350, innerClassName }: SidebarCellProps) {
   return (
     <div
       className={`sticky left-0 z-50 flex items-center border-r border-border shrink-0 bg-background ${className || ''}`}
@@ -115,7 +116,7 @@ export const SidebarCell = memo(function SidebarCell({ children, height, minHeig
       }}
     >
       <div
-        className="w-full h-full flex items-center px-4"
+        className={`w-full h-full flex items-center px-4 ${innerClassName || ''}`}
         style={{
           backgroundColor: backgroundColor || 'transparent'
         }}

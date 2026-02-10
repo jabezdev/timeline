@@ -39,6 +39,8 @@ export function CreateItemPopover({
     const [selectedSubProjectId, setSelectedSubProjectId] = useState<string>('none');
     const [color, setColor] = useState<number>(1); // Default color
 
+    const COLORS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
     // Recurring State
     const [isRecurring, setIsRecurring] = useState(false);
     const [recurrenceInterval, setRecurrenceInterval] = useState<'day' | 'week' | 'month'>('week');
@@ -200,6 +202,30 @@ export function CreateItemPopover({
                             </SelectContent>
                         </Select>
                     )}
+
+                    {/* Color Picker */}
+                    <div className="pt-2 border-t border-border space-y-2">
+                        <div className="flex items-center gap-2 p-1.5 bg-muted/20 rounded-md">
+                            <div className="w-8 flex items-center justify-center text-muted-foreground">
+                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: `hsl(var(--workspace-${color}))` }} />
+                            </div>
+                            <div className="flex-1 overflow-x-auto scrollbar-hide py-1">
+                                <div className="flex items-center gap-1.5">
+                                    {COLORS.map((c) => (
+                                        <button
+                                            key={c}
+                                            className={cn(
+                                                "w-5 h-5 rounded-full transition-all border border-border/20",
+                                                color === c ? "ring-2 ring-offset-1 ring-primary scale-110" : "hover:scale-105 opacity-70 hover:opacity-100"
+                                            )}
+                                            style={{ backgroundColor: `hsl(var(--workspace-${c}))` }}
+                                            onClick={() => setColor(c)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div className="pt-2 border-t border-border space-y-2">
                         <div className="flex items-center space-x-2">

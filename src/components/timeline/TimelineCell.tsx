@@ -18,7 +18,7 @@ interface TimelineCellProps {
   cellWidth: number;
   rowHeight?: number;
   showBorder?: boolean;
-  onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
+  onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone, anchorElement?: HTMLElement) => void;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
   onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
@@ -99,7 +99,7 @@ export const TimelineCell = React.memo(function TimelineCell({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          onQuickCreate(projectId, dateStr, subProjectId, workspaceColor, containerRef.current || e.currentTarget);
+          onQuickCreate('item', projectId, dateStr, subProjectId, workspaceColor, containerRef.current || e.currentTarget);
         }}
         className="absolute top-1 right-1 w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-primary/10 hover:bg-primary/20 flex items-center justify-center z-10"
         title="Add task"
