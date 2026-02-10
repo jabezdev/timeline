@@ -5,7 +5,7 @@ import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { addDays, addWeeks, format, parseISO } from 'date-fns';
 
 interface UseTimelineKeyboardProps {
-    timelineState: any; // Using any for now to avoid circular deps
+    timelineState: import('@/types/timeline').TimelineState;
     onQuickEdit: (item: TimelineItem | Milestone | SubProject) => void;
 }
 

@@ -1,4 +1,4 @@
-import { Timeline } from '@/components/timeline/Timeline';
+import { Timeline } from '@/components/timeline/layout/Timeline';
 
 const Index = () => {
   return <Timeline />;

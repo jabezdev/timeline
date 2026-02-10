@@ -157,14 +157,14 @@ export function PreferencesContent() {
       document.documentElement.style.removeProperty('--ring');
       document.documentElement.style.removeProperty('--primary-foreground');
     }
-  }, [colorMode, currentAccent]);
+  }, [colorMode, currentAccent, theme]);
 
   const applyTemplate = (t: typeof TEMPLATES[0]) => {
     setTheme(t.theme);
     mutations.updateUserSettings.mutate({
-      theme: t.theme as any,
+      theme: t.theme as 'light' | 'dark' | 'system',
       systemAccent: t.accent,
-      colorMode: t.mode as any
+      colorMode: t.mode as 'full' | 'monochromatic'
     });
   };
 
@@ -246,7 +246,7 @@ export function PreferencesContent() {
               ].map((m) => (
                 <button
                   key={m.value}
-                  onClick={() => mutations.updateUserSettings.mutate({ colorMode: m.value as any })}
+                  onClick={() => mutations.updateUserSettings.mutate({ colorMode: m.value as 'full' | 'monochromatic' })}
                   className={`text-[10px] py-1 px-2 rounded-sm transition-all ${colorMode === m.value ? 'bg-background shadow-sm text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   {m.label}

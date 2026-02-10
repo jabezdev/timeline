@@ -9,7 +9,7 @@ export const timelineGridCollisionDetection: CollisionDetection = ({
     if (!pointerCoordinates) return [];
 
     const { x, y } = pointerCoordinates;
-    const collisions: Array<{ id: string | number; data?: any }> = [];
+    const collisions: Array<{ id: string | number; data?: Record<string, unknown> }> = [];
 
     // 1. Filter candidates by Viewport Intersection (if dnd-kit hasn't already)
     // But more importantly, we assume a Grid structure.

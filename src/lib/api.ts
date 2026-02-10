@@ -12,7 +12,7 @@ import {
 export const api = {
     // --- READ ---
     // Helper to handle Supabase responses
-    async handleResponse<T>(promise: Promise<{ data: T | null; error: any }>): Promise<T> {
+    async handleResponse<T>(promise: Promise<{ data: T | null; error: unknown }>): Promise<T> {
         const { data, error } = await promise;
         if (error) {
             console.error("Supabase API Error:", error);
@@ -118,7 +118,7 @@ export const api = {
     },
 
     async updateWorkspace(id: string, updates: Partial<Workspace>) {
-        const dbUpdates: any = {};
+        const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('name' in updates) dbUpdates.name = updates.name;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
@@ -143,7 +143,7 @@ export const api = {
     },
 
     async updateProject(id: string, updates: Partial<Project>) {
-        const dbUpdates: any = {};
+        const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('name' in updates) dbUpdates.name = updates.name;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('position' in updates) dbUpdates.position = updates.position;
@@ -182,7 +182,7 @@ export const api = {
     },
 
     async updateSubProject(id: string, updates: Partial<SubProject>) {
-        const dbUpdates: any = {};
+        const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('title' in updates) dbUpdates.title = updates.title;
         if ('startDate' in updates) dbUpdates.start_date = updates.startDate;
         if ('endDate' in updates) dbUpdates.end_date = updates.endDate;
@@ -209,7 +209,7 @@ export const api = {
     },
 
     async updateMilestone(id: string, updates: Partial<Milestone>) {
-        const dbUpdates: any = {};
+        const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('title' in updates) dbUpdates.title = updates.title;
         if ('date' in updates) dbUpdates.date = updates.date;
         if ('content' in updates) dbUpdates.content = updates.content;
@@ -237,7 +237,7 @@ export const api = {
     },
 
     async updateItem(id: string, updates: Partial<TimelineItem>) {
-        const dbUpdates: any = {};
+        const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('title' in updates) dbUpdates.title = updates.title;
         if ('content' in updates) dbUpdates.content = updates.content;
         if ('date' in updates) dbUpdates.date = updates.date;
@@ -308,7 +308,7 @@ export const api = {
 
         return Promise.all(updates.map(u => {
             const { id, ...rest } = u;
-            const dbUpdates: any = {};
+            const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
             if ('title' in rest) dbUpdates.title = rest.title;
             if ('content' in rest) dbUpdates.content = rest.content;
             if ('date' in rest) dbUpdates.date = rest.date;
@@ -326,7 +326,7 @@ export const api = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        const dbUpdates: any = {};
+        const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('theme' in settings) dbUpdates.theme = settings.theme;
         if ('systemAccent' in settings) dbUpdates.system_accent = settings.systemAccent;
         if ('colorMode' in settings) dbUpdates.color_mode = settings.colorMode;

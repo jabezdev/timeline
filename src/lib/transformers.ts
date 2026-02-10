@@ -1,7 +1,7 @@
 import { TimelineItem, Milestone, SubProject, Project, Workspace } from '@/types/timeline';
 
 // Helper to transform Workspace (DB -> App)
-export const transformWorkspace = (db: any): Workspace => ({
+export const transformWorkspace = (db: { id: string; name: string; color: string; is_hidden?: boolean; position?: number; created_at?: string; updated_at?: string }): Workspace => ({
     id: db.id,
     name: db.name,
     color: db.color,
@@ -13,7 +13,7 @@ export const transformWorkspace = (db: any): Workspace => ({
 });
 
 // Helper to transform Project (DB -> App)
-export const transformProject = (db: any): Project => ({
+export const transformProject = (db: { id: string; name: string; workspace_id: string; color: string; position?: number; is_hidden?: boolean; created_at?: string; updated_at?: string }): Project => ({
     id: db.id,
     name: db.name,
     workspaceId: db.workspace_id,
@@ -25,7 +25,7 @@ export const transformProject = (db: any): Project => ({
 });
 
 // Helper to transform SubProject (DB -> App)
-export const transformSubProject = (db: any): SubProject => ({
+export const transformSubProject = (db: { id: string; title: string; start_date: string; end_date: string; project_id: string; color?: string; description?: string; created_at?: string; updated_at?: string }): SubProject => ({
     id: db.id,
     title: db.title,
     startDate: db.start_date,
@@ -39,7 +39,7 @@ export const transformSubProject = (db: any): SubProject => ({
 
 
 // Helper to transform Milestone (DB -> App)
-export const transformMilestone = (db: any): Milestone => ({
+export const transformMilestone = (db: { id: string; title: string; date: string; project_id: string; content?: string; color?: string; position?: number; created_at?: string; updated_at?: string }): Milestone => ({
     id: db.id,
     title: db.title,
     date: db.date,
@@ -53,7 +53,7 @@ export const transformMilestone = (db: any): Milestone => ({
 
 
 // Helper to transform Item (DB -> App)
-export const transformItem = (db: any): TimelineItem => ({
+export const transformItem = (db: { id: string; title: string; content?: string; date: string; completed: boolean; project_id: string; sub_project_id?: string; color?: string; completed_at?: string; position?: number; created_at?: string; updated_at?: string }): TimelineItem => ({
     id: db.id,
     title: db.title,
     content: db.content,

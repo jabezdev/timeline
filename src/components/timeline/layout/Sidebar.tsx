@@ -2,9 +2,9 @@ import { Workspace, Project, TimelineItem } from '@/types/timeline';
 import { ChevronLeft, ChevronRight, Building2, Calendar, RefreshCw, Plus, Settings2 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStructureQuery } from '@/hooks/useTimelineQueries';
-import { PreferencesContent } from '../preferences-popover';
-import { WorkspaceManagerContent } from '../workspace-manager-popover';
-import { Button } from '../ui/button';
+import { PreferencesContent } from '../../preferences-popover';
+import { WorkspaceManagerContent } from '../../workspace-manager-popover';
+import { Button } from '@/components/ui/button';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 import { format } from 'date-fns';
 import {
@@ -20,7 +20,7 @@ import {
   PROJECT_HEADER_HEIGHT,
 } from '@/lib/constants';
 
-export { HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
+
 
 // ── Timeline Settings & Controls ────────────────────────────────────────
 

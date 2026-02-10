@@ -37,8 +37,8 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
 }) {
     // ...
     // Determine effective color
-    let effectiveColor = item.color;
-    let isHex = effectiveColor?.startsWith('#') || false;
+    const effectiveColor = item.color;
+    const isHex = effectiveColor?.startsWith('#') || false;
 
     const getBgColor = (opacity: number) => {
         if (colorMode === 'monochromatic') {

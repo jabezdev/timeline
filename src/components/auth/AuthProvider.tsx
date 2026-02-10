@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, AuthError } from '@supabase/supabase-js';
 
 interface AuthContextType {
     session: Session | null;
     user: User | null;
     loading: boolean;
-    signInWithEmail: (email: string) => Promise<{ error: any }>;
-    signOut: () => Promise<{ error: any }>;
+    signInWithEmail: (email: string) => Promise<{ error: AuthError | null }>;
+    signOut: () => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -62,4 +62,5 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

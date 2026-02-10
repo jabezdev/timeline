@@ -24,7 +24,8 @@ export default function Login() {
             });
             if (error) throw error;
             navigate('/');
-        } catch (error: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             toast({
                 variant: "destructive",
                 title: "Login Failed",
