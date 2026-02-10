@@ -1,11 +1,12 @@
 import { Milestone } from '@/types/timeline';
 import { Flag } from 'lucide-react';
 import React from 'react';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 interface MilestoneItemProps {
   milestone: Milestone;
   workspaceColor: number;
-  onClick?: (multi: boolean) => void;
+  onClick?: (multi: boolean, e: React.MouseEvent) => void;
   className?: string;
   minHeight?: number;
   isSelected?: boolean;
@@ -24,7 +25,7 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
   systemAccent = '6'
 }: {
   milestone: Milestone;
-  onClick?: (multi: boolean) => void;
+  onClick?: (multi: boolean, e: React.MouseEvent) => void;
   style?: React.CSSProperties;
   className?: string;
   minHeight?: number;
@@ -46,7 +47,7 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
   const bgColor = getBgColor();
 
   const borderColor = 'hsl(var(--background))';
-  const textColor = '#ffffff';
+  const textColor = colorMode === 'monochromatic' ? 'hsl(var(--primary-foreground))' : '#ffffff';
 
   return (
     <div
@@ -68,7 +69,7 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
         }}
         onClick={(e) => {
           e.stopPropagation();
-          onClick?.(e.ctrlKey || e.metaKey);
+          onClick?.(e.ctrlKey || e.metaKey, e);
         }}
       >
         <Flag className="w-3 h-3 shrink-0" style={{ color: textColor }} />
@@ -87,21 +88,26 @@ export const MilestoneItem = React.memo(function MilestoneItem({
   className,
   onDoubleClick,
   minHeight,
-  isSelected,
   onQuickEdit,
   colorMode,
-  systemAccent
+  systemAccent,
+  onContextMenu
 }: MilestoneItemProps & {
   onDoubleClick?: (milestone: Milestone) => void;
   onQuickEdit?: (item: Milestone, anchorElement?: HTMLElement) => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+  onClick?: (multi: boolean, e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }) {
+  const isSelected = useTimelineStore(state => state.selectedIds.has(milestone.id));
   return (
     <div className={className}>
       <div
         className="pointer-events-auto"
         onContextMenu={(e) => {
+          if (onContextMenu) { onContextMenu(e); return; }
+
           e.preventDefault();
           e.stopPropagation();
           if (onQuickEdit) onQuickEdit(milestone, e.currentTarget);

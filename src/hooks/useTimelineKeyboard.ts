@@ -1,22 +1,20 @@
 import { useEffect, useCallback } from 'react';
 import { TimelineItem, Milestone, SubProject } from '@/types/timeline';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { addDays, addWeeks, format, parseISO } from 'date-fns';
 
 interface UseTimelineKeyboardProps {
-    selectedIds: Set<string>;
-    setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-    timelineState: any; // Using any for now to avoid circular deps, refined later
+    timelineState: any; // Using any for now to avoid circular deps
     onQuickEdit: (item: TimelineItem | Milestone | SubProject) => void;
 }
 
 export function useTimelineKeyboard({
-    selectedIds,
-    setSelectedIds,
     timelineState,
     onQuickEdit
 }: UseTimelineKeyboardProps) {
     const mutations = useTimelineMutations();
+    const { selectedIds, setSelectedIds, toggleSelection, clearSelection } = useTimelineStore();
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         // Ignore if input/textarea is focused
@@ -125,17 +123,41 @@ export function useTimelineKeyboard({
 
     return {
         handleSelection: (id: string, multi: boolean) => {
-            setSelectedIds(prev => {
-                const newSet = new Set(multi ? prev : []);
-                if (newSet.has(id)) {
-                    if (multi) newSet.delete(id); // Toggle off if multi
-                    else return new Set([id]); // Ensure single selection
-                } else {
-                    newSet.add(id);
-                }
-                return newSet;
-            });
+            if (multi) {
+                toggleSelection(id, true);
+            } else {
+                // For keyboard selection (e.g. arrow keys moving selection?), 
+                // typically arrow keys move single selection. 
+                // But this handleSelection is exposed to Timeline.tsx for CLICK handling too?
+                // No, Timeline.tsx has its own click logic now (or will have).
+                // Let's see where handleSelection is used.
+                // It is used in Timeline.tsx for click and context menu.
+                // context menu -> single select -> multi=false
+                // click -> multi depends on ctrl key
+
+                // If multi=false, we want single selection.
+                // toggleSelection(id, false) in store implementation: produces single selection if id present?
+                // store: if(multi) ... else return { selectedIds: new Set([id]) };
+                // So toggleSelection(id, false) DOES single select if id matches?
+                // Wait, store implementation:
+                /*
+                  toggleSelection: (id, multi) => set((state) => {
+                    const newSet = new Set(multi ? state.selectedIds : []);
+                    if (newSet.has(id)) {
+                      if (multi) newSet.delete(id);
+                      else return { selectedIds: new Set([id]) }; 
+                    } else {
+                      newSet.add(id);
+                    }
+                    return { selectedIds: newSet };
+                  }),
+                */
+                // If id NOT in set, and multi=false: newSet initialized to [], adds id -> result {id}. Correct.
+                // If id IN set, and multi=false: returns {id}. Correct.
+
+                toggleSelection(id, multi);
+            }
         },
-        clearSelection: () => setSelectedIds(new Set())
+        clearSelection
     };
 }

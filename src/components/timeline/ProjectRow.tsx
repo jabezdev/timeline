@@ -17,7 +17,9 @@ function MilestoneCell({
   onQuickCreate,
   onQuickEdit,
   colorMode,
-  systemAccent
+  systemAccent,
+  onItemClick,
+  onItemContextMenu
 }: {
   date: Date;
   projectId: string;
@@ -28,6 +30,8 @@ function MilestoneCell({
   onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -52,8 +56,10 @@ function MilestoneCell({
                 onDoubleClick={onItemDoubleClick}
                 onQuickEdit={onQuickEdit}
                 minHeight={PROJECT_HEADER_HEIGHT}
+                onClick={(multi, e) => onItemClick(milestone.id, multi, e)}
                 colorMode={colorMode}
                 systemAccent={systemAccent}
+                onContextMenu={(e) => onItemContextMenu(milestone.id, 'milestone', e)}
               />
             </div>
           </div>
@@ -61,15 +67,16 @@ function MilestoneCell({
       </div>
 
       {/* Floating Quick Create Button - always available on hover */}
+      {/* Floating Quick Create Button - distinct for milestones */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           onQuickCreate(projectId, dateStr, undefined, workspaceColor, containerRef.current || e.currentTarget);
         }}
-        className="absolute top-1 right-1 w-5 h-5 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-milestone/20 hover:bg-milestone/30 flex items-center justify-center z-10"
+        className="absolute top-1 right-1 w-6 h-6 rounded-full opacity-0 group-hover:opacity-100 transition-all bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 hover:text-orange-700 flex items-center justify-center z-10 shadow-sm scale-90 hover:scale-100 border border-orange-500/20"
         title="Add milestone"
       >
-        <Plus className="w-3 h-3 text-milestone" />
+        <Plus className="w-3.5 h-3.5" strokeWidth={3} />
       </button>
     </div>
   );
@@ -88,6 +95,8 @@ interface MilestoneHeaderRowProps {
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
 }
 
 export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
@@ -100,7 +109,9 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
   onQuickEdit,
   onQuickCreate,
   colorMode,
-  systemAccent
+  systemAccent,
+  onItemClick,
+  onItemContextMenu
 }: MilestoneHeaderRowProps) {
   const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
@@ -127,6 +138,8 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
             onItemDoubleClick={onItemDoubleClick}
             onQuickCreate={onQuickCreate}
             onQuickEdit={onQuickEdit}
+            onItemClick={onItemClick}
+            onItemContextMenu={onItemContextMenu}
             colorMode={colorMode}
             systemAccent={systemAccent}
           />
@@ -148,11 +161,10 @@ interface ProjectRowProps {
   onToggleItemComplete: (itemId: string) => void;
   onItemDoubleClick: (item: TimelineItem | Milestone) => void;
   onSubProjectDoubleClick: (subProject: SubProject) => void;
-  sidebarWidth: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => void;
-  selectedIds: Set<string>;
-  onItemClick: (id: string, multi: boolean) => void;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   onClearSelection: () => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
@@ -168,11 +180,10 @@ export const ProjectRow = memo(function ProjectRow({
   onToggleItemComplete,
   onItemDoubleClick,
   onSubProjectDoubleClick,
-  sidebarWidth,
   onQuickCreate,
   onQuickEdit,
-  selectedIds,
   onItemClick,
+  onItemContextMenu,
   onClearSelection,
   colorMode,
   systemAccent
@@ -221,8 +232,8 @@ export const ProjectRow = memo(function ProjectRow({
               cellWidth={CELL_WIDTH}
               onQuickCreate={onQuickCreate}
               onQuickEdit={onQuickEdit}
-              selectedIds={selectedIds}
               onItemClick={onItemClick}
+              onItemContextMenu={onItemContextMenu}
               colorMode={colorMode}
               systemAccent={systemAccent}
             />
@@ -240,11 +251,10 @@ export const ProjectRow = memo(function ProjectRow({
         onToggleItemComplete={onToggleItemComplete}
         onItemDoubleClick={onItemDoubleClick}
         onSubProjectDoubleClick={onSubProjectDoubleClick}
-        sidebarWidth={sidebarWidth}
         onQuickCreate={onQuickCreate}
         onQuickEdit={onQuickEdit}
-        selectedIds={selectedIds}
         onItemClick={onItemClick}
+        onItemContextMenu={onItemContextMenu}
         colorMode={colorMode}
         systemAccent={systemAccent}
       />

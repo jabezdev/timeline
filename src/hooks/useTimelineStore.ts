@@ -6,6 +6,11 @@ interface TimelineStore {
   setSidebarCollapsed: (collapsed: boolean) => void;
   sidebarWidth: number;
   setSidebarWidth: (width: number) => void;
+  selectedIds: Set<string>;
+  setSelectedIds: (ids: Set<string>) => void;
+  toggleSelection: (id: string, multi: boolean) => void;
+  selectItem: (id: string, multi: boolean) => void;
+  clearSelection: () => void;
 }
 
 // Debounce timer for localStorage persistence
@@ -17,6 +22,24 @@ const storeCreator: StateCreator<TimelineStore> = (set) => ({
   setSidebarCollapsed: (isSidebarCollapsed) => set({ isSidebarCollapsed }),
   sidebarWidth: 350,
   setSidebarWidth: (sidebarWidth) => set({ sidebarWidth }),
+  selectedIds: new Set(),
+  setSelectedIds: (selectedIds) => set({ selectedIds }),
+  toggleSelection: (id, multi) => set((state) => {
+    const newSet = new Set(multi ? state.selectedIds : []);
+    if (newSet.has(id)) {
+      if (multi) newSet.delete(id);
+      else return { selectedIds: new Set([id]) }; // Ensure single select if toggling on same item in single mode (though usually click selects)
+    } else {
+      newSet.add(id);
+    }
+    return { selectedIds: newSet };
+  }),
+  selectItem: (id, multi) => set((state) => {
+    const newSet = new Set(multi ? state.selectedIds : []);
+    newSet.add(id);
+    return { selectedIds: newSet };
+  }),
+  clearSelection: () => set({ selectedIds: new Set() }),
 });
 
 // Custom storage that debounces writes

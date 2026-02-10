@@ -35,8 +35,6 @@ import '@/scrollbar-hide.css';
 // ── Timeline Main View (Memoized) ──────────────────────────────────────
 const TimelineMainView = memo(function TimelineMainView({
   timelineState,
-  sidebarWidth,
-  setSidebarWidth,
   handleResizeStart,
   startDate,
   visibleDays,
@@ -52,19 +50,16 @@ const TimelineMainView = memo(function TimelineMainView({
   handleItemSave,
   handleToggleItemComplete,
   timelineRef,
-  setSelectedItem,
-  setIsItemDialogOpen,
   setSubProjectToDelete,
   selectedItem,
   isItemDialogOpen,
   subProjectToDelete,
+  setIsItemDialogOpen,
   handleItemClick,
-  selectedIds,
+  handleItemContextMenu,
   onClearSelection
 }: {
   timelineState: TimelineState;
-  sidebarWidth: number;
-  setSidebarWidth: (w: number) => void;
   handleResizeStart: (e: React.MouseEvent) => void;
   startDate: Date;
   visibleDays: number;
@@ -86,10 +81,12 @@ const TimelineMainView = memo(function TimelineMainView({
   selectedItem: TimelineItem | Milestone | SubProject | null;
   isItemDialogOpen: boolean;
   subProjectToDelete: SubProject | null;
-  handleItemClick: (id: string, multi: boolean) => void;
-  selectedIds: Set<string>;
+  handleItemClick?: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  handleItemContextMenu?: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   onClearSelection: () => void;
 }) {
+
+
   const {
     projectsItems,
     projectsMilestones,
@@ -113,7 +110,7 @@ const TimelineMainView = memo(function TimelineMainView({
 
           {/* STICKY DATE HEADER — z-50, top-0 */}
           <div className="sticky top-0 z-[60] bg-background border-b border-border flex">
-            <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border pr-2" width={sidebarWidth}>
+            <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border pr-2">
               <TimelineControls
                 startDate={startDate}
                 onNavigate={handleNavigate}
@@ -148,7 +145,7 @@ const TimelineMainView = memo(function TimelineMainView({
                   }}
                 >
                   {/* Sidebar Cell — sticky left */}
-                  <WorkspaceSidebarCell workspace={workspace} projects={projects} width={sidebarWidth} />
+                  <WorkspaceSidebarCell workspace={workspace} projects={projects} />
 
                   {/* Summary dots fill full width */}
                   <div className="flex-1" style={{ height: WORKSPACE_HEADER_HEIGHT }}>
@@ -183,7 +180,6 @@ const TimelineMainView = memo(function TimelineMainView({
                         project={project}
                         items={projectsItems.get(project.id) || []}
                         workspaceColor={workspace.color || '1'}
-                        width={sidebarWidth}
                       />
 
                       <div className="flex-1" style={{ minHeight: PROJECT_HEADER_HEIGHT, height: 'auto' }}>
@@ -196,6 +192,8 @@ const TimelineMainView = memo(function TimelineMainView({
                           onItemDoubleClick={handleItemDoubleClick}
                           onQuickEdit={handleQuickEdit}
                           onQuickCreate={handleQuickCreate}
+                          onItemClick={handleItemClick!}
+                          onItemContextMenu={handleItemContextMenu!}
                           colorMode={timelineState.userSettings?.colorMode || 'full'}
                           systemAccent={timelineState.userSettings?.systemAccent || '6'}
                         />
@@ -226,9 +224,8 @@ const TimelineMainView = memo(function TimelineMainView({
                           onSubProjectDoubleClick={handleItemDoubleClick}
                           onQuickCreate={handleQuickCreate}
                           onQuickEdit={handleQuickEdit}
-                          sidebarWidth={sidebarWidth}
-                          selectedIds={selectedIds}
-                          onItemClick={handleItemClick}
+                          onItemClick={handleItemClick!}
+                          onItemContextMenu={handleItemContextMenu!}
                           onClearSelection={onClearSelection}
                           colorMode={timelineState.userSettings?.colorMode || 'full'}
                           systemAccent={timelineState.userSettings?.systemAccent || '6'}
@@ -268,6 +265,8 @@ const TimelineMainView = memo(function TimelineMainView({
         onOpenChange={setIsItemDialogOpen}
         onSave={handleItemSave}
         onDelete={handleItemDelete}
+        projects={allProjects}
+        subProjects={allSubProjects}
       />
 
       <AlertDialog open={!!subProjectToDelete} onOpenChange={(open) => !open && setSubProjectToDelete(null)}>
@@ -369,6 +368,14 @@ function TimelineContent() {
   }, [setSidebarWidth]);
 
   const {
+    toggleSelection,
+    selectItem,
+    clearSelection,
+    // selectedIds // DO NOT destructure selectedIds to avoid re-render
+    // setSelectedIds // If we need to set manually
+  } = useTimelineStore();
+
+  const {
     startDate,
     timelineRef,
     handleNavigate,
@@ -397,8 +404,8 @@ function TimelineContent() {
     anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => any };
   }>({ open: false, item: null });
 
-  /* State */
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Removed local selectedIds state
+  // const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Filter subprojects for the item being edited
   const availableSubProjects = useMemo(() => {
@@ -470,10 +477,8 @@ function TimelineContent() {
     });
   }, []);
 
-  // Keyboard Hook - defined after handlers so we can use them
-  const { handleSelection, clearSelection } = useTimelineKeyboard({
-    selectedIds,
-    setSelectedIds,
+  // Keyboard Hook
+  const { handleSelection, clearSelection: kbdClearSelection } = useTimelineKeyboard({
     timelineState,
     onQuickEdit: (item) => handleQuickEdit(item)
   });
@@ -518,20 +523,64 @@ function TimelineContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutations.addSubProject.mutate]);
 
-  const handleItemClick = useCallback((id: string, multi: boolean) => {
-    handleSelection(id, multi);
+  /* Consolidated Interaction Handlers */
+  const handleItemClick = useCallback((id: string, multi: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    // 1. Handle Selection Logic (Toggle if single select, Add/Remove if multi)
     if (multi) {
-      setIsItemDialogOpen(false);
+      toggleSelection(id, true);
     } else {
+      selectItem(id, false);
+    }
+
+    // Fetch item for further logic
+    const ts = timelineStateRef.current;
+    const item = ts.items[id] || ts.milestones[id] || ts.subProjects[id];
+
+    if (item) {
+      // If it's a subproject, we also want to visually select all its children
+      if ('startDate' in item && !('completed' in item)) {
+        const childItems = Object.values(ts.items).filter(i => i.subProjectId === id);
+        if (childItems.length > 0) {
+          const currentSelected = useTimelineStore.getState().selectedIds;
+          const newSet = new Set(multi ? currentSelected : []);
+          newSet.add(id);
+          childItems.forEach(c => newSet.add(c.id));
+          useTimelineStore.getState().setSelectedIds(newSet);
+          // continue to quick edit
+        }
+      }
+
+      // 3. Open Quick Edit (Left Click)
+      handleQuickEdit(item, e.currentTarget as HTMLElement);
+    }
+
+    // Ensure Sidebar is closed on left click (per consolidated interactions)
+    setIsItemDialogOpen(false);
+  }, [toggleSelection, selectItem, handleQuickEdit]);
+
+  const handleItemContextMenu = useCallback((id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // 1. Select the item (Single selection for context menu usually)
+    handleSelection(id, false);
+
+    // 2. Open Sidebar (Item Sheet)
+    const ts = timelineStateRef.current;
+    const item = ts.items[id] || ts.milestones[id] || ts.subProjects[id];
+
+    if (item) {
+      setSelectedItem(item);
       setIsItemDialogOpen(true);
     }
   }, [handleSelection]);
 
   const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject) => {
-    // on double click we can open quick edit or full edit? 
-    // User wanted "Enter to open QuickEdit", so double click probably same?
-    handleQuickEdit(item);
-  }, [handleQuickEdit]);
+    // Double click disabled per user request
+    return;
+  }, []);
 
   const handleItemDelete = useCallback((item: TimelineItem | Milestone | SubProject, deleteItems: boolean = false) => {
     if ('completed' in item) {
@@ -605,8 +654,6 @@ function TimelineContent() {
     <>
       <TimelineMainView
         timelineState={timelineState}
-        sidebarWidth={sidebarWidth}
-        setSidebarWidth={setSidebarWidth}
         handleResizeStart={handleResizeStart}
         startDate={startDate}
         visibleDays={visibleDays}
@@ -618,13 +665,13 @@ function TimelineContent() {
         handleAddMilestone={handleAddMilestone}
         handleAddSubProject={handleAddSubProject}
         handleItemDoubleClick={handleItemDoubleClick}
-        handleItemClick={handleItemClick} // New prop
+        handleItemClick={handleItemClick}
+        handleItemContextMenu={handleItemContextMenu}
         handleItemDelete={handleItemDelete}
         handleItemSave={handleItemSave}
         handleToggleItemComplete={handleToggleItemComplete}
         timelineRef={timelineRef}
-        selectedIds={selectedIds}
-        onClearSelection={clearSelection}
+        onClearSelection={clearSelection} // Use store action directly
         setSelectedItem={setSelectedItem}
         setIsItemDialogOpen={setIsItemDialogOpen}
         setSubProjectToDelete={setSubProjectToDelete}

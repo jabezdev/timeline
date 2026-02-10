@@ -1,7 +1,8 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { startOfWeek, addDays, subDays, differenceInDays, parseISO, format, isValid } from 'date-fns';
+import { startOfWeek, addDays, subDays, differenceInDays, parseISO, format, isValid, startOfDay } from 'date-fns';
 import { CELL_WIDTH } from '@/lib/constants';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 export function useTimelineScroll(visibleDays: number = 21) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -75,14 +76,41 @@ export function useTimelineScroll(visibleDays: number = 21) {
     }, [setStartDate, timelineRef]); // setStartDate depends on startDate. So handleNavigate depends on startDate.
 
     const handleTodayClick = useCallback(() => {
-        const today = new Date();
-        const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 });
-        const targetStartDate = subDays(startOfCurrentWeek, 7);
+        const today = startOfDay(new Date());
+        // Set start date to 2 weeks before today to have enough buffer for centering
+        const targetStartDate = subDays(today, 14);
 
-        setStartDate(targetStartDate);
+        // Check if start date is changing
+        const diffStart = differenceInDays(targetStartDate, startDate);
 
-        pendingScrollRef.current = { type: 'smooth', value: 0 };
-    }, [setStartDate]);
+        if (diffStart !== 0) {
+            setStartDate(targetStartDate);
+        }
+
+        // Calculate target scroll
+        if (timelineRef.current) {
+            const currentSidebarWidth = useTimelineStore.getState().sidebarWidth;
+            const containerWidth = timelineRef.current.clientWidth;
+
+            const diffDays = 14; // Since we set start date to today - 14
+            // Center of "Today" relative to timeline content start (0 scroll)
+            // Position = sidebarWidth + (diffDays * CELL_WIDTH) + (CELL_WIDTH / 2)
+            const todayCenter = currentSidebarWidth + (diffDays * CELL_WIDTH) + (CELL_WIDTH / 2);
+
+            // We want this position to be at the center of the viewport (containerWidth / 2).
+            // So: scrollLeft = todayCenter - (containerWidth / 2).
+            const targetScroll = todayCenter - (containerWidth / 2);
+
+            if (diffStart === 0) {
+                timelineRef.current.scrollTo({
+                    left: Math.max(0, targetScroll),
+                    behavior: 'smooth'
+                });
+            } else {
+                pendingScrollRef.current = { type: 'smooth', value: Math.max(0, targetScroll) };
+            }
+        }
+    }, [startDate, setStartDate]);
 
     // Handle Pending Scroll after Render
     useEffect(() => {
@@ -103,19 +131,21 @@ export function useTimelineScroll(visibleDays: number = 21) {
     // Initial Scroll on Mount
     useEffect(() => {
         if (timelineRef.current) {
-            // Scroll to 0 (start) initially?
-            // With the new logic, the "default" view starts at (Today - 1 week).
-            // So x=0 corresponds to (Today - 1 week).
-            // This places Today at x = 7 * CELL_WIDTH.
-            // If we want Today to be sticky or centered, user keeps typical view.
-            // Usually timelines start at 0 scroll.
-            // So we don't need to do anything if we want to start at the "start date".
+            const today = startOfDay(new Date());
+            const diffDays = differenceInDays(today, startDate);
+            const currentSidebarWidth = useTimelineStore.getState().sidebarWidth;
+            const containerWidth = timelineRef.current.clientWidth;
 
-            // However, existing logic tried to scroll to Today.
-            // If we want to maintain the "Today is visible" logic from before:
-            // The default startDate IS constructed such that Today is visible (it's index 7).
-            // So simply not scrolling (leaving it at 0) works perfectly to show the 1 week buffer.
+            // Calculate center position of "Today" column relative to scroll start
+            // sidebarWidth + (diffDays * CELL_WIDTH) + (CELL_WIDTH / 2)
+            const todayCenter = currentSidebarWidth + (diffDays * CELL_WIDTH) + (CELL_WIDTH / 2);
+
+            // Calculate target scroll to align "Today" center with viewport center
+            const targetScroll = todayCenter - (containerWidth / 2);
+
+            timelineRef.current.scrollLeft = Math.max(0, targetScroll);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return {

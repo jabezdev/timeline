@@ -1,11 +1,12 @@
 import { TimelineItem } from '@/types/timeline';
 import { Check } from 'lucide-react';
 import React from 'react';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 
 interface UnifiedItemProps {
     item: TimelineItem;
     onToggleComplete: (itemId: string) => void;
-    onClick?: (multi: boolean) => void;
+    onClick?: (multi: boolean, e: React.MouseEvent) => void;
     workspaceColor: number;
     minHeight?: number;
     isSelected?: boolean;
@@ -26,14 +27,15 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
 }: {
     item: TimelineItem;
     onToggleComplete?: (itemId: string) => void;
-    onClick?: (multi: boolean) => void;
+    onClick?: (multi: boolean, e: React.MouseEvent) => void;
     style?: React.CSSProperties;
     className?: string;
     minHeight?: number;
-    isSelected?: boolean;
+    isSelected?: boolean; // Keep for internal view if needed, but we will pass it from wrapper
     colorMode?: 'full' | 'monochromatic';
     systemAccent?: string;
 }) {
+    // ...
     // Determine effective color
     let effectiveColor = item.color;
     let isHex = effectiveColor?.startsWith('#') || false;
@@ -84,7 +86,7 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
-                    onClick?.(e.ctrlKey || e.metaKey);
+                    onClick?.(e.ctrlKey || e.metaKey, e);
                 }}
             >
                 <button
@@ -101,7 +103,7 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                         borderColor: getMainColor()
                     }}
                 >
-                    {item.completed && <Check className="w-3 h-3 text-white" />}
+                    {item.completed && <Check className="w-3 h-3" style={{ color: colorMode === 'monochromatic' ? 'hsl(var(--primary-foreground))' : '#ffffff' }} />}
                 </button>
 
                 <span className={`flex-1 min-w-0 text-xs font-medium whitespace-normal break-words ${item.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
@@ -120,18 +122,23 @@ export const UnifiedItem = React.memo(function UnifiedItem({
     onDoubleClick,
     minHeight,
     onQuickEdit,
-    isSelected,
     colorMode,
-    systemAccent
+    systemAccent,
+    onContextMenu
 }: UnifiedItemProps & {
     onDoubleClick?: (item: TimelineItem) => void;
     onQuickEdit?: (item: TimelineItem, anchorElement?: HTMLElement) => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
+    onClick?: (multi: boolean, e: React.MouseEvent) => void;
 }) {
+    const isSelected = useTimelineStore(state => state.selectedIds.has(item.id));
     return (
         <div>
             <div
                 className="pointer-events-auto"
                 onContextMenu={(e) => {
+                    if (onContextMenu) { onContextMenu(e); return; }
+
                     e.preventDefault();
                     e.stopPropagation();
                     if (onQuickEdit) onQuickEdit(item, e.currentTarget);

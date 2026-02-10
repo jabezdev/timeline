@@ -122,11 +122,35 @@ export function PreferencesContent() {
         if (standard) accentVar = standard.cssVar;
       }
 
+      // Determine foreground color based on accent
+      let foregroundColor = '0 0% 100%'; // Default white
+
+      // Special case for Black/White (Accent 13)
+      if (currentAccent === '13') {
+        // If theme is dark, accent is white, text should be black
+        // If theme is light, accent is black, text should be white
+        if (theme === 'dark') {
+          foregroundColor = '0 0% 0%';
+        } else {
+          foregroundColor = '0 0% 100%';
+        }
+      }
+      // Special case for Neutral (Accent 14) - typically lighter gray
+      else if (currentAccent === '14') {
+        // Neutral might need black text if it's too light
+        // For now let's assume it's dark enough for white, or check specifically
+        // If Neutral is "Slate" (light gray in light mode), maybe black text?
+        // Checking index.css: workspace-14 is 240 5% 65% (Manual says Neutral/Slate)
+        // 65% lightness is quite light. White text might be hard to read. 
+        // Let's set it to black for better contrast on this specific color.
+        foregroundColor = '0 0% 0%';
+      }
+
       // We need to strip 'var(' and ')' if we are setting it as a value for another var that listens? 
       // No, setProperty('--primary', 'var(--accent-ocean)') works.
       document.documentElement.style.setProperty('--primary', accentVar);
       document.documentElement.style.setProperty('--ring', accentVar);
-      document.documentElement.style.setProperty('--primary-foreground', '0 0% 100%'); // Force white text for accents
+      document.documentElement.style.setProperty('--primary-foreground', foregroundColor);
     } else {
       // Revert to default theme values by removing inline overrides
       document.documentElement.style.removeProperty('--primary');

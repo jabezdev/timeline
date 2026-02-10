@@ -1,6 +1,8 @@
 import React from 'react';
 import { SubProject, TimelineItem } from '@/types/timeline';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
 import { format, differenceInDays, parseISO, isWithinInterval } from 'date-fns';
+import { Plus } from 'lucide-react';
 import { UnifiedItem } from './UnifiedItem';
 import { CELL_WIDTH, SUBPROJECT_HEADER_HEIGHT, SIDEBAR_WIDTH } from '@/lib/constants';
 
@@ -15,11 +17,10 @@ interface SubProjectLaneProps {
   rowHeight?: number;
   laneIndex: number;
   projectId: string;
-  sidebarWidth: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
-  selectedIds: Set<string>;
-  onItemClick: (id: string, multi: boolean) => void;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }
@@ -33,11 +34,10 @@ interface SubProjectSectionProps {
   onToggleItemComplete: (itemId: string) => void;
   onItemDoubleClick: (item: TimelineItem) => void;
   onSubProjectDoubleClick: (subProject: SubProject) => void;
-  sidebarWidth: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
-  selectedIds: Set<string>;
-  onItemClick: (id: string, multi: boolean) => void;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }
@@ -51,8 +51,9 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
-  sidebarWidth?: number;
   onQuickEdit?: (item: SubProject, anchorElement?: HTMLElement) => void;
+  onItemClick?: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu?: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }>(({
@@ -64,11 +65,13 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
   style,
   className,
   children,
-  sidebarWidth = SIDEBAR_WIDTH,
   onQuickEdit,
+  onItemClick,
+  onItemContextMenu,
   colorMode,
   systemAccent
 }, ref) => {
+  const isSelected = useTimelineStore(state => state.selectedIds.has(subProject.id));
 
   const effectiveVar = colorMode === 'monochromatic'
     ? 'var(--primary)'
@@ -78,7 +81,6 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
 
   if (colorMode === 'monochromatic') {
     // Monochromatic overrides everything
-    // Use effectiveVar which is var(--primary)
     borderColor = `hsl(${effectiveVar} / 0.3)`;
     bgColor = `hsl(${effectiveVar} / 0.08)`;
     headerBg = `hsl(${effectiveVar} / 0.2)`;
@@ -99,6 +101,13 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     }
   }
 
+  // Selected Style Override
+  if (isSelected) {
+    borderColor = 'hsl(var(--primary))';
+    headerBg = 'hsl(var(--primary) / 0.4)';
+    bgColor = 'hsl(var(--primary) / 0.15)';
+  }
+
   return (
     <div
       ref={ref}
@@ -114,7 +123,6 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     >
       {/* Header - sticky title */}
       <div className="h-6 shrink-0 w-full z-20 pointer-events-auto">
-        {/* Sticky title container - stays visible during horizontal scroll */}
         <div
           className="sticky w-fit max-w-[250px] flex items-center h-full pl-2.5 pr-2"
           style={{
@@ -125,15 +133,17 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
           {/* Title - Clickable to Edit */}
           <div
             onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (onQuickEdit) onQuickEdit(subProject, e.currentTarget);
+              if (onItemContextMenu) onItemContextMenu(subProject.id, 'subproject', e);
+              else {
+                e.preventDefault();
+                e.stopPropagation();
+                if (onQuickEdit) onQuickEdit(subProject, e.currentTarget);
+              }
             }}
             onClick={(e) => {
               e.stopPropagation();
-              if (onDoubleClick) {
-                onDoubleClick(subProject);
-              }
+              if (onItemClick) onItemClick(subProject.id, e.ctrlKey || e.metaKey, e);
+              else if (onDoubleClick) onDoubleClick(subProject);
             }}
             className="flex-1 min-w-0 flex items-center h-full cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 rounded-sm px-1.5"
           >
@@ -158,19 +168,21 @@ function StaticSubProjectBar({
   timelineStartDate,
   totalVisibleDays,
   onDoubleClick,
-  sidebarWidth,
   onQuickEdit,
   colorMode,
-  systemAccent
+  systemAccent,
+  onItemClick,
+  onItemContextMenu
 }: {
   subProject: SubProject;
   timelineStartDate: Date;
   totalVisibleDays: number;
   onDoubleClick: (subProject: SubProject) => void;
-  sidebarWidth: number;
-  onQuickEdit: (item: SubProject, anchorElement?: HTMLElement) => void;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
+  onQuickEdit: (item: SubProject, anchorElement?: HTMLElement) => void;
 }) {
   const subProjectStart = parseISO(subProject.startDate);
   const subProjectEnd = parseISO(subProject.endDate);
@@ -195,8 +207,9 @@ function StaticSubProjectBar({
         width={width}
         onDoubleClick={onDoubleClick}
         onQuickEdit={onQuickEdit}
+        onItemClick={onItemClick}
+        onItemContextMenu={onItemContextMenu}
         className="h-full"
-        sidebarWidth={sidebarWidth}
         colorMode={colorMode}
         systemAccent={systemAccent}
       />
@@ -215,8 +228,8 @@ function SubProjectCell({
   height,
   onQuickCreate,
   onQuickEdit,
-  selectedIds,
   onItemClick,
+  onItemContextMenu,
   colorMode,
   systemAccent
 }: {
@@ -230,8 +243,8 @@ function SubProjectCell({
   height: number;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
-  selectedIds: Set<string>;
-  onItemClick: (id: string, multi: boolean) => void;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }) {
@@ -243,23 +256,39 @@ function SubProjectCell({
       style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: height }}
       onClick={(e) => activeSubProject && onQuickCreate(projectId, dateStr, activeSubProject.id, workspaceColor, e.currentTarget)}
     >
-      <div className="flex flex-col gap-0 h-full pointer-events-none">
-        {items.map(item => (
-          <div key={item.id} className="pointer-events-auto">
-            <UnifiedItem
-              item={item}
-              onToggleComplete={onToggleItemComplete}
-              onDoubleClick={onItemDoubleClick}
-              onQuickEdit={onQuickEdit}
-              workspaceColor={workspaceColor}
-              minHeight={height}
-              isSelected={selectedIds.has(item.id)}
-              onClick={(multi: boolean) => onItemClick(item.id, multi)}
-              colorMode={colorMode}
-              systemAccent={systemAccent}
-            />
-          </div>
-        ))}
+      <div className="relative w-full h-full group/cell">
+        <div className="flex flex-col gap-0 h-full pointer-events-none">
+          {items.map(item => (
+            <div key={item.id} className="pointer-events-auto">
+              <UnifiedItem
+                item={item}
+                onToggleComplete={onToggleItemComplete}
+                onDoubleClick={onItemDoubleClick}
+                onQuickEdit={onQuickEdit}
+                workspaceColor={workspaceColor}
+                minHeight={height}
+                onClick={(multi, e) => onItemClick(item.id, multi, e)}
+                onContextMenu={(e) => onItemContextMenu(item.id, 'item', e)}
+                colorMode={colorMode}
+                systemAccent={systemAccent}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Quick Add Button for SubProject */}
+        {activeSubProject && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickCreate(projectId, dateStr, activeSubProject.id, workspaceColor, e.currentTarget);
+            }}
+            className="absolute top-1 right-1 w-5 h-5 rounded-md opacity-0 group-hover/cell:opacity-100 transition-all bg-primary/20 hover:bg-primary/40 flex items-center justify-center z-10 pointer-events-auto"
+            title="Add task to subproject"
+          >
+            <Plus className="w-3 h-3 text-primary" strokeWidth={2.5} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -276,14 +305,14 @@ export function SubProjectLane({
   rowHeight = 64,
   laneIndex,
   projectId,
-  sidebarWidth,
   onQuickCreate,
   onQuickEdit,
-  selectedIds,
   onItemClick,
+  onItemContextMenu,
   colorMode,
   systemAccent
 }: SubProjectLaneProps) {
+
   const timelineStartDate = days[0];
   const cellHeight = rowHeight - SUBPROJECT_HEADER_HEIGHT;
 
@@ -310,7 +339,8 @@ export function SubProjectLane({
             totalVisibleDays={days.length}
             onDoubleClick={onSubProjectDoubleClick}
             onQuickEdit={onQuickEdit}
-            sidebarWidth={sidebarWidth}
+            onItemClick={onItemClick}
+            onItemContextMenu={onItemContextMenu}
             colorMode={colorMode}
             systemAccent={systemAccent}
           />
@@ -346,8 +376,8 @@ export function SubProjectLane({
               height={cellHeight}
               onQuickCreate={onQuickCreate}
               onQuickEdit={onQuickEdit}
-              selectedIds={selectedIds}
               onItemClick={onItemClick}
+              onItemContextMenu={onItemContextMenu}
               colorMode={colorMode}
               systemAccent={systemAccent}
             />
@@ -368,14 +398,14 @@ export function SubProjectSection({
   onToggleItemComplete,
   onItemDoubleClick,
   onSubProjectDoubleClick,
-  sidebarWidth,
   onQuickCreate,
   onQuickEdit,
-  selectedIds,
   onItemClick,
+  onItemContextMenu,
   colorMode,
   systemAccent
 }: SubProjectSectionProps) {
+
   if (subProjectLanes.length === 0) return null;
 
   return (
@@ -392,11 +422,10 @@ export function SubProjectSection({
           onSubProjectDoubleClick={onSubProjectDoubleClick}
           laneIndex={index}
           projectId={projectId}
-          sidebarWidth={sidebarWidth}
           onQuickCreate={onQuickCreate}
           onQuickEdit={onQuickEdit}
-          selectedIds={selectedIds}
           onItemClick={onItemClick}
+          onItemContextMenu={onItemContextMenu}
           colorMode={colorMode}
           systemAccent={systemAccent}
         />

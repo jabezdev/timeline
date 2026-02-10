@@ -141,11 +141,7 @@ export function useTimelineSelectors(state: TimelineState) {
     }, [workspacesMap, projectsMap]);
 
     // Derived State: SubProjects List for Dialog
-    const allSubProjects = useMemo(() => Object.values(subProjectsMap).map(sp => ({
-        id: sp.id,
-        title: sp.title,
-        projectId: sp.projectId
-    })), [subProjectsMap]);
+    const allSubProjects = useMemo(() => Object.values(subProjectsMap), [subProjectsMap]);
 
     // Sort workspaces using workspaceOrder
     const sortedWorkspaceIds = useMemo(() => {

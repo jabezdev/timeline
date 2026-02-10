@@ -77,7 +77,7 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
               {milestones?.map(m => (
                 <div
                   key={m.id}
-                  className="w-2.5 h-2.5 rounded-full border-[2.5px] border-current box-border bg-transparent shrink-0"
+                  className="w-2 h-2 rounded-full border-[2px] border-current box-border bg-transparent shrink-0"
                   style={{
                     color: colorMode === 'monochromatic'
                       ? 'hsl(var(--primary))'
@@ -97,7 +97,7 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
                 return (
                   <div
                     key={i.id}
-                    className={`w-2 h-2 rounded-full shrink-0 ${i.completed ? 'opacity-40' : 'opacity-100'}`}
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${i.completed ? 'opacity-40' : 'opacity-100'}`}
                     style={{ backgroundColor: itemColor }}
                     title={`Task: ${i.title}`}
                   />

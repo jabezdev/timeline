@@ -20,8 +20,8 @@ interface TimelineCellProps {
   showBorder?: boolean;
   onQuickCreate: (projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone, anchorElement?: HTMLElement) => void;
-  selectedIds: Set<string>;
-  onItemClick: (id: string, multi: boolean) => void;
+  onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }
@@ -40,8 +40,8 @@ export const TimelineCell = React.memo(function TimelineCell({
   showBorder = true,
   onQuickCreate,
   onQuickEdit,
-  selectedIds,
   onItemClick,
+  onItemContextMenu,
   colorMode,
   systemAccent
 }: TimelineCellProps) {
@@ -58,8 +58,8 @@ export const TimelineCell = React.memo(function TimelineCell({
             onDoubleClick={onItemDoubleClick}
             onQuickEdit={onQuickEdit}
             minHeight={rowHeight}
-            isSelected={selectedIds.has(milestone.id)}
-            onClick={(multi: boolean) => onItemClick(milestone.id, multi)}
+            onClick={(multi, e) => onItemClick(milestone.id, multi, e)}
+            onContextMenu={(e) => onItemContextMenu(milestone.id, 'milestone', e)}
             colorMode={colorMode}
             systemAccent={systemAccent}
           />
@@ -75,8 +75,8 @@ export const TimelineCell = React.memo(function TimelineCell({
             onQuickEdit={onQuickEdit}
             workspaceColor={workspaceColor}
             minHeight={rowHeight}
-            isSelected={selectedIds.has(item.id)}
-            onClick={(multi) => onItemClick(item.id, multi)}
+            onClick={(multi, e) => onItemClick(item.id, multi, e)}
+            onContextMenu={(e) => onItemContextMenu(item.id, 'item', e)}
             colorMode={colorMode}
             systemAccent={systemAccent}
           />

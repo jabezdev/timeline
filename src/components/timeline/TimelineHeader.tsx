@@ -70,7 +70,7 @@ export const TimelineHeader = memo(function TimelineHeader({ startDate, visibleD
                 style={{ width: HEADER_HEIGHT, height: '100%' }} // Square, flush to right
               >
                 <span className={`flex items-center justify-center rounded-full h-5 min-w-[20px] px-1.5 
-                    ${isDayToday ? 'bg-white/20 text-white' : 'bg-secondary text-secondary-foreground'}
+                    ${isDayToday ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-secondary text-secondary-foreground'}
                   `}>
                   {count}
                 </span>
