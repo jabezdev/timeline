@@ -10,7 +10,7 @@ export function useWorkspaceMutations(
     const queryClient = useQueryClient();
 
     const addWorkspace = useMutation({
-        mutationFn: api.addWorkspace,
+        mutationFn: api.createWorkspace,
         onMutate: async (newWorkspace) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
@@ -26,8 +26,8 @@ export function useWorkspaceMutations(
                             id: optimId,
                             name: newWorkspace.name,
                             color: newWorkspace.color.toString(),
-                            order: workspaceOrder.length,
-                            projects: [],
+                            isCollapsed: false,
+                            position: workspaceOrder.length,
                             isHidden: false
                         }
                     },
@@ -115,6 +115,7 @@ export function useWorkspaceMutations(
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
+            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
         }
     });
 

@@ -192,7 +192,10 @@ export const api = {
         return this.handleResponse(supabase.from('sub_projects').update(dbUpdates).eq('id', id));
     },
 
-    async deleteSubProject(id: string) {
+    async deleteSubProject(id: string, deleteItems?: boolean) {
+        if (deleteItems) {
+            await supabase.from('items').delete().eq('sub_project_id', id);
+        }
         return this.handleResponse(supabase.from('sub_projects').delete().eq('id', id));
     },
 

@@ -251,7 +251,9 @@ export function QuickEditContent({
                     onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        onDelete();
+                        if (confirm(`Delete this ${isItem ? 'task' : isSubProject ? 'sub-project' : 'milestone'}?`)) {
+                            onDelete();
+                        }
                     }}
                 >
                     <Trash2 className="w-3 h-3 mr-1.5" />

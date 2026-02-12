@@ -38,6 +38,7 @@ export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects
     const [endDate, setEndDate] = useState<string>("");
 
     const [viewMode, setViewMode] = useState<'edit' | 'split' | 'preview'>('edit');
+    const isDeleting = useRef(false);
 
     const isMilestone = !!item && !('completed' in item) && !('startDate' in item);
     const isSubProject = !!item && 'startDate' in item;
@@ -83,7 +84,7 @@ export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects
 
     // Handle Closing (Auto-save)
     const handleOpenChange = (newOpen: boolean) => {
-        if (!newOpen && item) {
+        if (!newOpen && item && !isDeleting.current) {
             if (isItem) {
                 const updates: TimelineItem = {
                     ...(item as TimelineItem),
@@ -137,6 +138,11 @@ export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects
         setContent(e.target.value);
     }, []);
 
+    const handleDelete = useCallback((item: TimelineItem | Milestone | SubProject) => {
+        isDeleting.current = true;
+        onDelete?.(item);
+    }, [onDelete]);
+
     // Also helper to synthesize change from our EditorToolbar if needed
     // But since we are passing `setContent` logic down via `ItemSheetEditor`, we need to match its prop expectation
     // `ItemSheetEditor` expects `onContentChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void`
@@ -168,7 +174,7 @@ export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects
                         if (e.key === 'Enter') e.preventDefault();
                     }}
                     onClose={() => handleOpenChange(false)}
-                    onDelete={onDelete}
+                    onDelete={handleDelete}
                     completed={completed}
                     setCompleted={setCompleted}
                     isItem={isItem}

@@ -48,7 +48,7 @@ export function useTimelineKeyboard({
                     mutations.deleteSubProject.mutate({ id, deleteItems: false });
                 }
             });
-            setSelectedIds(new Set());
+            clearSelection();
             return;
         }
 
@@ -115,7 +115,7 @@ export function useTimelineKeyboard({
                 }
             });
         }
-    }, [timelineState, mutations, setSelectedIds, onQuickEdit, toggleSelection]);
+    }, [timelineState, mutations, setSelectedIds, onQuickEdit, toggleSelection, clearSelection]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);

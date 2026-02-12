@@ -194,17 +194,36 @@ export function useItemMutations(
     });
 
     const deleteSubProject = useMutation({
-        mutationFn: async ({ id }: { id: string; deleteItems?: boolean }) => {
-            return api.deleteSubProject(id);
+        mutationFn: async ({ id, deleteItems }: { id: string; deleteItems?: boolean }) => {
+            return api.deleteSubProject(id, deleteItems);
         },
-        onMutate: async ({ id }) => {
+        onMutate: async ({ id, deleteItems }) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
             const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
 
             updateTimelineDataCache((old) => {
                 const subProjects = { ...old.subProjects };
                 delete subProjects[id];
-                return { ...old, subProjects };
+
+                let items = old.items || {};
+                if (deleteItems) {
+                    items = { ...items };
+                    Object.keys(items).forEach(itemId => {
+                        if (items[itemId].subProjectId === id) {
+                            delete items[itemId];
+                        }
+                    });
+                } else {
+                    // Just unlink
+                    items = { ...items };
+                    Object.keys(items).forEach(itemId => {
+                        if (items[itemId].subProjectId === id) {
+                            items[itemId] = { ...items[itemId], subProjectId: undefined };
+                        }
+                    });
+                }
+
+                return { ...old, subProjects, items };
             });
 
             return { previousState };

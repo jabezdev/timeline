@@ -95,6 +95,7 @@ export function useProjectMutations(
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
+            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
         }
     });
 
