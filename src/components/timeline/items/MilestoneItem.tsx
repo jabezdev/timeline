@@ -63,7 +63,8 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
         style={{
           backgroundColor: bgColor,
           borderColor: isSelected ? 'hsl(var(--primary))' : borderColor,
-          borderWidth: isSelected ? '2px' : '1px',
+          borderWidth: '1px',
+          boxShadow: isSelected ? 'inset 0 0 0 1px hsl(var(--primary))' : undefined,
           color: textColor,
           minHeight: minHeight ? `${minHeight}px` : undefined,
         }}
@@ -104,7 +105,7 @@ export const MilestoneItem = React.memo(function MilestoneItem({
   return (
     <div className={className}>
       <div
-        className="pointer-events-auto"
+        className="pointer-events-auto select-none"
         onContextMenu={(e) => {
           if (onContextMenu) { onContextMenu(e); return; }
 

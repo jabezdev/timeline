@@ -9,7 +9,7 @@ export function useProjectMutations(
     const queryClient = useQueryClient();
 
     const addProject = useMutation({
-        mutationFn: api.addProject,
+        mutationFn: api.createProject,
         onMutate: async (newProject) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
@@ -99,8 +99,11 @@ export function useProjectMutations(
     });
 
     const reorderProjects = useMutation({
-        mutationFn: api.reorderProjects,
-        onMutate: async ({ projectIds }) => {
+        mutationFn: (projectIds: string[]) => {
+            const projectsToUpdate = projectIds.map((id, index) => ({ id, position: index }));
+            return api.reorderProjects(projectsToUpdate);
+        },
+        onMutate: async (projectIds) => {
             await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
             const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
 

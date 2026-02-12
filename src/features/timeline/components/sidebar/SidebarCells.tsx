@@ -21,12 +21,14 @@ interface SidebarCellProps {
     isStickyTop?: boolean;
     width?: number;
     innerClassName?: string;
+    onClick?: () => void;
 }
 
-export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, width = 350, innerClassName }: SidebarCellProps) {
+export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, width = 350, innerClassName, onClick }: SidebarCellProps) {
     return (
         <div
-            className={`sticky left-0 z-50 flex items-center border-r border-border shrink-0 bg-background ${className || ''}`}
+            className={`sticky left-0 z-50 flex items-center border-r border-border shrink-0 bg-background cursor-default ${className || ''}`}
+            onClick={onClick}
             style={{
                 height: height ?? 'auto',
                 minHeight: minHeight ?? height,
@@ -50,12 +52,14 @@ interface InlineWorkspaceLabelProps {
     workspace: Workspace;
     projects: Project[];
     width?: number;
+    onClearSelection?: () => void;
 }
 
 export const WorkspaceSidebarCell = memo(function WorkspaceSidebarCell({
     workspace,
     projects,
     width,
+    onClearSelection,
 }: InlineWorkspaceLabelProps) {
     const projectCount = projects.length;
     const mutations = useTimelineMutations();
@@ -65,11 +69,13 @@ export const WorkspaceSidebarCell = memo(function WorkspaceSidebarCell({
     const handleAddProject = () => {
         if (!newProjectName.trim()) return;
         mutations.addProject.mutate({
+            id: `temp-${Date.now()}`,
             workspaceId: workspace.id,
             name: newProjectName.trim(),
-            color: 1,
+            color: '1',
             position: 0,
-        });
+            isHidden: false,
+        } as any);
         setNewProjectName('');
         setIsAddProjectOpen(false);
     };
@@ -89,7 +95,7 @@ export const WorkspaceSidebarCell = memo(function WorkspaceSidebarCell({
     const effectiveColorVar = getEffectiveColor();
 
     return (
-        <SidebarCell height={WORKSPACE_HEADER_HEIGHT} backgroundColor={`hsl(${effectiveColorVar} / 0.15)`} className="z-[55]" width={width}>
+        <SidebarCell height={WORKSPACE_HEADER_HEIGHT} backgroundColor={`hsl(${effectiveColorVar} / 0.15)`} className="z-[55]" width={width} onClick={onClearSelection}>
             <div className="flex items-center gap-2 w-full group overflow-hidden">
                 <div
                     className="w-5 h-5 rounded flex items-center justify-center shrink-0"
@@ -144,6 +150,7 @@ interface InlineProjectLabelProps {
     items: TimelineItem[];
     workspaceColor: string;
     width?: number;
+    onClearSelection?: () => void;
 }
 
 export const ProjectSidebarCell = memo(function ProjectSidebarCell({
@@ -151,6 +158,7 @@ export const ProjectSidebarCell = memo(function ProjectSidebarCell({
     items,
     workspaceColor,
     width,
+    onClearSelection,
 }: InlineProjectLabelProps) {
     const itemCount = items.length;
     const completedCount = items.filter(t => t.completed).length;
@@ -171,7 +179,7 @@ export const ProjectSidebarCell = memo(function ProjectSidebarCell({
     const effectiveColorVar = getEffectiveColor();
 
     return (
-        <SidebarCell minHeight={PROJECT_HEADER_HEIGHT} backgroundColor={`hsl(${effectiveColorVar} / 0.07)`} className="z-[54]" width={width}>
+        <SidebarCell minHeight={PROJECT_HEADER_HEIGHT} backgroundColor={`hsl(${effectiveColorVar} / 0.07)`} className="z-[54]" width={width} onClick={onClearSelection}>
             <div className="flex items-center gap-2 w-full pl-2 pr-2">
                 <span className="text-xs font-medium text-foreground truncate flex-1">{project.name}</span>
                 {activeCount > 0 && (

@@ -81,21 +81,6 @@ const TimelineContainer = memo(function TimelineContainer({
       handleItemContextMenu={handlers.handleItemContextMenu}
       onClearSelection={handlers.clearSelection}
 
-      // State
-      setSelectedItem={handlers.setSelectedItem}
-      setIsItemDialogOpen={handlers.setIsItemDialogOpen}
-      setSubProjectToDelete={handlers.setSubProjectToDelete}
-      selectedItem={handlers.selectedItem}
-      isItemDialogOpen={handlers.isItemDialogOpen}
-      subProjectToDelete={handlers.subProjectToDelete}
-
-      quickCreateState={handlers.quickCreateState}
-      setQuickCreateState={handlers.setQuickCreateState}
-      quickEditState={handlers.quickEditState}
-      setQuickEditState={handlers.setQuickEditState}
-      availableSubProjectsForCreate={handlers.availableSubProjectsForCreate}
-      availableSubProjects={handlers.availableSubProjects}
-
       // Data
       allProjects={allProjects}
       allSubProjects={allSubProjects}

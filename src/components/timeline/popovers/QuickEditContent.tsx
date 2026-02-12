@@ -97,7 +97,7 @@ export function QuickEditContent({
     };
 
     return (
-        <div className="w-[340px] p-0 overflow-hidden shadow-2xl border border-border/40 bg-background/80 backdrop-blur-xl rounded-lg">
+        <div className="w-[340px] p-0 overflow-hidden shadow-2xl border border-border/40 bg-background rounded-lg">
             {/* Header / Title Input */}
             <div className="p-4 border-b border-border/10 bg-muted/20">
                 <Input

@@ -44,7 +44,6 @@ export function SubProjectCell({
         <div
             className="shrink-0 px-0 py-0"
             style={{ width: CELL_WIDTH, minWidth: CELL_WIDTH, minHeight: height }}
-            onClick={(e) => activeSubProject && onQuickCreate('item', projectId, dateStr, activeSubProject.id, workspaceColor, e.currentTarget)}
         >
             <div className="relative w-full h-full group/cell">
                 <div className="flex flex-col gap-0 h-full pointer-events-none">

@@ -29,47 +29,9 @@ interface TimelineViewProps {
     handleItemSave: (item: TimelineItem | Milestone | SubProject) => void;
     handleToggleItemComplete: (id: string) => void;
     timelineRef: React.RefObject<HTMLDivElement>;
-    setSelectedItem: (item: TimelineItem | Milestone | SubProject | null) => void;
-    setIsItemDialogOpen: (open: boolean) => void;
-    setSubProjectToDelete: (sp: SubProject | null) => void;
-    selectedItem: TimelineItem | Milestone | SubProject | null;
-    isItemDialogOpen: boolean;
-    subProjectToDelete: SubProject | null;
     handleItemClick?: (id: string, multi: boolean, e: React.MouseEvent) => void;
     handleItemContextMenu?: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
     onClearSelection: () => void;
-
-    // Props for global popovers state passed from parent
-    quickCreateState: {
-        open: boolean;
-        type: 'item' | 'milestone';
-        projectId: string;
-        subProjectId?: string;
-        date: string;
-        workspaceColor?: number;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    };
-    setQuickCreateState: React.Dispatch<React.SetStateAction<{
-        open: boolean;
-        type: 'item' | 'milestone';
-        projectId: string;
-        subProjectId?: string;
-        date: string;
-        workspaceColor?: number;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    }>>;
-    quickEditState: {
-        open: boolean;
-        item: TimelineItem | Milestone | SubProject | null;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    };
-    setQuickEditState: React.Dispatch<React.SetStateAction<{
-        open: boolean;
-        item: TimelineItem | Milestone | SubProject | null;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    }>>;
-    availableSubProjectsForCreate: SubProject[];
-    availableSubProjects: SubProject[];
     allProjects: import('@/types/timeline').Project[];
     allSubProjects: SubProject[];
 }
@@ -98,17 +60,6 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
         handleItemDelete,
         allProjects,
         allSubProjects,
-        selectedItem,
-        isItemDialogOpen,
-        setIsItemDialogOpen,
-        subProjectToDelete,
-        setSubProjectToDelete,
-        quickCreateState,
-        setQuickCreateState,
-        quickEditState,
-        setQuickEditState,
-        availableSubProjectsForCreate,
-        availableSubProjects,
     } = props;
 
 
@@ -136,18 +87,9 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
         <div className="h-screen flex bg-background overflow-hidden relative">
             <div
                 ref={timelineRef}
-                className="flex-1 overflow-auto scrollbar-hide w-full h-full"
                 id="timeline-scroll-container"
-                onClick={(e) => {
-                    // Only handle clicks on the container itself (empty space)
-                    if (e.target === e.currentTarget ||
-                        (e.target as HTMLElement).classList?.contains('min-w-max') ||
-                        (e.target as HTMLElement).id === 'timeline-scroll-container') {
-                        onClearSelection();
-                        // Also close quick edit popover
-                        setQuickEditState(prev => ({ ...prev, open: false }));
-                    }
-                }}
+                className="flex-1 overflow-auto scrollbar-hide w-full h-full select-none"
+                onClick={onClearSelection}
             >
                 <div className="min-w-max flex flex-col">
 
@@ -187,7 +129,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                     }}
                                 >
                                     {/* Sidebar Cell — sticky left */}
-                                    <WorkspaceSidebarCell workspace={workspace} projects={projects} />
+                                    <WorkspaceSidebarCell workspace={workspace} projects={projects} onClearSelection={onClearSelection} />
 
                                     {/* Summary dots fill full width */}
                                     <div className="flex-1" style={{ height: WORKSPACE_HEADER_HEIGHT }}>
@@ -221,6 +163,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                                 project={project}
                                                 items={projectsItems.get(project.id) || []}
                                                 workspaceColor={workspace.color || '1'}
+                                                onClearSelection={onClearSelection}
                                             />
 
                                             <div className="flex-1" style={{ minHeight: PROJECT_HEADER_HEIGHT, height: 'auto' }}>
@@ -244,11 +187,12 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                         <div className="relative z-0 flex">
                                             {/* Sidebar Spacer for Content Row */}
                                             <div
-                                                className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-auto"
+                                                className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-auto cursor-default"
                                                 style={{
                                                     width: 'var(--sidebar-width)',
                                                     minWidth: 'var(--sidebar-width)'
                                                 }}
+                                                onClick={onClearSelection}
                                             />
 
                                             <div className="flex-1">
@@ -294,21 +238,11 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                 handleItemDelete={handleItemDelete}
                 allProjects={allProjects}
                 allSubProjects={allSubProjects}
-                selectedItem={selectedItem}
-                isItemDialogOpen={isItemDialogOpen}
-                setIsItemDialogOpen={setIsItemDialogOpen}
-                subProjectToDelete={subProjectToDelete}
-                setSubProjectToDelete={setSubProjectToDelete}
-                quickCreateState={quickCreateState}
-                setQuickCreateState={setQuickCreateState}
-                quickEditState={quickEditState}
-                setQuickEditState={setQuickEditState}
-                availableSubProjectsForCreate={availableSubProjectsForCreate}
-                availableSubProjects={availableSubProjects}
+                timelineState={timelineState}
             />
 
             <Scrollbar containerRef={timelineRef} orientation="horizontal" />
             <Scrollbar containerRef={timelineRef} orientation="vertical" />
-        </div>
+        </div >
     );
 });

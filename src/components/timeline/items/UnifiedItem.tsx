@@ -81,7 +81,8 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                     borderColor: isSelected
                         ? 'hsl(var(--primary))'
                         : getBgColor(0.3),
-                    borderWidth: isSelected ? '2px' : '1px',
+                    borderWidth: '1px',
+                    boxShadow: isSelected ? 'inset 0 0 0 1px hsl(var(--primary))' : undefined,
                     minHeight: minHeight ? `${minHeight}px` : undefined,
                 }}
                 onClick={(e) => {
@@ -135,7 +136,7 @@ export const UnifiedItem = React.memo(function UnifiedItem({
     return (
         <div>
             <div
-                className="pointer-events-auto"
+                className="pointer-events-auto select-none"
                 onContextMenu={(e) => {
                     if (onContextMenu) { onContextMenu(e); return; }
 

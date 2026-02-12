@@ -20,51 +20,18 @@ export function useTimelineHandlers({
     const setSidebarWidth = useTimelineStore(state => state.setSidebarWidth);
     const sidebarWidth = useTimelineStore(state => state.sidebarWidth);
 
-    // Local State
-    const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
-    const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
-    const [subProjectToDelete, setSubProjectToDelete] = useState<SubProject | null>(null);
+    // UI State Setters from store (these are stable and don't trigger re-renders if selected carefully)
+    const setSelectedItem = useTimelineStore(state => state.setSelectedItem);
+    const setIsItemDialogOpen = useTimelineStore(state => state.setIsItemDialogOpen);
+    const setQuickCreateState = useTimelineStore(state => state.setQuickCreateState);
+    const setQuickEditState = useTimelineStore(state => state.setQuickEditState);
 
-    const [quickCreateState, setQuickCreateState] = useState<{
-        open: boolean;
-        type: 'item' | 'milestone';
-        projectId: string;
-        subProjectId?: string;
-        date: string;
-        workspaceColor?: number;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    }>({ open: false, type: 'item', projectId: '', date: '', workspaceColor: 1 });
-
-    const [quickEditState, setQuickEditState] = useState<{
-        open: boolean;
-        item: TimelineItem | Milestone | SubProject | null;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    }>({ open: false, item: null });
 
     // Refs for access in callbacks without dependency changes
     const timelineStateRef = useRef(timelineState);
     timelineStateRef.current = timelineState;
 
-    const selectedItemRef = useRef(selectedItem);
-    selectedItemRef.current = selectedItem;
 
-    // Filter subprojects for the item being edited
-    const availableSubProjects = useMemo(() => {
-        if (!quickEditState.item || !('projectId' in quickEditState.item)) return [];
-        const pid = quickEditState.item.projectId;
-        return Object.values(timelineState.subProjects || {})
-            .filter(sp => sp.projectId === pid)
-            .sort((a, b) => a.title.localeCompare(b.title));
-    }, [quickEditState.item, timelineState.subProjects]);
-
-    // Filter subprojects for the item being created
-    const availableSubProjectsForCreate = useMemo(() => {
-        if (!quickCreateState.open || !quickCreateState.projectId) return [];
-        const pid = quickCreateState.projectId;
-        return Object.values(timelineState.subProjects || {})
-            .filter(sp => sp.projectId === pid)
-            .sort((a, b) => a.title.localeCompare(b.title));
-    }, [quickCreateState.open, quickCreateState.projectId, timelineState.subProjects]);
 
     /* Handlers */
     const handleQuickCreate = useCallback((type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => {
@@ -223,7 +190,7 @@ export function useTimelineHandlers({
         } else if ('startDate' in updatedItem) {
             let childItemsToUpdate: Partial<TimelineItem>[] = [];
 
-            const currentSelectedItem = selectedItemRef.current;
+            const currentSelectedItem = useTimelineStore.getState().selectedItem;
             if (currentSelectedItem && 'startDate' in currentSelectedItem) {
                 const originalSP = currentSelectedItem as SubProject;
                 const newSP = updatedItem as SubProject;
@@ -319,21 +286,7 @@ export function useTimelineHandlers({
         window.addEventListener('mouseup', handleMouseUp);
     }, [setSidebarWidth]);
 
-    return {
-        // State
-        selectedItem,
-        setSelectedItem,
-        isItemDialogOpen,
-        setIsItemDialogOpen,
-        subProjectToDelete,
-        setSubProjectToDelete,
-        quickCreateState,
-        setQuickCreateState,
-        quickEditState,
-        setQuickEditState,
-        availableSubProjects,
-        availableSubProjectsForCreate,
-
+    return useMemo(() => ({
         // Handlers
         handleQuickCreate,
         handleQuickEdit,
@@ -348,5 +301,21 @@ export function useTimelineHandlers({
         handleToggleItemComplete,
         handleResizeStart,
         clearSelection,
-    };
+        setQuickEditState,
+    }), [
+        handleQuickCreate,
+        handleQuickEdit,
+        handleAddItem,
+        handleAddMilestone,
+        handleAddSubProject,
+        handleItemClick,
+        handleItemContextMenu,
+        handleItemDoubleClick,
+        handleItemDelete,
+        handleItemSave,
+        handleToggleItemComplete,
+        handleResizeStart,
+        clearSelection,
+        setQuickEditState,
+    ]);
 }

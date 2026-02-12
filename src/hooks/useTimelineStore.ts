@@ -11,6 +11,17 @@ interface TimelineStore {
   toggleSelection: (id: string, multi: boolean) => void;
   selectItem: (id: string, multi: boolean) => void;
   clearSelection: () => void;
+  // UI State
+  selectedItem: any | null;
+  setSelectedItem: (item: any | null) => void;
+  isItemDialogOpen: boolean;
+  setIsItemDialogOpen: (open: boolean) => void;
+  quickCreateState: any;
+  setQuickCreateState: (state: any) => void;
+  quickEditState: any;
+  setQuickEditState: (state: any) => void;
+  subProjectToDelete: any | null;
+  setSubProjectToDelete: (sp: any | null) => void;
 }
 
 // Debounce timer for localStorage persistence
@@ -28,7 +39,7 @@ const storeCreator: StateCreator<TimelineStore> = (set) => ({
     const newSet = new Set(multi ? state.selectedIds : []);
     if (newSet.has(id)) {
       if (multi) newSet.delete(id);
-      else return { selectedIds: new Set([id]) }; // Ensure single select if toggling on same item in single mode (though usually click selects)
+      else return { selectedIds: new Set([id]) };
     } else {
       newSet.add(id);
     }
@@ -39,7 +50,30 @@ const storeCreator: StateCreator<TimelineStore> = (set) => ({
     newSet.add(id);
     return { selectedIds: newSet };
   }),
-  clearSelection: () => set({ selectedIds: new Set() }),
+  clearSelection: () => set({
+    selectedIds: new Set(),
+    selectedItem: null,
+    isItemDialogOpen: false,
+    quickCreateState: { open: false, type: 'item', projectId: '', date: '', workspaceColor: 1 },
+    quickEditState: { open: false, item: null },
+    subProjectToDelete: null
+  }),
+
+  // UI State Defaults
+  selectedItem: null,
+  setSelectedItem: (selectedItem) => set({ selectedItem }),
+  isItemDialogOpen: false,
+  setIsItemDialogOpen: (isItemDialogOpen) => set({ isItemDialogOpen }),
+  quickCreateState: { open: false, type: 'item', projectId: '', date: '', workspaceColor: 1 },
+  setQuickCreateState: (update) => set((state) => ({
+    quickCreateState: typeof update === 'function' ? update(state.quickCreateState) : update
+  })),
+  quickEditState: { open: false, item: null },
+  setQuickEditState: (update) => set((state) => ({
+    quickEditState: typeof update === 'function' ? update(state.quickEditState) : update
+  })),
+  subProjectToDelete: null,
+  setSubProjectToDelete: (subProjectToDelete) => set({ subProjectToDelete }),
 });
 
 // Custom storage that debounces writes

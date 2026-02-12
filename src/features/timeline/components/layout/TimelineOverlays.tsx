@@ -13,6 +13,8 @@ import { ItemSheet } from '@/components/timeline/modals/ItemSheet';
 import { QuickCreatePopover } from '@/components/timeline/popovers/QuickCreatePopover';
 import { QuickEditPopover } from '@/components/timeline/popovers/QuickEditPopover';
 import { TimelineItem, Milestone, SubProject, Project } from '@/types/timeline';
+import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useEffect, useMemo } from 'react';
 
 interface TimelineOverlaysProps {
     handleAddItem: (title: string, date: string, projectId: string, subProjectId?: string, color?: number) => void;
@@ -22,43 +24,7 @@ interface TimelineOverlaysProps {
     handleItemDelete: (item: TimelineItem | Milestone | SubProject, deleteItems?: boolean) => void;
     allProjects: Project[];
     allSubProjects: SubProject[];
-    selectedItem: TimelineItem | Milestone | SubProject | null;
-    isItemDialogOpen: boolean;
-    setIsItemDialogOpen: (open: boolean) => void;
-    subProjectToDelete: SubProject | null;
-    setSubProjectToDelete: (sp: SubProject | null) => void;
-
-    // Quick Action States
-    quickCreateState: {
-        open: boolean;
-        type: 'item' | 'milestone';
-        projectId: string;
-        subProjectId?: string;
-        date: string;
-        workspaceColor?: number;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    };
-    setQuickCreateState: React.Dispatch<React.SetStateAction<{
-        open: boolean;
-        type: 'item' | 'milestone';
-        projectId: string;
-        subProjectId?: string;
-        date: string;
-        workspaceColor?: number;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    }>>;
-    quickEditState: {
-        open: boolean;
-        item: TimelineItem | Milestone | SubProject | null;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    };
-    setQuickEditState: React.Dispatch<React.SetStateAction<{
-        open: boolean;
-        item: TimelineItem | Milestone | SubProject | null;
-        anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
-    }>>;
-    availableSubProjectsForCreate: SubProject[];
-    availableSubProjects: SubProject[];
+    timelineState: import('@/types/timeline').TimelineState;
 }
 
 export function TimelineOverlays({
@@ -69,18 +35,35 @@ export function TimelineOverlays({
     handleItemDelete,
     allProjects,
     allSubProjects,
-    selectedItem,
-    isItemDialogOpen,
-    setIsItemDialogOpen,
-    subProjectToDelete,
-    setSubProjectToDelete,
-    quickCreateState,
-    setQuickCreateState,
-    quickEditState,
-    setQuickEditState,
-    availableSubProjectsForCreate,
-    availableSubProjects,
+    timelineState,
 }: TimelineOverlaysProps) {
+    const selectedItem = useTimelineStore(state => state.selectedItem);
+    const isItemDialogOpen = useTimelineStore(state => state.isItemDialogOpen);
+    const setIsItemDialogOpen = useTimelineStore(state => state.setIsItemDialogOpen);
+    const quickCreateState = useTimelineStore(state => state.quickCreateState);
+    const setQuickCreateState = useTimelineStore(state => state.setQuickCreateState);
+    const quickEditState = useTimelineStore(state => state.quickEditState);
+    const setQuickEditState = useTimelineStore(state => state.setQuickEditState);
+    const subProjectToDelete = useTimelineStore(state => state.subProjectToDelete);
+    const setSubProjectToDelete = useTimelineStore(state => state.setSubProjectToDelete);
+
+    // Filter subprojects for the item being edited
+    const availableSubProjects = useMemo(() => {
+        if (!quickEditState.item || !('projectId' in quickEditState.item)) return [];
+        const pid = quickEditState.item.projectId;
+        return Object.values(timelineState.subProjects || {})
+            .filter(sp => sp.projectId === pid)
+            .sort((a, b) => a.title.localeCompare(b.title));
+    }, [quickEditState.item, timelineState.subProjects]);
+
+    // Filter subprojects for the item being created
+    const availableSubProjectsForCreate = useMemo(() => {
+        if (!quickCreateState.open || !quickCreateState.projectId) return [];
+        const pid = quickCreateState.projectId;
+        return Object.values(timelineState.subProjects || {})
+            .filter(sp => sp.projectId === pid)
+            .sort((a, b) => a.title.localeCompare(b.title));
+    }, [quickCreateState.open, quickCreateState.projectId, timelineState.subProjects]);
     return (
         <>
             <CreateItemPopover

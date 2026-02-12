@@ -16,7 +16,6 @@ export function useTimelineKeyboard({
     const mutations = useTimelineMutations();
 
     // Use granular selectors to prevent unnecessary re-renders
-    const selectedIds = useTimelineStore(state => state.selectedIds);
     const setSelectedIds = useTimelineStore(state => state.setSelectedIds);
     const toggleSelection = useTimelineStore(state => state.toggleSelection);
     const clearSelection = useTimelineStore(state => state.clearSelection);
@@ -27,6 +26,8 @@ export function useTimelineKeyboard({
             return;
         }
 
+        // Get current selectedIds on demand to avoid re-rendering on every selection change
+        const selectedIds = useTimelineStore.getState().selectedIds;
         if (selectedIds.size === 0) return;
 
         // Delete
@@ -81,12 +82,7 @@ export function useTimelineKeyboard({
             if (e.key === 'ArrowUp') days = -7;
             if (e.key === 'ArrowDown') days = 7;
 
-            if (e.shiftKey) days *= 7; // Shift+Arrow for larger jumps? 
-            // User request: "Arrow keys for +/- 1 day, Shift + Arrow keys for +/- 7 days"
-            // My logic above: Up/Down is +/- 7 days (1 week). 
-            // Let's stick strictly to user request or reasonable defaults.
-            // User said: "Simple arrow keys (not Cmd/Ctrl) for date shifting"
-            // Let's make Left/Right = 1 day, Up/Down = 1 week.
+            if (e.shiftKey) days *= 7;
 
             const idsToUpdate = Array.from(selectedIds);
             idsToUpdate.forEach(id => {
@@ -119,7 +115,7 @@ export function useTimelineKeyboard({
                 }
             });
         }
-    }, [selectedIds, timelineState, mutations, setSelectedIds, onQuickEdit]);
+    }, [timelineState, mutations, setSelectedIds, onQuickEdit, toggleSelection]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);
