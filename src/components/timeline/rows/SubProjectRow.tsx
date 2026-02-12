@@ -6,7 +6,7 @@ interface SubProjectSectionProps {
   projectId: string;
   subProjectLanes: SubProject[][];
   itemsBySubProject: Map<string, Map<string, TimelineItem[]>>;
-  days: Date[];
+  days: { date: Date; dateStr: string }[];
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
   onItemDoubleClick: (item: TimelineItem) => void;

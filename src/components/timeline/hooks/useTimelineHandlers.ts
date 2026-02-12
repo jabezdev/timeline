@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTimelineMutations } from '@/hooks/useTimelineMutations';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { useTimelineKeyboard } from '@/hooks/useTimelineKeyboard'; // Check if this exists or I need to move it? It's in @/hooks
+import { useTimelineKeyboard } from '@/hooks/useTimelineKeyboard';
 import { generateId } from '@/lib/utils';
 import { addDays, parseISO, format, differenceInDays } from 'date-fns';
 import { TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
@@ -12,13 +12,13 @@ export function useTimelineHandlers({
     timelineState: TimelineState
 }) {
     const mutations = useTimelineMutations();
-    const {
-        toggleSelection,
-        selectItem,
-        clearSelection,
-        setSidebarWidth,
-        sidebarWidth
-    } = useTimelineStore();
+
+    // Optimisation: Use granular selectors to avoid re-rendering when other parts of the store change
+    const toggleSelection = useTimelineStore(state => state.toggleSelection);
+    const selectItem = useTimelineStore(state => state.selectItem);
+    const clearSelection = useTimelineStore(state => state.clearSelection);
+    const setSidebarWidth = useTimelineStore(state => state.setSidebarWidth);
+    const sidebarWidth = useTimelineStore(state => state.sidebarWidth);
 
     // Local State
     const [selectedItem, setSelectedItem] = useState<TimelineItem | Milestone | SubProject | null>(null);
@@ -155,12 +155,8 @@ export function useTimelineHandlers({
     const handleItemClick = useCallback((id: string, multi: boolean, e: React.MouseEvent) => {
         e.stopPropagation();
 
-        // 1. Handle Selection Logic
-        if (multi) {
-            toggleSelection(id, true);
-        } else {
-            selectItem(id, false);
-        }
+        // 1. Handle Selection Logic - Always use multi-select (automatic multi-select)
+        toggleSelection(id, true);
 
         // Fetch item for further logic
         const ts = timelineStateRef.current;
@@ -172,20 +168,17 @@ export function useTimelineHandlers({
                 const childItems = Object.values(ts.items).filter(i => i.subProjectId === id);
                 if (childItems.length > 0) {
                     const currentSelected = useTimelineStore.getState().selectedIds;
-                    const newSet = new Set(multi ? currentSelected : []);
+                    const newSet = new Set(currentSelected);
                     newSet.add(id);
                     childItems.forEach(c => newSet.add(c.id));
                     useTimelineStore.getState().setSelectedIds(newSet);
                 }
             }
-
-            // 3. Open Quick Edit (Left Click)
-            handleQuickEdit(item, e.currentTarget as HTMLElement);
         }
 
         // Ensure Sidebar is closed on left click
         setIsItemDialogOpen(false);
-    }, [toggleSelection, selectItem, handleQuickEdit]);
+    }, [toggleSelection]);
 
     const handleItemContextMenu = useCallback((id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => {
         e.preventDefault();
@@ -204,10 +197,13 @@ export function useTimelineHandlers({
         }
     }, [handleSelection]);
 
-    const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject) => {
-        // Double click disabled per user request
-        return;
-    }, []);
+    const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject, e?: React.MouseEvent) => {
+        // Single-select the double-clicked item (clear other selections)
+        selectItem(item.id, false);
+
+        // Open quick edit dialog
+        handleQuickEdit(item, e?.currentTarget as HTMLElement);
+    }, [selectItem, handleQuickEdit]);
 
     const handleItemDelete = useCallback((item: TimelineItem | Milestone | SubProject, deleteItems: boolean = false) => {
         if ('completed' in item) {
@@ -274,9 +270,10 @@ export function useTimelineHandlers({
     const currentWidthRef = useRef(sidebarWidth);
     const animationFrameRef = useRef<number>(0);
 
+    // Update the ref when sidebarWidth changes, but don't force a re-render loop if not needed
     useEffect(() => {
-        document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
         currentWidthRef.current = sidebarWidth;
+        document.documentElement.style.setProperty('--sidebar-width', `${sidebarWidth}px`);
     }, [sidebarWidth]);
 
     const handleResizeStart = useCallback((e: React.MouseEvent) => {

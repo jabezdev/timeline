@@ -7,6 +7,7 @@ import { MilestoneItem } from './MilestoneItem';
 
 interface TimelineCellProps {
   date: Date;
+  dateStr: string;
   projectId: string;
   subProjectId?: string;
   laneId?: string;
@@ -28,6 +29,7 @@ interface TimelineCellProps {
 
 export const TimelineCell = React.memo(function TimelineCell({
   date,
+  dateStr,
   projectId,
   subProjectId,
   items,
@@ -45,7 +47,6 @@ export const TimelineCell = React.memo(function TimelineCell({
   colorMode,
   systemAccent
 }: TimelineCellProps) {
-  const dateStr = format(date, 'yyyy-MM-dd');
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const content = (

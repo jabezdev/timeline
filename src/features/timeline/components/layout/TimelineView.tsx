@@ -1,25 +1,14 @@
-import { memo } from 'react';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { TimelineHeader } from './TimelineHeader';
-import { WorkspaceHeaderRow } from './WorkspaceSection';
-import { ProjectRow, MilestoneHeaderRow } from '../rows/ProjectRow';
-import { TimelineControls, WorkspaceSidebarCell, ProjectSidebarCell, SidebarCell } from './Sidebar';
-import { CreateItemPopover } from '../popovers/CreateItemPopover';
-import { ItemSheet } from '../modals/ItemSheet';
+import { memo, useMemo } from 'react';
+import { addDays, format } from 'date-fns';
+import { TimelineHeader } from '@/components/timeline/layout/TimelineHeader';
+import { WorkspaceHeaderRow } from '@/components/timeline/layout/WorkspaceSection';
+import { ProjectRow, MilestoneHeaderRow } from '@/components/timeline/rows/ProjectRow';
+import { TimelineControls } from '@/features/timeline/components/layout/TimelineControls';
+import { WorkspaceSidebarCell, ProjectSidebarCell, SidebarCell } from '@/features/timeline/components/sidebar/SidebarCells';
+import { TimelineOverlays } from '@/features/timeline/components/layout/TimelineOverlays';
 import { TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 import { HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
-import { QuickCreatePopover } from '../popovers/QuickCreatePopover';
-import { QuickEditPopover } from '../popovers/QuickEditPopover';
-import { Scrollbar } from './Scrollbar';
+import { Scrollbar } from '@/components/timeline/layout/Scrollbar';
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
 import '@/scrollbar-hide.css';
 
@@ -85,40 +74,42 @@ interface TimelineViewProps {
     allSubProjects: SubProject[];
 }
 
-export const TimelineView = memo(function TimelineView({
-    timelineState,
-    handleResizeStart,
-    startDate,
-    visibleDays,
-    handleNavigate,
-    handleTodayClick,
-    handleQuickCreate,
-    handleQuickEdit,
-    handleAddItem,
-    handleAddMilestone,
-    handleAddSubProject,
-    handleItemDoubleClick,
-    handleItemDelete,
-    handleItemSave,
-    handleToggleItemComplete,
-    timelineRef,
-    setSubProjectToDelete,
-    selectedItem,
-    isItemDialogOpen,
-    subProjectToDelete,
-    setIsItemDialogOpen,
-    handleItemClick,
-    handleItemContextMenu,
-    onClearSelection,
-    quickCreateState,
-    setQuickCreateState,
-    quickEditState,
-    setQuickEditState,
-    availableSubProjectsForCreate,
-    availableSubProjects,
-    allProjects,
-    allSubProjects
-}: TimelineViewProps) {
+export const TimelineView = memo(function TimelineView(props: TimelineViewProps) {
+    const {
+        timelineState,
+        handleResizeStart,
+        startDate,
+        visibleDays,
+        handleNavigate,
+        handleTodayClick,
+        handleQuickCreate,
+        handleQuickEdit,
+        handleItemDoubleClick,
+        handleToggleItemComplete,
+        timelineRef,
+        handleItemClick,
+        handleItemContextMenu,
+        onClearSelection,
+        // Props extracted to overlays
+        handleAddItem,
+        handleAddMilestone,
+        handleAddSubProject,
+        handleItemSave,
+        handleItemDelete,
+        allProjects,
+        allSubProjects,
+        selectedItem,
+        isItemDialogOpen,
+        setIsItemDialogOpen,
+        subProjectToDelete,
+        setSubProjectToDelete,
+        quickCreateState,
+        setQuickCreateState,
+        quickEditState,
+        setQuickEditState,
+        availableSubProjectsForCreate,
+        availableSubProjects,
+    } = props;
 
 
     const {
@@ -131,12 +122,32 @@ export const TimelineView = memo(function TimelineView({
 
     const { workspaces: workspacesMap } = timelineState;
 
+    const daysWithStrings = useMemo(() => {
+        return Array.from({ length: visibleDays }, (_, i) => {
+            const date = addDays(startDate, i);
+            return {
+                date,
+                dateStr: format(date, 'yyyy-MM-dd')
+            };
+        });
+    }, [startDate, visibleDays]);
+
     return (
         <div className="h-screen flex bg-background overflow-hidden relative">
             <div
                 ref={timelineRef}
                 className="flex-1 overflow-auto scrollbar-hide w-full h-full"
                 id="timeline-scroll-container"
+                onClick={(e) => {
+                    // Only handle clicks on the container itself (empty space)
+                    if (e.target === e.currentTarget ||
+                        (e.target as HTMLElement).classList?.contains('min-w-max') ||
+                        (e.target as HTMLElement).id === 'timeline-scroll-container') {
+                        onClearSelection();
+                        // Also close quick edit popover
+                        setQuickEditState(prev => ({ ...prev, open: false }));
+                    }
+                }}
             >
                 <div className="min-w-max flex flex-col">
 
@@ -152,8 +163,7 @@ export const TimelineView = memo(function TimelineView({
                             </TimelineControls>
                         </SidebarCell>
                         <TimelineHeader
-                            startDate={startDate}
-                            visibleDays={visibleDays}
+                            days={daysWithStrings}
                             projectsItems={projectsItems}
                         />
                     </div>
@@ -186,8 +196,7 @@ export const TimelineView = memo(function TimelineView({
                                             projects={projects}
                                             projectsItems={projectsItems}
                                             projectsMilestones={projectsMilestones}
-                                            startDate={startDate}
-                                            visibleDays={visibleDays}
+                                            days={daysWithStrings}
                                             colorMode={timelineState.userSettings?.colorMode || 'full'}
                                             systemAccent={timelineState.userSettings?.systemAccent || '6'}
                                         />
@@ -218,8 +227,7 @@ export const TimelineView = memo(function TimelineView({
                                                 <MilestoneHeaderRow
                                                     project={project}
                                                     milestones={projectsMilestones.get(project.id) || []}
-                                                    startDate={startDate}
-                                                    visibleDays={visibleDays}
+                                                    days={daysWithStrings}
                                                     workspaceColor={parseInt(workspace.color || '1')}
                                                     onItemDoubleClick={handleItemDoubleClick}
                                                     onQuickEdit={handleQuickEdit}
@@ -248,8 +256,7 @@ export const TimelineView = memo(function TimelineView({
                                                     project={project}
                                                     items={projectsItems.get(project.id) || []}
                                                     subProjects={projectsSubProjects.get(project.id) || []}
-                                                    startDate={startDate}
-                                                    visibleDays={visibleDays}
+                                                    days={daysWithStrings}
                                                     workspaceColor={parseInt(workspace.color || '1')}
                                                     onToggleItemComplete={handleToggleItemComplete}
                                                     onItemDoubleClick={handleItemDoubleClick}
@@ -279,89 +286,29 @@ export const TimelineView = memo(function TimelineView({
                 onMouseDown={handleResizeStart}
             />
 
-            <CreateItemPopover
-                onAddItem={handleAddItem}
-                onAddMilestone={handleAddMilestone}
-                onAddSubProject={handleAddSubProject}
-                projects={allProjects}
-                subProjects={allSubProjects}
-                activeProjectId={allProjects[0]?.id}
+            <TimelineOverlays
+                handleAddItem={handleAddItem}
+                handleAddMilestone={handleAddMilestone}
+                handleAddSubProject={handleAddSubProject}
+                handleItemSave={handleItemSave}
+                handleItemDelete={handleItemDelete}
+                allProjects={allProjects}
+                allSubProjects={allSubProjects}
+                selectedItem={selectedItem}
+                isItemDialogOpen={isItemDialogOpen}
+                setIsItemDialogOpen={setIsItemDialogOpen}
+                subProjectToDelete={subProjectToDelete}
+                setSubProjectToDelete={setSubProjectToDelete}
+                quickCreateState={quickCreateState}
+                setQuickCreateState={setQuickCreateState}
+                quickEditState={quickEditState}
+                setQuickEditState={setQuickEditState}
+                availableSubProjectsForCreate={availableSubProjectsForCreate}
+                availableSubProjects={availableSubProjects}
             />
 
             <Scrollbar containerRef={timelineRef} orientation="horizontal" />
             <Scrollbar containerRef={timelineRef} orientation="vertical" />
-
-            <ItemSheet
-                item={selectedItem}
-                open={isItemDialogOpen}
-                onOpenChange={setIsItemDialogOpen}
-                onSave={handleItemSave}
-                onDelete={handleItemDelete}
-                projects={allProjects}
-                subProjects={allSubProjects}
-            />
-
-            <AlertDialog open={!!subProjectToDelete} onOpenChange={(open) => !open && setSubProjectToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Sub-Project</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            How do you want to handle the items inside this sub-project?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={() => {
-                                if (subProjectToDelete) {
-                                    setSubProjectToDelete(null);
-                                    handleItemDelete(subProjectToDelete, false);
-                                }
-                            }}
-                            className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                        >
-                            Keep Items (Unlink)
-                        </AlertDialogAction>
-                        <AlertDialogAction
-                            onClick={() => {
-                                if (subProjectToDelete) {
-                                    setSubProjectToDelete(null);
-                                    handleItemDelete(subProjectToDelete, true);
-                                }
-                            }}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                            Delete Everything
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Global Quick Create Popover */}
-            {quickCreateState.open && (
-                <QuickCreatePopover
-                    open={quickCreateState.open}
-                    onOpenChange={(open) => setQuickCreateState((prev) => ({ ...prev, open }))}
-                    type={quickCreateState.type}
-                    projectId={quickCreateState.projectId}
-                    subProjectId={quickCreateState.subProjectId}
-                    availableSubProjects={availableSubProjectsForCreate}
-                    date={quickCreateState.date}
-                    defaultColor={quickCreateState.workspaceColor}
-                    anchorRect={quickCreateState.anchorRect}
-                />
-            )}
-
-            {/* Global Quick Edit Popover */}
-            {quickEditState.item && (
-                <QuickEditPopover
-                    item={quickEditState.item}
-                    availableSubProjects={availableSubProjects}
-                    open={quickEditState.open}
-                    onOpenChange={(open) => setQuickEditState((prev) => ({ ...prev, open }))}
-                    anchorRect={quickEditState.anchorRect}
-                />
-            )}
         </div>
     );
 });

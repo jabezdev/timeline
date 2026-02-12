@@ -14,3 +14,6 @@ export const SUBPROJECT_MIN_HEIGHT = 64;
 
 // Configuration
 export const VISIBLE_DAYS = 35;
+
+// Performance Singletons
+export const EMPTY_ARRAY = Object.freeze([]);

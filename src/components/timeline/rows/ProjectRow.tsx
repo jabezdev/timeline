@@ -7,6 +7,7 @@ import { MilestoneItem } from '../items/MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
 import { CELL_WIDTH, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { packSubProjects } from '@/lib/timelineUtils';
+import { EMPTY_ARRAY } from '@/lib/constants';
 
 function MilestoneCell({
   date,
@@ -87,8 +88,7 @@ function MilestoneCell({
 interface MilestoneHeaderRowProps {
   project: Project;
   milestones: Milestone[];
-  startDate: Date;
-  visibleDays: number;
+  days: { date: Date; dateStr: string }[];
   workspaceColor: number;
   onItemDoubleClick: (item: Milestone) => void;
   onQuickEdit: (item: Milestone, anchorElement?: HTMLElement) => void;
@@ -102,8 +102,7 @@ interface MilestoneHeaderRowProps {
 export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
   project,
   milestones: propMilestones,
-  startDate,
-  visibleDays,
+  days,
   workspaceColor,
   onItemDoubleClick,
   onQuickEdit,
@@ -113,7 +112,6 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
   onItemClick,
   onItemContextMenu
 }: MilestoneHeaderRowProps) {
-  const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
   const milestonesByDate = useMemo(() => {
     const map = new Map<string, Milestone[]>();
@@ -126,14 +124,13 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
 
   return (
     <div className="flex items-stretch" style={{ minHeight: PROJECT_HEADER_HEIGHT, height: 'auto' }}>
-      {days.map((day) => {
-        const dateStr = format(day, 'yyyy-MM-dd');
+      {days.map(({ date, dateStr }) => {
         return (
           <MilestoneCell
             key={dateStr}
-            date={day}
+            date={date}
             projectId={project.id}
-            milestones={milestonesByDate.get(dateStr) || []}
+            milestones={milestonesByDate.get(dateStr) || (EMPTY_ARRAY as any)}
             workspaceColor={workspaceColor}
             onItemDoubleClick={onItemDoubleClick}
             onQuickCreate={onQuickCreate}
@@ -155,8 +152,7 @@ interface ProjectRowProps {
   project: Project;
   items: TimelineItem[];
   subProjects: SubProject[];
-  startDate: Date;
-  visibleDays: number;
+  days: { date: Date; dateStr: string }[];
   workspaceColor: number;
   onToggleItemComplete: (itemId: string) => void;
   onItemDoubleClick: (item: TimelineItem | Milestone) => void;
@@ -174,8 +170,7 @@ export const ProjectRow = memo(function ProjectRow({
   project,
   items: propItems,
   subProjects: propSubProjects,
-  startDate,
-  visibleDays,
+  days,
   workspaceColor,
   onToggleItemComplete,
   onItemDoubleClick,
@@ -188,7 +183,6 @@ export const ProjectRow = memo(function ProjectRow({
   colorMode,
   systemAccent
 }: ProjectRowProps) {
-  const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
 
   const { items, subProjectItems } = useMemo(() => {
     const items = new Map<string, TimelineItem[]>();
@@ -211,21 +205,21 @@ export const ProjectRow = memo(function ProjectRow({
     return { items, subProjectItems };
   }, [propItems]);
 
-  const subProjectLanes = useMemo(() => packSubProjects(propSubProjects || []), [propSubProjects]);
+  const subProjectLanes = useMemo(() => packSubProjects(propSubProjects || (EMPTY_ARRAY as any)), [propSubProjects]);
 
   return (
     <div className="flex flex-col">
       {/* Main Items Row */}
       <div className="flex border-b border-border/30 items-stretch">
-        {days.map((day) => {
-          const dateStr = format(day, 'yyyy-MM-dd');
+        {days.map(({ date, dateStr }) => {
           return (
             <TimelineCell
               key={dateStr}
-              date={day}
+              date={date}
+              dateStr={dateStr}
               projectId={project.id}
-              items={items.get(dateStr) || []}
-              milestones={[]}
+              items={items.get(dateStr) || (EMPTY_ARRAY as any)}
+              milestones={EMPTY_ARRAY as any}
               workspaceColor={workspaceColor}
               onToggleItemComplete={onToggleItemComplete}
               onItemDoubleClick={onItemDoubleClick}

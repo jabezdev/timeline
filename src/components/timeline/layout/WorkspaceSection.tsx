@@ -2,14 +2,14 @@ import { Workspace, Project, TimelineItem, Milestone } from '@/types/timeline';
 import { CELL_WIDTH, WORKSPACE_HEADER_HEIGHT } from '@/lib/constants';
 import { useMemo, memo } from 'react';
 import { addDays, format } from 'date-fns';
+import { EMPTY_ARRAY } from '@/lib/constants';
 
 interface WorkspaceHeaderRowProps {
   workspace: Workspace;
   projects: Project[];
   projectsItems: Map<string, TimelineItem[]>;
   projectsMilestones: Map<string, Milestone[]>;
-  startDate: Date;
-  visibleDays: number;
+  days: { date: Date; dateStr: string }[];
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }
@@ -19,13 +19,10 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
   projects,
   projectsItems,
   projectsMilestones,
-  startDate,
-  visibleDays,
+  days,
   colorMode,
   systemAccent
 }: WorkspaceHeaderRowProps) {
-  const days = useMemo(() => Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i)), [startDate, visibleDays]);
-
   const { summaryItems, summaryMilestones } = useMemo(() => {
     const summaryItems = new Map<string, TimelineItem[]>();
     const summaryMilestones = new Map<string, Milestone[]>();
@@ -55,15 +52,14 @@ export const WorkspaceHeaderRow = memo(function WorkspaceHeaderRow({
       className="flex items-center"
       style={{
         height: WORKSPACE_HEADER_HEIGHT,
-        width: visibleDays * CELL_WIDTH
+        width: days.length * CELL_WIDTH
       }}
     >
-      {days.map(day => {
-        const dateStr = format(day, 'yyyy-MM-dd');
-        const items = summaryItems.get(dateStr)?.filter(i => !i.completed);
-        const milestones = summaryMilestones.get(dateStr);
+      {days.map(({ date, dateStr }) => {
+        const items = (summaryItems.get(dateStr) || EMPTY_ARRAY).filter(i => !i.completed);
+        const milestones = summaryMilestones.get(dateStr) || EMPTY_ARRAY;
 
-        if (!items?.length && !milestones?.length) {
+        if (!items.length && !milestones.length) {
           return <div key={dateStr} style={{ width: CELL_WIDTH }} className="h-full border-r border-border/50 last:border-r-0" />;
         }
 

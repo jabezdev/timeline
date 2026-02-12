@@ -14,7 +14,12 @@ export function useTimelineKeyboard({
     onQuickEdit
 }: UseTimelineKeyboardProps) {
     const mutations = useTimelineMutations();
-    const { selectedIds, setSelectedIds, toggleSelection, clearSelection } = useTimelineStore();
+
+    // Use granular selectors to prevent unnecessary re-renders
+    const selectedIds = useTimelineStore(state => state.selectedIds);
+    const setSelectedIds = useTimelineStore(state => state.setSelectedIds);
+    const toggleSelection = useTimelineStore(state => state.toggleSelection);
+    const clearSelection = useTimelineStore(state => state.clearSelection);
 
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
         // Ignore if input/textarea is focused

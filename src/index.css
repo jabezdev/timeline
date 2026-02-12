@@ -72,12 +72,18 @@
     /* Neutral/Slate */
 
     /* Curated System Accents */
-    --accent-ocean: 199 89% 48%;   /* #0ea5e9 Sky 500 */
-    --accent-forest: 142 71% 45%;  /* #16a34a Green 600 */
-    --accent-violet: 258 90% 66%;  /* #a78bfa Violet 400 */
-    --accent-sunset: 15 79% 65%;   /* #fb923c Orange 400 */
-    --accent-berry: 330 81% 60%;   /* #db2777 Pink 600 */
-    --accent-slate: 215 16% 47%;   /* #64748b Slate 500 */
+    --accent-ocean: 199 89% 48%;
+    /* #0ea5e9 Sky 500 */
+    --accent-forest: 142 71% 45%;
+    /* #16a34a Green 600 */
+    --accent-violet: 258 90% 66%;
+    /* #a78bfa Violet 400 */
+    --accent-sunset: 15 79% 65%;
+    /* #fb923c Orange 400 */
+    --accent-berry: 330 81% 60%;
+    /* #db2777 Pink 600 */
+    --accent-slate: 215 16% 47%;
+    /* #64748b Slate 500 */
 
     /* Timeline specific */
     --timeline-line: 20 5% 85%;
@@ -309,9 +315,15 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  .sidebar-resizing [style*="--sidebar-width"],
+  /* GPU-accelerate elements that change width */
   .sidebar-resizing [style*="var(--sidebar-width)"] {
     will-change: width, min-width, left;
+    contain: layout style;
+  }
+
+  /* Suppress hover effects during resize to prevent re-renders */
+  .sidebar-resizing #timeline-scroll-container {
+    pointer-events: none;
   }
 
   /* Fix for task lists in prose */

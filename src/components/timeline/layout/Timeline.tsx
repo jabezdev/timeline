@@ -1,9 +1,10 @@
-import { TimelineView } from './TimelineView';
+import { TimelineView } from '@/features/timeline/components/layout/TimelineView';
 import { VISIBLE_DAYS } from '@/lib/constants';
 import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineScroll } from '../hooks/useTimelineScroll';
 import { useTimelineHandlers } from '../hooks/useTimelineHandlers';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { memo } from 'react';
 
 export function Timeline() {
   const visibleDays = VISIBLE_DAYS;
@@ -45,7 +46,7 @@ interface TimelineContainerProps {
   handlers: ReturnType<typeof useTimelineHandlers>;
 }
 
-function TimelineContainer({
+const TimelineContainer = memo(function TimelineContainer({
   timelineState,
   startDate,
   visibleDays,
@@ -100,4 +101,4 @@ function TimelineContainer({
       allSubProjects={allSubProjects}
     />
   );
-}
+});

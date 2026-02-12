@@ -1,7 +1,7 @@
 import { TimelineItem } from '@/types/timeline';
 import { Check } from 'lucide-react';
 import React from 'react';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useIsSelected } from '@/hooks/useIsSelected';
 
 interface UnifiedItemProps {
     item: TimelineItem;
@@ -86,7 +86,7 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                 }}
                 onClick={(e) => {
                     e.stopPropagation();
-                    onClick?.(e.ctrlKey || e.metaKey, e);
+                    onClick?.(true, e); // Always use multi-select mode
                 }}
             >
                 <button
@@ -126,12 +126,12 @@ export const UnifiedItem = React.memo(function UnifiedItem({
     systemAccent,
     onContextMenu
 }: UnifiedItemProps & {
-    onDoubleClick?: (item: TimelineItem) => void;
+    onDoubleClick?: (item: TimelineItem, e?: React.MouseEvent) => void;
     onQuickEdit?: (item: TimelineItem, anchorElement?: HTMLElement) => void;
     onContextMenu?: (e: React.MouseEvent) => void;
     onClick?: (multi: boolean, e: React.MouseEvent) => void;
 }) {
-    const isSelected = useTimelineStore(state => state.selectedIds.has(item.id));
+    const isSelected = useIsSelected(item.id);
     return (
         <div>
             <div
@@ -145,7 +145,7 @@ export const UnifiedItem = React.memo(function UnifiedItem({
                 }}
                 onDoubleClick={(e) => {
                     e.stopPropagation();
-                    if (onDoubleClick) onDoubleClick(item);
+                    if (onDoubleClick) onDoubleClick(item, e);
                 }}
             >
                 <UnifiedItemView

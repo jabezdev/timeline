@@ -7,6 +7,7 @@ import { CELL_WIDTH } from '@/lib/constants';
 
 interface SubProjectCellProps {
     date: Date;
+    dateStr: string;
     projectId: string;
     activeSubProject: SubProject | undefined;
     items: TimelineItem[];
@@ -24,6 +25,7 @@ interface SubProjectCellProps {
 
 export function SubProjectCell({
     date,
+    dateStr,
     projectId,
     activeSubProject,
     items,
@@ -38,8 +40,6 @@ export function SubProjectCell({
     colorMode,
     systemAccent
 }: SubProjectCellProps) {
-    const dateStr = format(date, 'yyyy-MM-dd');
-
     return (
         <div
             className="shrink-0 px-0 py-0"

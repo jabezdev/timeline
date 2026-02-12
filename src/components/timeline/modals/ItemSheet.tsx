@@ -147,6 +147,7 @@ export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects
     return (
         <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
             <SheetContent
+                showOverlay={false}
                 className="w-[600px] sm:max-w-[1000px] p-0 flex flex-col gap-0 border-l border-border/40 bg-background/80 backdrop-blur-xl shadow-2xl [&>button]:hidden"
                 style={{
                     top: `${HEADER_HEIGHT}px`,

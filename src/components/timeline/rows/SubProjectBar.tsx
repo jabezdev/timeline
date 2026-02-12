@@ -1,6 +1,6 @@
 import React from 'react';
 import { SubProject, TimelineItem } from '@/types/timeline';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useIsSelected } from '@/hooks/useIsSelected';
 
 export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     subProject: SubProject;
@@ -31,7 +31,7 @@ export const SubProjectBar = React.forwardRef<HTMLDivElement, {
     colorMode,
     systemAccent
 }, ref) => {
-    const isSelected = useTimelineStore(state => state.selectedIds.has(subProject.id));
+    const isSelected = useIsSelected(subProject.id);
 
     const effectiveVar = colorMode === 'monochromatic'
         ? 'var(--primary)'

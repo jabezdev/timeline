@@ -4,8 +4,7 @@ import { TimelineItem } from '@/types/timeline';
 import { useMemo } from 'react';
 
 interface TimelineHeaderProps {
-  startDate: Date;
-  visibleDays: number;
+  days: { date: Date; dateStr: string }[];
   projectsItems: Map<string, TimelineItem[]>;
 }
 
@@ -14,10 +13,7 @@ import { memo } from 'react';
 
 // ... interface
 
-export const TimelineHeader = memo(function TimelineHeader({ startDate, visibleDays, projectsItems }: TimelineHeaderProps) {
-  // ... implementation remains same
-  const days = Array.from({ length: visibleDays }, (_, i) => addDays(startDate, i));
-
+export const TimelineHeader = memo(function TimelineHeader({ days, projectsItems }: TimelineHeaderProps) {
   const dailyCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -39,15 +35,14 @@ export const TimelineHeader = memo(function TimelineHeader({ startDate, visibleD
       style={{ height: HEADER_HEIGHT }}
     >
       {/* Date columns - fixed width */}
-      {days.map((day) => {
-        const dateStr = format(day, 'yyyy-MM-dd');
+      {days.map(({ date, dateStr }) => {
         const count = dailyCounts.get(dateStr) || 0;
-        const isDayToday = isToday(day);
-        const isDayWeekend = isWeekend(day);
+        const isDayToday = isToday(date);
+        const isDayWeekend = isWeekend(date);
 
         return (
           <div
-            key={day.toISOString()}
+            key={dateStr}
             className={`shrink-0 flex items-stretch justify-between text-left border-r border-border last:border-r-0 transition-colors cursor-default select-none
                ${isDayToday ? 'bg-primary text-primary-foreground' : isDayWeekend ? 'bg-secondary' : 'bg-background'}
             `}
@@ -56,10 +51,10 @@ export const TimelineHeader = memo(function TimelineHeader({ startDate, visibleD
             {/* Left: Date and Day */}
             <div className="flex flex-col justify-center px-2 min-w-0 flex-1 pt-1.5">
               <div className={`text-sm font-bold leading-none ${isDayToday ? 'text-primary-foreground' : 'text-foreground'}`}>
-                {format(day, 'MMM d')}
+                {format(date, 'MMM d')}
               </div>
               <div className={`text-[10px] uppercase font-medium mt-0.5 opacity-80 ${isDayToday ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                {format(day, 'EEE')}
+                {format(date, 'EEE')}
               </div>
             </div>
 

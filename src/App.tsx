@@ -12,6 +12,7 @@ import { RequireAuth } from "./components/auth/RequireAuth";
 import NotFound from "./pages/NotFound";
 
 import { ThemeProvider } from "next-themes";
+import { useThemeInitializer } from "./hooks/useThemeInitializer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,32 +28,40 @@ const persister = createSyncStoragePersister({
   storage: window.localStorage,
 });
 
+function ThemeInitializer({ children }: { children: React.ReactNode }) {
+  useThemeInitializer();
+  return <>{children}</>;
+}
+
 const App = () => (
   <PersistQueryClientProvider
     client={queryClient}
     persistOptions={{ persister }}
   >
-    <ThemeProvider attribute="class" defaultTheme="dark">
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/" element={
-                <RequireAuth>
-                  <Index />
-                </RequireAuth>
-              } />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
+    <ThemeProvider attribute="class" defaultTheme="system">
+      <ThemeInitializer>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={
+                  <RequireAuth>
+                    <Index />
+                  </RequireAuth>
+                } />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeInitializer>
     </ThemeProvider>
   </PersistQueryClientProvider>
 );
 
 export default App;
+

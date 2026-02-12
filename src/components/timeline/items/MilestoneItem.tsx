@@ -1,7 +1,7 @@
 import { Milestone } from '@/types/timeline';
 import { Flag } from 'lucide-react';
 import React from 'react';
-import { useTimelineStore } from '@/hooks/useTimelineStore';
+import { useIsSelected } from '@/hooks/useIsSelected';
 
 interface MilestoneItemProps {
   milestone: Milestone;
@@ -69,7 +69,7 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
         }}
         onClick={(e) => {
           e.stopPropagation();
-          onClick?.(e.ctrlKey || e.metaKey, e);
+          onClick?.(true, e); // Always use multi-select mode
         }}
       >
         <Flag className="w-3 h-3 shrink-0" style={{ color: textColor }} />
@@ -93,14 +93,14 @@ export const MilestoneItem = React.memo(function MilestoneItem({
   systemAccent,
   onContextMenu
 }: MilestoneItemProps & {
-  onDoubleClick?: (milestone: Milestone) => void;
+  onDoubleClick?: (milestone: Milestone, e?: React.MouseEvent) => void;
   onQuickEdit?: (item: Milestone, anchorElement?: HTMLElement) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   onClick?: (multi: boolean, e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }) {
-  const isSelected = useTimelineStore(state => state.selectedIds.has(milestone.id));
+  const isSelected = useIsSelected(milestone.id);
   return (
     <div className={className}>
       <div
@@ -114,7 +114,7 @@ export const MilestoneItem = React.memo(function MilestoneItem({
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
-          if (onDoubleClick) onDoubleClick(milestone);
+          if (onDoubleClick) onDoubleClick(milestone, e);
         }}
       >
         <MilestoneItemView
