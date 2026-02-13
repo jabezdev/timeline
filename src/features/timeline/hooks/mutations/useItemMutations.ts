@@ -134,10 +134,18 @@ export function useItemMutations(
 
             return { previousState, optimId };
         },
-        onError: (err, vars, context) => {
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
+        onSuccess: (data, variables, context) => {
+            if (context?.optimId) {
+                updateTimelineDataCache((old) => {
+                    const subProjects = { ...old.subProjects };
+                    if (subProjects[context.optimId]) {
+                        subProjects[data.id] = { ...subProjects[context.optimId], id: data.id };
+                        delete subProjects[context.optimId];
+                    }
+                    return { ...old, subProjects };
+                });
             }
+            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
@@ -218,7 +226,7 @@ export function useItemMutations(
                     items = { ...items };
                     Object.keys(items).forEach(itemId => {
                         if (items[itemId].subProjectId === id) {
-                            items[itemId] = { ...items[itemId], subProjectId: undefined };
+                            items[itemId] = { ...items[itemId], subProjectId: null as any };
                         }
                     });
                 }

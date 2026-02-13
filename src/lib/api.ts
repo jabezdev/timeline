@@ -107,14 +107,19 @@ export const api = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("User not authenticated");
 
-        return this.handleResponse(supabase.from('workspaces').upsert({
-            id: w.id,
+        const payload: any = {
             user_id: user.id,
             name: w.name,
             color: w.color,
             is_hidden: w.isHidden,
             position: w.position,
-        }));
+        };
+
+        if (w.id && !w.id.startsWith('temp-')) {
+            payload.id = w.id;
+        }
+
+        return this.handleResponse(supabase.from('workspaces').upsert(payload).select().single());
     },
 
     async updateWorkspace(id: string, updates: Partial<Workspace>) {
@@ -124,7 +129,7 @@ export const api = {
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
         if ('position' in updates) dbUpdates.position = updates.position;
 
-        return this.handleResponse(supabase.from('workspaces').update(dbUpdates).eq('id', id));
+        return this.handleResponse(supabase.from('workspaces').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteWorkspace(id: string) {
@@ -132,14 +137,19 @@ export const api = {
     },
 
     async createProject(p: Project) {
-        return this.handleResponse(supabase.from('projects').upsert({
-            id: p.id,
+        const payload: any = {
             name: p.name,
             workspace_id: p.workspaceId,
             color: p.color,
             position: p.position,
             is_hidden: p.isHidden,
-        }));
+        };
+
+        if (p.id && !p.id.startsWith('temp-')) {
+            payload.id = p.id;
+        }
+
+        return this.handleResponse(supabase.from('projects').upsert(payload).select().single());
     },
 
     async updateProject(id: string, updates: Partial<Project>) {
@@ -150,7 +160,7 @@ export const api = {
         if ('workspaceId' in updates) dbUpdates.workspace_id = updates.workspaceId;
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
 
-        return this.handleResponse(supabase.from('projects').update(dbUpdates).eq('id', id));
+        return this.handleResponse(supabase.from('projects').update(dbUpdates).eq('id', id).select().single());
     },
 
     async reorderProjects(projects: Partial<Project>[]) {
@@ -161,7 +171,7 @@ export const api = {
 
         // Parallelize updates
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('projects').update({ position: u.position }).eq('id', u.id!))
+            this.handleResponse(supabase.from('projects').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
@@ -170,15 +180,20 @@ export const api = {
     },
 
     async createSubProject(s: SubProject) {
-        return this.handleResponse(supabase.from('sub_projects').upsert({
-            id: s.id,
+        const payload: any = {
             title: s.title,
             start_date: s.startDate,
             end_date: s.endDate,
             project_id: s.projectId,
             color: s.color,
             description: s.description,
-        }));
+        };
+
+        if (s.id && !s.id.startsWith('temp-')) {
+            payload.id = s.id;
+        }
+
+        return this.handleResponse(supabase.from('sub_projects').upsert(payload).select().single());
     },
 
     async updateSubProject(id: string, updates: Partial<SubProject>) {
@@ -189,7 +204,7 @@ export const api = {
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('description' in updates) dbUpdates.description = updates.description;
 
-        return this.handleResponse(supabase.from('sub_projects').update(dbUpdates).eq('id', id));
+        return this.handleResponse(supabase.from('sub_projects').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteSubProject(id: string, deleteItems?: boolean) {
@@ -200,15 +215,20 @@ export const api = {
     },
 
     async createMilestone(m: Milestone) {
-        return this.handleResponse(supabase.from('milestones').upsert({
-            id: m.id,
+        const payload: any = {
             title: m.title,
             date: m.date,
             project_id: m.projectId,
             content: m.content,
             color: m.color,
             position: m.position,
-        }));
+        };
+
+        if (m.id && !m.id.startsWith('temp-')) {
+            payload.id = m.id;
+        }
+
+        return this.handleResponse(supabase.from('milestones').upsert(payload).select().single());
     },
 
     async updateMilestone(id: string, updates: Partial<Milestone>) {
@@ -217,7 +237,7 @@ export const api = {
         if ('date' in updates) dbUpdates.date = updates.date;
         if ('content' in updates) dbUpdates.content = updates.content;
         if ('color' in updates) dbUpdates.color = updates.color;
-        return this.handleResponse(supabase.from('milestones').update(dbUpdates).eq('id', id));
+        return this.handleResponse(supabase.from('milestones').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteMilestone(id: string) {
@@ -225,8 +245,7 @@ export const api = {
     },
 
     async createItem(i: TimelineItem) {
-        return this.handleResponse(supabase.from('timeline_items').upsert({
-            id: i.id,
+        const payload: any = {
             title: i.title,
             content: i.content,
             date: i.date,
@@ -236,7 +255,13 @@ export const api = {
             color: i.color,
             completed_at: i.completedAt,
             position: i.position,
-        }));
+        };
+
+        if (i.id && !i.id.startsWith('temp-')) {
+            payload.id = i.id;
+        }
+
+        return this.handleResponse(supabase.from('timeline_items').upsert(payload).select().single());
     },
 
     async updateItem(id: string, updates: Partial<TimelineItem>) {
@@ -248,7 +273,7 @@ export const api = {
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('completedAt' in updates) dbUpdates.completed_at = updates.completedAt;
-        return this.handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id));
+        return this.handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteItem(id: string) {
@@ -273,7 +298,7 @@ export const api = {
             position: w.position,
         }));
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!))
+            this.handleResponse(supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
@@ -283,7 +308,7 @@ export const api = {
             position: m.position,
         }));
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('milestones').update({ position: u.position }).eq('id', u.id!))
+            this.handleResponse(supabase.from('milestones').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
@@ -293,7 +318,7 @@ export const api = {
             position: i.position,
         }));
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!))
+            this.handleResponse(supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
