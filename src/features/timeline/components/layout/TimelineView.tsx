@@ -10,6 +10,7 @@ import { TimelineItem, Milestone, SubProject, TimelineState } from '@/types/time
 import { HEADER_HEIGHT, WORKSPACE_HEADER_HEIGHT, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { Scrollbar } from '@/components/timeline/layout/Scrollbar';
 import { useTimelineSelectors } from '@/hooks/useTimelineSelectors';
+import { cn } from '@/lib/utils';
 import '@/scrollbar-hide.css';
 
 interface TimelineViewProps {
@@ -76,6 +77,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
     } = useTimelineSelectors(timelineState);
 
     const { workspaces: workspacesMap } = timelineState;
+    const blurEffectsEnabled = timelineState.userSettings?.blurEffectsEnabled ?? true;
 
     const daysWithStrings = useMemo(() => {
         return Array.from({ length: visibleDays }, (_, i) => {
@@ -104,6 +106,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                 startDate={startDate}
                                 onNavigate={handleNavigate}
                                 onTodayClick={handleTodayClick}
+                                blurEffectsEnabled={blurEffectsEnabled}
                             >
                                 <span className="text-xs font-semibold text-muted-foreground/70 tracking-wider">TIMELINE</span>
                             </TimelineControls>
@@ -111,6 +114,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                         <TimelineHeader
                             days={daysWithStrings}
                             projectsItems={projectsItems}
+                            blurEffectsEnabled={blurEffectsEnabled}
                         />
                     </div>
 
@@ -124,7 +128,10 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                             <div key={wsId}>
                                 {/* Sticky Workspace Row — z-40, under date header */}
                                 <div
-                                    className="sticky z-40 border-b border-border backdrop-blur-xl flex timeline-workspace-row"
+                                    className={cn(
+                                        "sticky z-40 border-b border-border flex timeline-workspace-row",
+                                        blurEffectsEnabled && "backdrop-blur-xl"
+                                    )}
                                     style={{
                                         top: HEADER_HEIGHT,
                                         backgroundColor: timelineState.userSettings?.colorMode === 'monochromatic'
@@ -154,7 +161,10 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                     <div key={project.id} className="border-b border-border/50">
                                         {/* Sticky Project Header with Milestones — z-30, under workspace row */}
                                         <div
-                                            className="sticky z-30 backdrop-blur-xl border-b border-border/30 flex"
+                                            className={cn(
+                                                "sticky z-30 border-b border-border/30 flex",
+                                                blurEffectsEnabled && "backdrop-blur-xl"
+                                            )}
                                             style={{
                                                 top: HEADER_HEIGHT + WORKSPACE_HEADER_HEIGHT,
                                                 backgroundColor: timelineState.userSettings?.colorMode === 'monochromatic'
@@ -193,7 +203,10 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                         <div className="relative z-0 flex">
                                             {/* Sidebar Spacer for Content Row */}
                                             <div
-                                                className="sticky left-0 shrink-0 bg-background/50 backdrop-blur-xl border-r border-border z-50 pointer-events-auto cursor-default"
+                                                className={cn(
+                                                    "sticky left-0 shrink-0 bg-background/50 border-r border-border z-50 pointer-events-auto cursor-default",
+                                                    blurEffectsEnabled && "backdrop-blur-xl"
+                                                )}
                                                 style={{
                                                     width: 'var(--sidebar-width)',
                                                     minWidth: 'var(--sidebar-width)'
@@ -247,10 +260,11 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                 allProjects={allProjects}
                 allSubProjects={allSubProjects}
                 timelineState={timelineState}
+                blurEffectsEnabled={blurEffectsEnabled}
             />
 
-            <Scrollbar containerRef={timelineRef} orientation="horizontal" />
-            <Scrollbar containerRef={timelineRef} orientation="vertical" />
+            <Scrollbar containerRef={timelineRef} orientation="horizontal" blurEffectsEnabled={blurEffectsEnabled} />
+            <Scrollbar containerRef={timelineRef} orientation="vertical" blurEffectsEnabled={blurEffectsEnabled} />
         </div >
     );
 });

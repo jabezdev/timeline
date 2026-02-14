@@ -2,10 +2,12 @@ import { format, addDays, isToday, isWeekend } from 'date-fns';
 import { HEADER_HEIGHT, CELL_WIDTH } from '@/lib/constants';
 import { TimelineItem } from '@/types/timeline';
 import { useMemo } from 'react';
+import { cn } from '@/lib/utils';
 
 interface TimelineHeaderProps {
   days: { date: Date; dateStr: string }[];
   projectsItems: Map<string, TimelineItem[]>;
+  blurEffectsEnabled?: boolean;
 }
 
 // ... imports
@@ -13,7 +15,7 @@ import { memo } from 'react';
 
 // ... interface
 
-export const TimelineHeader = memo(function TimelineHeader({ days, projectsItems }: TimelineHeaderProps) {
+export const TimelineHeader = memo(function TimelineHeader({ days, projectsItems, blurEffectsEnabled = true }: TimelineHeaderProps) {
   const dailyCounts = useMemo(() => {
     const counts = new Map<string, number>();
 
@@ -31,7 +33,10 @@ export const TimelineHeader = memo(function TimelineHeader({ days, projectsItems
 
   return (
     <div
-      className="flex sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border"
+      className={cn(
+        "flex sticky top-0 z-40 bg-background/95 border-b border-border",
+        blurEffectsEnabled && "backdrop-blur-xl"
+      )}
       style={{ height: HEADER_HEIGHT }}
     >
       {/* Date columns - fixed width */}

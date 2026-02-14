@@ -38,6 +38,7 @@ export function useWorkspaceMutations(
             return { previousState, optimId };
         },
         onError: (err, newWorkspace, context) => {
+            console.error('addWorkspace failed:', err, newWorkspace);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
@@ -81,6 +82,7 @@ export function useWorkspaceMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('updateWorkspace failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
@@ -109,6 +111,7 @@ export function useWorkspaceMutations(
             return { previousState };
         },
         onError: (err, id, context) => {
+            console.error('deleteWorkspace failed:', err, id);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
@@ -133,6 +136,7 @@ export function useWorkspaceMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('reorderWorkspaces failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }

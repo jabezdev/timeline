@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { ItemSheetHeader } from "./ItemSheetHeader";
 import { ItemSheetProperties } from "./ItemSheetProperties";
 import { ItemSheetEditor } from "./ItemSheetEditor";
+import { cn } from "@/lib/utils";
 
 interface ItemSheetProps {
     item: TimelineItem | Milestone | SubProject | null;
@@ -17,9 +18,10 @@ interface ItemSheetProps {
     onDelete?: (item: TimelineItem | Milestone | SubProject) => void;
     projects: Project[];
     subProjects: SubProject[];
+    blurEffectsEnabled?: boolean;
 }
 
-export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects, subProjects }: ItemSheetProps) {
+export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects, subProjects, blurEffectsEnabled = true }: ItemSheetProps) {
     // Shared State
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
@@ -154,7 +156,10 @@ export function ItemSheet({ item, open, onOpenChange, onSave, onDelete, projects
         <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
             <SheetContent
                 showOverlay={false}
-                className="w-[600px] sm:max-w-[1000px] p-0 flex flex-col gap-0 border-l border-border/40 bg-background/80 backdrop-blur-xl shadow-2xl [&>button]:hidden"
+                className={cn(
+                    "w-[600px] sm:max-w-[1000px] p-0 flex flex-col gap-0 border-l border-border/40 bg-background/80 shadow-2xl [&>button]:hidden",
+                    blurEffectsEnabled && "backdrop-blur-xl"
+                )}
                 style={{
                     top: `${HEADER_HEIGHT}px`,
                     height: `calc(100vh - ${HEADER_HEIGHT}px)`,

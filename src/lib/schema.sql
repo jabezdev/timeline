@@ -146,9 +146,19 @@ create table public.user_settings (
   user_id uuid references auth.users(id) on delete cascade primary key,
   workspace_order jsonb,
   open_project_ids jsonb,
+  theme text,
+  system_accent text,
+  color_mode text,
+  blur_effects_enabled boolean default true,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Backfill safety for existing deployments
+alter table public.user_settings add column if not exists theme text;
+alter table public.user_settings add column if not exists system_accent text;
+alter table public.user_settings add column if not exists color_mode text;
+alter table public.user_settings add column if not exists blur_effects_enabled boolean default true;
 
 alter table public.user_settings enable row level security;
 

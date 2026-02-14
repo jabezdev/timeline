@@ -29,6 +29,7 @@ export function useMilestoneMutations(
             return { previousState, optimId };
         },
         onError: (err, newMilestone, context) => {
+            console.error('addMilestone failed:', err, newMilestone);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }
@@ -65,6 +66,7 @@ export function useMilestoneMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('updateMilestone failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }
@@ -89,6 +91,7 @@ export function useMilestoneMutations(
             return { previousState };
         },
         onError: (err, id, context) => {
+            console.error('deleteMilestone failed:', err, id);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }

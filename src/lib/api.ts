@@ -8,31 +8,35 @@ import {
     transformItem
 } from '@/lib/transformers';
 
+async function handleResponse<T>(promise: Promise<{ data: T | null; error: unknown }>): Promise<T> {
+    const { data, error } = await promise;
+    if (error) {
+        console.error("Supabase API Error:", error);
+        throw error;
+    }
+    return data as T;
+}
+
+async function requireUserId(): Promise<string> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated. Please sign in again.');
+    return user.id;
+}
+
 
 export const api = {
     // --- READ ---
-    // Helper to handle Supabase responses
-    async handleResponse<T>(promise: Promise<{ data: T | null; error: unknown }>): Promise<T> {
-        const { data, error } = await promise;
-        if (error) {
-            console.error("Supabase API Error:", error);
-            throw error;
-        }
-        return data as T;
-    },
-
-    // --- READ ---
     async fetchStructure(): Promise<Partial<TimelineState>> {
         const [workspaces, projects, settings] = await Promise.all([
-            this.handleResponse(supabase
+            handleResponse(supabase
                 .from('workspaces')
                 .select('*')
                 .order('position', { ascending: true })),
-            this.handleResponse(supabase
+            handleResponse(supabase
                 .from('projects')
                 .select('*')
                 .order('position', { ascending: true })),
-            this.handleResponse(supabase
+            handleResponse(supabase
                 .from('user_settings')
                 .select('*')
                 .maybeSingle())
@@ -49,7 +53,8 @@ export const api = {
                 openProjectIds: settings.open_project_ids || [],
                 theme: settings.theme,
                 systemAccent: settings.system_accent,
-                colorMode: settings.color_mode
+                colorMode: settings.color_mode,
+                blurEffectsEnabled: settings.blur_effects_enabled
             } : undefined
         };
 
@@ -69,19 +74,19 @@ export const api = {
 
     async fetchTimelineData(startDate: string, endDate: string): Promise<Partial<TimelineState>> {
         const [items, milestones, subProjects] = await Promise.all([
-            this.handleResponse(supabase
+            handleResponse(supabase
                 .from('timeline_items')
                 .select('*')
                 .gte('date', startDate)
                 .lte('date', endDate)
                 .order('title', { ascending: true })),
-            this.handleResponse(supabase
+            handleResponse(supabase
                 .from('milestones')
                 .select('*')
                 .gte('date', startDate)
                 .lte('date', endDate)
                 .order('title', { ascending: true })),
-            this.handleResponse(supabase
+            handleResponse(supabase
                 .from('sub_projects')
                 .select('*')
                 .lte('start_date', endDate)
@@ -104,11 +109,10 @@ export const api = {
     // --- WRITE ---
 
     async createWorkspace(w: Workspace) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
+        const userId = await requireUserId();
 
         const payload: any = {
-            user_id: user.id,
+            user_id: userId,
             name: w.name,
             color: w.color,
             is_hidden: w.isHidden,
@@ -119,7 +123,7 @@ export const api = {
             payload.id = w.id;
         }
 
-        return this.handleResponse(supabase.from('workspaces').upsert(payload).select().single());
+        return handleResponse(supabase.from('workspaces').upsert(payload).select().single());
     },
 
     async updateWorkspace(id: string, updates: Partial<Workspace>) {
@@ -129,14 +133,15 @@ export const api = {
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
         if ('position' in updates) dbUpdates.position = updates.position;
 
-        return this.handleResponse(supabase.from('workspaces').update(dbUpdates).eq('id', id).select().single());
+        return handleResponse(supabase.from('workspaces').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteWorkspace(id: string) {
-        return this.handleResponse(supabase.from('workspaces').delete().eq('id', id));
+        return handleResponse(supabase.from('workspaces').delete().eq('id', id));
     },
 
     async createProject(p: Project) {
+        await requireUserId();
         const payload: any = {
             name: p.name,
             workspace_id: p.workspaceId,
@@ -149,7 +154,7 @@ export const api = {
             payload.id = p.id;
         }
 
-        return this.handleResponse(supabase.from('projects').upsert(payload).select().single());
+        return handleResponse(supabase.from('projects').upsert(payload).select().single());
     },
 
     async updateProject(id: string, updates: Partial<Project>) {
@@ -160,7 +165,7 @@ export const api = {
         if ('workspaceId' in updates) dbUpdates.workspace_id = updates.workspaceId;
         if ('isHidden' in updates) dbUpdates.is_hidden = updates.isHidden;
 
-        return this.handleResponse(supabase.from('projects').update(dbUpdates).eq('id', id).select().single());
+        return handleResponse(supabase.from('projects').update(dbUpdates).eq('id', id).select().single());
     },
 
     async reorderProjects(projects: Partial<Project>[]) {
@@ -171,15 +176,16 @@ export const api = {
 
         // Parallelize updates
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('projects').update({ position: u.position }).eq('id', u.id!).select().single())
+            handleResponse(supabase.from('projects').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
     async deleteProject(id: string) {
-        return this.handleResponse(supabase.from('projects').delete().eq('id', id));
+        return handleResponse(supabase.from('projects').delete().eq('id', id));
     },
 
     async createSubProject(s: SubProject) {
+        await requireUserId();
         const payload: any = {
             title: s.title,
             start_date: s.startDate,
@@ -193,7 +199,7 @@ export const api = {
             payload.id = s.id;
         }
 
-        return this.handleResponse(supabase.from('sub_projects').upsert(payload).select().single());
+        return handleResponse(supabase.from('sub_projects').upsert(payload).select().single());
     },
 
     async updateSubProject(id: string, updates: Partial<SubProject>) {
@@ -204,17 +210,18 @@ export const api = {
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('description' in updates) dbUpdates.description = updates.description;
 
-        return this.handleResponse(supabase.from('sub_projects').update(dbUpdates).eq('id', id).select().single());
+        return handleResponse(supabase.from('sub_projects').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteSubProject(id: string, deleteItems?: boolean) {
         if (deleteItems) {
-            await supabase.from('items').delete().eq('sub_project_id', id);
+            await handleResponse(supabase.from('timeline_items').delete().eq('sub_project_id', id));
         }
-        return this.handleResponse(supabase.from('sub_projects').delete().eq('id', id));
+        return handleResponse(supabase.from('sub_projects').delete().eq('id', id));
     },
 
     async createMilestone(m: Milestone) {
+        await requireUserId();
         const payload: any = {
             title: m.title,
             date: m.date,
@@ -228,7 +235,7 @@ export const api = {
             payload.id = m.id;
         }
 
-        return this.handleResponse(supabase.from('milestones').upsert(payload).select().single());
+        return handleResponse(supabase.from('milestones').upsert(payload).select().single());
     },
 
     async updateMilestone(id: string, updates: Partial<Milestone>) {
@@ -237,14 +244,15 @@ export const api = {
         if ('date' in updates) dbUpdates.date = updates.date;
         if ('content' in updates) dbUpdates.content = updates.content;
         if ('color' in updates) dbUpdates.color = updates.color;
-        return this.handleResponse(supabase.from('milestones').update(dbUpdates).eq('id', id).select().single());
+        return handleResponse(supabase.from('milestones').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteMilestone(id: string) {
-        return this.handleResponse(supabase.from('milestones').delete().eq('id', id));
+        return handleResponse(supabase.from('milestones').delete().eq('id', id));
     },
 
     async createItem(i: TimelineItem) {
+        await requireUserId();
         const payload: any = {
             title: i.title,
             content: i.content,
@@ -261,7 +269,7 @@ export const api = {
             payload.id = i.id;
         }
 
-        return this.handleResponse(supabase.from('timeline_items').upsert(payload).select().single());
+        return handleResponse(supabase.from('timeline_items').upsert(payload).select().single());
     },
 
     async updateItem(id: string, updates: Partial<TimelineItem>) {
@@ -273,23 +281,22 @@ export const api = {
         if ('subProjectId' in updates) dbUpdates.sub_project_id = updates.subProjectId;
         if ('color' in updates) dbUpdates.color = updates.color;
         if ('completedAt' in updates) dbUpdates.completed_at = updates.completedAt;
-        return this.handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id).select().single());
+        return handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id).select().single());
     },
 
     async deleteItem(id: string) {
-        return this.handleResponse(supabase.from('timeline_items').delete().eq('id', id));
+        return handleResponse(supabase.from('timeline_items').delete().eq('id', id));
     },
 
     // User Settings
     async saveSettings(workspaceOrder: string[], openProjectIds: string[] = []) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await requireUserId();
 
-        return this.handleResponse(supabase.from('user_settings').upsert({
-            user_id: user.id,
+        return handleResponse(supabase.from('user_settings').upsert({
+            user_id: userId,
             workspace_order: workspaceOrder,
             open_project_ids: openProjectIds
-        }));
+        }).select().single());
     },
 
     async reorderWorkspaces(workspaces: Partial<Workspace>[]) {
@@ -298,7 +305,7 @@ export const api = {
             position: w.position,
         }));
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!).select().single())
+            handleResponse(supabase.from('workspaces').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
@@ -308,7 +315,7 @@ export const api = {
             position: m.position,
         }));
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('milestones').update({ position: u.position }).eq('id', u.id!).select().single())
+            handleResponse(supabase.from('milestones').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
@@ -318,7 +325,7 @@ export const api = {
             position: i.position,
         }));
         return Promise.all(updates.map(u =>
-            this.handleResponse(supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!).select().single())
+            handleResponse(supabase.from('timeline_items').update({ position: u.position }).eq('id', u.id!).select().single())
         ));
     },
 
@@ -334,7 +341,7 @@ export const api = {
         // For pure batch update in one query, Supabase requires upsert with all fields, 
         // but we only have partials here.
 
-        return Promise.all(updates.map(u => {
+        const results = await Promise.allSettled(updates.map(u => {
             const { id, ...rest } = u;
             const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
             if ('title' in rest) dbUpdates.title = rest.title;
@@ -346,25 +353,33 @@ export const api = {
             if ('completedAt' in rest) dbUpdates.completed_at = rest.completedAt;
             if ('position' in rest) dbUpdates.position = rest.position;
 
-            return this.handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id!));
+            return handleResponse(supabase.from('timeline_items').update(dbUpdates).eq('id', id!));
         }));
+
+        const rejected = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+        if (rejected.length > 0) {
+            console.error('Batch update items partial failure:', rejected.map(r => r.reason));
+            throw new Error(`Batch update failed for ${rejected.length}/${results.length} item updates.`);
+        }
+
+        return results;
     },
 
     async updateUserSettings(settings: Partial<UserSettings>) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const userId = await requireUserId();
 
         const dbUpdates: Record<string, any> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
         if ('theme' in settings) dbUpdates.theme = settings.theme;
         if ('systemAccent' in settings) dbUpdates.system_accent = settings.systemAccent;
         if ('colorMode' in settings) dbUpdates.color_mode = settings.colorMode;
+        if ('blurEffectsEnabled' in settings) dbUpdates.blur_effects_enabled = settings.blurEffectsEnabled;
         if ('workspaceOrder' in settings) dbUpdates.workspace_order = settings.workspaceOrder;
         if ('openProjectIds' in settings) dbUpdates.open_project_ids = settings.openProjectIds;
 
         // Ensure user exists in settings table
-        return this.handleResponse(supabase.from('user_settings').upsert({
-            user_id: user.id,
+        return handleResponse(supabase.from('user_settings').upsert({
+            user_id: userId,
             ...dbUpdates
-        }));
+        }).select().single());
     }
 };

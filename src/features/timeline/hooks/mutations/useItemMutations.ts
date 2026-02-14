@@ -29,6 +29,7 @@ export function useItemMutations(
             return { previousState, optimId };
         },
         onError: (err, newItem, context) => {
+            console.error('addItem failed:', err, newItem);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }
@@ -65,6 +66,7 @@ export function useItemMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('updateItem failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }
@@ -89,6 +91,7 @@ export function useItemMutations(
             return { previousState };
         },
         onError: (err, id, context) => {
+            console.error('deleteItem failed:', err, id);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }
@@ -134,6 +137,12 @@ export function useItemMutations(
 
             return { previousState, optimId };
         },
+        onError: (err, newSP, context) => {
+            console.error('addSubProject failed:', err, newSP);
+            if (context?.previousState) {
+                queryClient.setQueryData(['timeline', 'data'], context.previousState);
+            }
+        },
         onSuccess: (data, variables, context) => {
             if (context?.optimId) {
                 updateTimelineDataCache((old) => {
@@ -145,9 +154,6 @@ export function useItemMutations(
                     return { ...old, subProjects };
                 });
             }
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        },
-        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
         }
     });
@@ -192,6 +198,7 @@ export function useItemMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('updateSubProject failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }
@@ -237,6 +244,7 @@ export function useItemMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('deleteSubProject failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'data'], context.previousState);
             }

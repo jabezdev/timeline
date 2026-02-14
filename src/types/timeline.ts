@@ -67,6 +67,7 @@ export interface UserSettings {
   theme?: 'light' | 'dark' | 'system';
   systemAccent?: string; // One of the 6 curated colors or defaults
   colorMode?: 'full' | 'monochromatic';
+  blurEffectsEnabled?: boolean;
 }
 
 export interface TimelineState {

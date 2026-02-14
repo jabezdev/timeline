@@ -61,6 +61,9 @@ export function useTimelineMutations() {
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
         }
     });
 

@@ -26,6 +26,7 @@ interface QuickCreateContentProps {
     availableSubProjects: SubProject[];
     date: string;
     defaultColor?: number;
+    blurEffectsEnabled?: boolean;
     onClose: () => void;
 }
 
@@ -36,6 +37,7 @@ export function QuickCreateContent({
     availableSubProjects,
     date: initialDate,
     defaultColor = 3,
+    blurEffectsEnabled = true,
     onClose
 }: QuickCreateContentProps) {
     const [title, setTitle] = useState('');
@@ -151,7 +153,10 @@ export function QuickCreateContent({
     // Let's try `useImperativeHandle` approach.
 
     return (
-        <div className="w-[340px] p-0 overflow-hidden shadow-2xl border border-border/40 bg-background/80 backdrop-blur-xl rounded-lg">
+        <div className={cn(
+            "w-[340px] p-0 overflow-hidden shadow-2xl border border-border/40 bg-background/80 rounded-lg",
+            blurEffectsEnabled && "backdrop-blur-xl"
+        )}>
             {/* Header / Title Input */}
             <div className="p-4 border-b border-border/10 bg-muted/20">
                 <Input

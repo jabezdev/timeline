@@ -6,6 +6,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 import { PreferencesContent } from '@/features/settings/components/Preferences';
 import { WorkspaceManager } from '@/features/workspace/components/WorkspaceManager';
@@ -14,10 +15,11 @@ interface TimelineControlsProps {
     startDate: Date;
     onNavigate: (direction: 'prev' | 'next') => void;
     onTodayClick: () => void;
+    blurEffectsEnabled?: boolean;
     children?: React.ReactNode;
 }
 
-export function TimelineControls({ startDate, onNavigate, onTodayClick, children }: TimelineControlsProps) {
+export function TimelineControls({ startDate, onNavigate, onTodayClick, blurEffectsEnabled = true, children }: TimelineControlsProps) {
     const queryClient = useQueryClient();
 
     return (
@@ -51,7 +53,10 @@ export function TimelineControls({ startDate, onNavigate, onTodayClick, children
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                        className="w-[700px] p-0 overflow-hidden bg-background/80 backdrop-blur-xl border-border/50 shadow-2xl"
+                        className={cn(
+                            "z-[900] w-[700px] p-0 overflow-hidden bg-background/80 border-border/50 shadow-2xl",
+                            blurEffectsEnabled && "backdrop-blur-xl"
+                        )}
                         align="start"
                         side="bottom"
                         sideOffset={8}

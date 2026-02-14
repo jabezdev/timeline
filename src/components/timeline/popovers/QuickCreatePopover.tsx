@@ -13,6 +13,7 @@ interface QuickCreatePopoverProps {
     date: string; // YYYY-MM-DD
     children?: React.ReactNode;
     defaultColor?: number;
+    blurEffectsEnabled?: boolean;
     anchorRect?: DOMRect | { x: number; y: number; width: number; height: number; top: number; left: number; right: number; bottom: number; toJSON: () => unknown };
 }
 
@@ -26,6 +27,7 @@ export function QuickCreatePopover({
     date,
     children,
     defaultColor = 3,
+    blurEffectsEnabled = true,
     anchorRect
 }: QuickCreatePopoverProps) {
 
@@ -88,6 +90,7 @@ export function QuickCreatePopover({
                         availableSubProjects={availableSubProjects}
                         date={date}
                         defaultColor={defaultColor}
+                        blurEffectsEnabled={blurEffectsEnabled}
                         onClose={() => onOpenChange(false)}
                     />
                 </div>

@@ -61,12 +61,14 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
     >
       {/* Milestone content - full width */}
       <div
-        className="flex items-center gap-1.5 px-2 py-1.5 border cursor-pointer hover:opacity-90 transition-opacity"
+        className="flex items-center gap-1.5 px-2 py-1.5 border cursor-pointer hover:opacity-90 transition-all"
         style={{
           backgroundColor: bgColor,
-          borderColor: isSelected ? 'hsl(var(--primary))' : borderColor,
+          borderColor: isSelected ? 'hsl(var(--background))' : borderColor,
           borderWidth: '1px',
-          boxShadow: isSelected ? 'inset 0 0 0 1px hsl(var(--primary))' : undefined,
+          boxShadow: isSelected
+            ? 'inset 0 0 0 1px hsl(var(--background)), 0 0 0 2px hsl(var(--primary)), 0 4px 14px hsl(var(--primary) / 0.3)'
+            : undefined,
           color: textColor,
           minHeight: minHeight ? `${minHeight}px` : undefined,
         }}
@@ -80,6 +82,17 @@ export const MilestoneItemView = React.memo(function MilestoneItemView({
           {milestone.title}
         </span>
       </div>
+
+      {isSelected && (
+        <div
+          className="pointer-events-none absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+          style={{
+            backgroundColor: 'hsl(var(--primary))',
+            border: '1.5px solid hsl(var(--background))',
+            boxShadow: '0 0 0 1px hsl(var(--primary))'
+          }}
+        />
+      )}
     </div>
   );
 });

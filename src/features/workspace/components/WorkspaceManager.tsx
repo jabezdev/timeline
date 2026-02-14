@@ -49,11 +49,17 @@ export function WorkspaceManager() {
 
     const mutations = useTimelineMutations();
 
-    const addWorkspace = (name: string, color: number) => mutations.addWorkspace.mutate({ name, color });
+    const addWorkspace = (name: string, color: number) => mutations.addWorkspace.mutate({
+        name,
+        color,
+        position: workspaceOrder.length,
+        isHidden: false
+    });
     const updateWorkspace = (id: string, updates: Partial<Workspace>) => mutations.updateWorkspace.mutate({ id, updates });
     const deleteWorkspace = (id: string) => mutations.deleteWorkspace.mutate(id);
 
-    const addProject = (workspaceId: string, name: string) => mutations.addProject.mutate({ workspaceId, name, color: 1, position: 0 }); // Default color/pos
+    const addProject = (workspaceId: string, name: string, position: number) =>
+        mutations.addProject.mutate({ workspaceId, name, color: 1, position });
     const updateProject = (id: string, updates: Partial<Project>) => mutations.updateProject.mutate({ id, updates });
     const deleteProject = (id: string) => mutations.deleteProject.mutate(id);
 
@@ -137,6 +143,8 @@ export function WorkspaceManager() {
                                     .filter(p => p.workspaceId === workspace.id)
                                     .sort((a, b) => (a.position || 0) - (b.position || 0));
 
+                                const nextProjectPosition = workspaceProjects.reduce((max, p) => Math.max(max, p.position ?? 0), -1) + 1;
+
                                 return (
                                     <SortableWorkspaceItem
                                         key={workspace.id}
@@ -147,7 +155,7 @@ export function WorkspaceManager() {
                                         onEdit={(updates) => updateWorkspace(workspace.id, updates)}
                                         onDelete={() => setDeletingWorkspace(workspace)}
                                         onToggleHidden={() => updateWorkspace(workspace.id, { isHidden: !workspace.isHidden })}
-                                        onAddProject={(name) => addProject(workspace.id, name)}
+                                        onAddProject={(name) => addProject(workspace.id, name, nextProjectPosition)}
                                         onEditProject={(p, updates) => updateProject(p.id, updates)}
                                         onDeleteProject={(p) => setDeletingProject(p)}
                                         onToggleProjectHidden={(p) => updateProject(p.id, { isHidden: !p.isHidden })}

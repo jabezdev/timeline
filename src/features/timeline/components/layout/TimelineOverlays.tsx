@@ -25,6 +25,7 @@ interface TimelineOverlaysProps {
     allProjects: Project[];
     allSubProjects: SubProject[];
     timelineState: import('@/types/timeline').TimelineState;
+    blurEffectsEnabled?: boolean;
 }
 
 export function TimelineOverlays({
@@ -36,6 +37,7 @@ export function TimelineOverlays({
     allProjects,
     allSubProjects,
     timelineState,
+    blurEffectsEnabled = true,
 }: TimelineOverlaysProps) {
     const selectedItem = useTimelineStore(state => state.selectedItem);
     const isItemDialogOpen = useTimelineStore(state => state.isItemDialogOpen);
@@ -83,6 +85,7 @@ export function TimelineOverlays({
                 onDelete={handleItemDelete}
                 projects={allProjects}
                 subProjects={allSubProjects}
+                blurEffectsEnabled={blurEffectsEnabled}
             />
 
             <AlertDialog open={!!subProjectToDelete} onOpenChange={(open) => !open && setSubProjectToDelete(null)}>
@@ -132,6 +135,7 @@ export function TimelineOverlays({
                     availableSubProjects={availableSubProjectsForCreate}
                     date={quickCreateState.date}
                     defaultColor={quickCreateState.workspaceColor}
+                    blurEffectsEnabled={blurEffectsEnabled}
                     anchorRect={quickCreateState.anchorRect}
                 />
             )}

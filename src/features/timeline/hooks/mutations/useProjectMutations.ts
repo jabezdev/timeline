@@ -29,6 +29,7 @@ export function useProjectMutations(
             return { previousState, optimId };
         },
         onError: (err, newProject, context) => {
+            console.error('addProject failed:', err, newProject);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
@@ -65,6 +66,7 @@ export function useProjectMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('updateProject failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
@@ -89,6 +91,7 @@ export function useProjectMutations(
             return { previousState };
         },
         onError: (err, id, context) => {
+            console.error('deleteProject failed:', err, id);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }
@@ -126,6 +129,7 @@ export function useProjectMutations(
             return { previousState };
         },
         onError: (err, vars, context) => {
+            console.error('reorderProjects failed:', err, vars);
             if (context?.previousState) {
                 queryClient.setQueryData(['timeline', 'structure'], context.previousState);
             }

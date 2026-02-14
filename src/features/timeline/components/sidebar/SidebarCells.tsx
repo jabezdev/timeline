@@ -68,12 +68,12 @@ export const WorkspaceSidebarCell = memo(function WorkspaceSidebarCell({
 
     const handleAddProject = () => {
         if (!newProjectName.trim()) return;
+        const nextPosition = projects.reduce((max, p) => Math.max(max, p.position ?? 0), -1) + 1;
         mutations.addProject.mutate({
-            id: `temp-${Date.now()}`,
             workspaceId: workspace.id,
             name: newProjectName.trim(),
             color: '1',
-            position: 0,
+            position: nextPosition,
             isHidden: false,
         } as any);
         setNewProjectName('');

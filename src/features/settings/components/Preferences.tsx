@@ -21,6 +21,14 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+
+type SettingsUpdates = Partial<{
+    systemAccent: string;
+    colorMode: 'full' | 'monochromatic';
+    theme: 'light' | 'dark' | 'system';
+    blurEffectsEnabled: boolean;
+}>;
 
 const FONTS = [
     { name: "Inter", value: "inter", family: "'Inter', sans-serif" },
@@ -109,9 +117,16 @@ export function PreferencesContent() {
     // Accumulates pending updates and debounces the backend call.
     // The optimistic cache update is applied IMMEDIATELY so the UI reacts instantly.
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const pendingUpdatesRef = useRef<Partial<{ systemAccent: string; colorMode: 'full' | 'monochromatic'; theme: 'light' | 'dark' | 'system' }>>({});
+    const pendingUpdatesRef = useRef<SettingsUpdates>({});
 
-    const debouncedUpdateSettings = useCallback((updates: Partial<{ systemAccent: string; colorMode: 'full' | 'monochromatic'; theme: 'light' | 'dark' | 'system' }>) => {
+    const flushPendingSettings = useCallback(() => {
+        const merged = pendingUpdatesRef.current;
+        if (!merged || Object.keys(merged).length === 0) return;
+        pendingUpdatesRef.current = {};
+        mutations.updateUserSettings.mutate(merged);
+    }, [mutations.updateUserSettings]);
+
+    const debouncedUpdateSettings = useCallback((updates: SettingsUpdates) => {
         // Accumulate updates (so rapid clicks merge, e.g. accent + colorMode)
         pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
 
@@ -128,21 +143,21 @@ export function PreferencesContent() {
 
         // Schedule backend save after 300ms of inactivity
         debounceTimerRef.current = setTimeout(() => {
-            const merged = pendingUpdatesRef.current;
-            pendingUpdatesRef.current = {};
-            mutations.updateUserSettings.mutate(merged);
+            flushPendingSettings();
             debounceTimerRef.current = null;
         }, 300);
-    }, [mutations, queryClient]);
+    }, [flushPendingSettings, queryClient]);
 
     // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (debounceTimerRef.current) {
                 clearTimeout(debounceTimerRef.current);
+                debounceTimerRef.current = null;
             }
+            flushPendingSettings();
         };
-    }, []);
+    }, [flushPendingSettings]);
 
     const currentAccent = userSettings?.systemAccent || '9';
     const colorMode = userSettings?.colorMode || 'full';
@@ -293,6 +308,20 @@ export function PreferencesContent() {
                                 ))}
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md border border-border/50 bg-background/30 px-3 py-2">
+                        <div className="space-y-0.5 pr-3">
+                            <Label htmlFor="blur-effects" className="text-xs font-normal text-muted-foreground">Background Blur Effects</Label>
+                            <p className="text-[10px] text-muted-foreground/80">
+                                Keep on for frosted UI. Turn off if scrolling feels laggy.
+                            </p>
+                        </div>
+                        <Switch
+                            id="blur-effects"
+                            checked={userSettings?.blurEffectsEnabled ?? true}
+                            onCheckedChange={(checked) => debouncedUpdateSettings({ blurEffectsEnabled: checked })}
+                        />
                     </div>
                 </div>
             </div>
