@@ -78,8 +78,10 @@ const TimelineContainer = memo(function TimelineContainer({
       handleItemSave={handlers.handleItemSave}
       handleToggleItemComplete={handlers.handleToggleItemComplete}
       handleItemClick={handlers.handleItemClick}
+      handleItemDragSelectStart={handlers.handleItemDragSelectStart}
+      handleItemDragSelectEnter={handlers.handleItemDragSelectEnter}
       handleItemContextMenu={handlers.handleItemContextMenu}
-      onClearSelection={handlers.clearSelection}
+      onClearSelection={handlers.handleClearSelection}
 
       // Data
       allProjects={allProjects}

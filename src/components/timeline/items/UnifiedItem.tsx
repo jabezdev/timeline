@@ -7,6 +7,8 @@ interface UnifiedItemProps {
     item: TimelineItem;
     onToggleComplete: (itemId: string) => void;
     onClick?: (multi: boolean, e: React.MouseEvent) => void;
+    onDragSelectStart?: (e: React.MouseEvent) => void;
+    onDragSelectEnter?: () => void;
     workspaceColor: number;
     minHeight?: number;
     isSelected?: boolean;
@@ -91,6 +93,9 @@ export const UnifiedItemView = React.memo(function UnifiedItemView({
                 }}
             >
                 <button
+                    onMouseDown={(e) => {
+                        e.stopPropagation();
+                    }}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (onToggleComplete) onToggleComplete(item.id);
@@ -119,6 +124,8 @@ export const UnifiedItem = React.memo(function UnifiedItem({
     item,
     onToggleComplete,
     onClick,
+    onDragSelectStart,
+    onDragSelectEnter,
     workspaceColor,
     onDoubleClick,
     minHeight,
@@ -131,12 +138,20 @@ export const UnifiedItem = React.memo(function UnifiedItem({
     onQuickEdit?: (item: TimelineItem, anchorElement?: HTMLElement) => void;
     onContextMenu?: (e: React.MouseEvent) => void;
     onClick?: (multi: boolean, e: React.MouseEvent) => void;
+    onDragSelectStart?: (e: React.MouseEvent) => void;
+    onDragSelectEnter?: () => void;
 }) {
     const isSelected = useIsSelected(item.id);
     return (
         <div>
             <div
                 className="pointer-events-auto select-none"
+                onMouseDown={(e) => {
+                    if (onDragSelectStart) onDragSelectStart(e);
+                }}
+                onMouseEnter={() => {
+                    if (onDragSelectEnter) onDragSelectEnter();
+                }}
                 onContextMenu={(e) => {
                     if (onContextMenu) { onContextMenu(e); return; }
 

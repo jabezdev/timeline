@@ -16,6 +16,7 @@ export function useTimelineHandlers({
     // Optimisation: Use granular selectors to avoid re-rendering when other parts of the store change
     const toggleSelection = useTimelineStore(state => state.toggleSelection);
     const selectItem = useTimelineStore(state => state.selectItem);
+    const setSelectedIds = useTimelineStore(state => state.setSelectedIds);
     const clearSelection = useTimelineStore(state => state.clearSelection);
     const setSidebarWidth = useTimelineStore(state => state.setSidebarWidth);
     const sidebarWidth = useTimelineStore(state => state.sidebarWidth);
@@ -119,7 +120,89 @@ export function useTimelineHandlers({
         mutations.addSubProject.mutate(newSub);
     }, [mutations.addSubProject]);
 
+    const isDragSelectingRef = useRef(false);
+    const dragSelectedIdsRef = useRef<Set<string>>(new Set());
+    const dragStartIdRef = useRef<string | null>(null);
+    const dragHasEnteredRef = useRef(false);
+    const suppressClickRef = useRef(false);
+    const dragInitialSelectedRef = useRef<Set<string>>(new Set());
+    const dragProcessedIdsRef = useRef<Set<string>>(new Set());
+
+    const applyDragSelection = useCallback((id: string) => {
+        if (dragProcessedIdsRef.current.has(id)) return;
+        dragProcessedIdsRef.current.add(id);
+
+        if (dragInitialSelectedRef.current.has(id)) {
+            const currentSelected = useTimelineStore.getState().selectedIds;
+            if (!currentSelected.has(id)) return;
+            const next = new Set(currentSelected);
+            next.delete(id);
+            setSelectedIds(next);
+        } else {
+            selectItem(id, true);
+        }
+    }, [selectItem, setSelectedIds]);
+
+    const endDragSelect = useCallback(() => {
+        if (!isDragSelectingRef.current) return;
+
+        isDragSelectingRef.current = false;
+        dragSelectedIdsRef.current.clear();
+        dragProcessedIdsRef.current.clear();
+
+        if (!dragHasEnteredRef.current && dragStartIdRef.current) {
+            toggleSelection(dragStartIdRef.current, true);
+        }
+
+        dragStartIdRef.current = null;
+        dragHasEnteredRef.current = false;
+        dragInitialSelectedRef.current = new Set();
+
+        window.removeEventListener('mouseup', endDragSelect);
+
+        // Allow the click event to be suppressed for the same interaction
+        setTimeout(() => {
+            suppressClickRef.current = false;
+        }, 0);
+    }, [toggleSelection]);
+
+    const handleItemDragSelectStart = useCallback((id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => {
+        if (type === 'subproject') return;
+        if (e.button !== 0) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        isDragSelectingRef.current = true;
+        suppressClickRef.current = true;
+        dragStartIdRef.current = id;
+        dragHasEnteredRef.current = false;
+        dragSelectedIdsRef.current = new Set();
+        dragProcessedIdsRef.current = new Set();
+        dragInitialSelectedRef.current = new Set(useTimelineStore.getState().selectedIds);
+
+        window.addEventListener('mouseup', endDragSelect);
+    }, [endDragSelect]);
+
+    const handleItemDragSelectEnter = useCallback((id: string, type: 'item' | 'milestone' | 'subproject') => {
+        if (type === 'subproject') return;
+        if (!isDragSelectingRef.current) return;
+        if (!dragHasEnteredRef.current && dragStartIdRef.current) {
+            dragHasEnteredRef.current = true;
+            if (!dragSelectedIdsRef.current.has(dragStartIdRef.current)) {
+                dragSelectedIdsRef.current.add(dragStartIdRef.current);
+                applyDragSelection(dragStartIdRef.current);
+            }
+        }
+
+        if (dragSelectedIdsRef.current.has(id)) return;
+
+        dragSelectedIdsRef.current.add(id);
+        applyDragSelection(id);
+    }, [applyDragSelection]);
+
     const handleItemClick = useCallback((id: string, multi: boolean, e: React.MouseEvent) => {
+        if (suppressClickRef.current) return;
         e.stopPropagation();
 
         // 1. Handle Selection Logic - Always use multi-select (automatic multi-select)
@@ -146,6 +229,17 @@ export function useTimelineHandlers({
         // Ensure Sidebar is closed on left click
         setIsItemDialogOpen(false);
     }, [toggleSelection]);
+
+    const handleClearSelection = useCallback((e?: React.MouseEvent) => {
+        if (suppressClickRef.current || isDragSelectingRef.current) {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
+        clearSelection();
+    }, [clearSelection]);
 
     const handleItemContextMenu = useCallback((id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => {
         e.preventDefault();
@@ -294,6 +388,8 @@ export function useTimelineHandlers({
         handleAddMilestone,
         handleAddSubProject,
         handleItemClick,
+        handleItemDragSelectStart,
+        handleItemDragSelectEnter,
         handleItemContextMenu,
         handleItemDoubleClick,
         handleItemDelete,
@@ -301,6 +397,7 @@ export function useTimelineHandlers({
         handleToggleItemComplete,
         handleResizeStart,
         clearSelection,
+        handleClearSelection,
         setQuickEditState,
     }), [
         handleQuickCreate,
@@ -309,6 +406,8 @@ export function useTimelineHandlers({
         handleAddMilestone,
         handleAddSubProject,
         handleItemClick,
+        handleItemDragSelectStart,
+        handleItemDragSelectEnter,
         handleItemContextMenu,
         handleItemDoubleClick,
         handleItemDelete,
@@ -316,6 +415,7 @@ export function useTimelineHandlers({
         handleToggleItemComplete,
         handleResizeStart,
         clearSelection,
+        handleClearSelection,
         setQuickEditState,
     ]);
 }

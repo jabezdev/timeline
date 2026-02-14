@@ -22,6 +22,8 @@ interface TimelineCellProps {
   onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone, anchorElement?: HTMLElement) => void;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemDragSelectStart: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+  onItemDragSelectEnter: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
   onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
@@ -43,6 +45,8 @@ export const TimelineCell = React.memo(function TimelineCell({
   onQuickCreate,
   onQuickEdit,
   onItemClick,
+  onItemDragSelectStart,
+  onItemDragSelectEnter,
   onItemContextMenu,
   colorMode,
   systemAccent
@@ -60,6 +64,8 @@ export const TimelineCell = React.memo(function TimelineCell({
             onQuickEdit={onQuickEdit}
             minHeight={rowHeight}
             onClick={(multi, e) => onItemClick(milestone.id, multi, e)}
+            onDragSelectStart={(e) => onItemDragSelectStart(milestone.id, 'milestone', e)}
+            onDragSelectEnter={() => onItemDragSelectEnter(milestone.id, 'milestone')}
             onContextMenu={(e) => onItemContextMenu(milestone.id, 'milestone', e)}
             colorMode={colorMode}
             systemAccent={systemAccent}
@@ -77,6 +83,8 @@ export const TimelineCell = React.memo(function TimelineCell({
             workspaceColor={workspaceColor}
             minHeight={rowHeight}
             onClick={(multi, e) => onItemClick(item.id, multi, e)}
+            onDragSelectStart={(e) => onItemDragSelectStart(item.id, 'item', e)}
+            onDragSelectEnter={() => onItemDragSelectEnter(item.id, 'item')}
             onContextMenu={(e) => onItemContextMenu(item.id, 'item', e)}
             colorMode={colorMode}
             systemAccent={systemAccent}

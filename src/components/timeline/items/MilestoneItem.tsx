@@ -7,6 +7,8 @@ interface MilestoneItemProps {
   milestone: Milestone;
   workspaceColor: number;
   onClick?: (multi: boolean, e: React.MouseEvent) => void;
+  onDragSelectStart?: (e: React.MouseEvent) => void;
+  onDragSelectEnter?: () => void;
   className?: string;
   minHeight?: number;
   isSelected?: boolean;
@@ -86,6 +88,8 @@ export const MilestoneItem = React.memo(function MilestoneItem({
   milestone,
   workspaceColor,
   onClick,
+  onDragSelectStart,
+  onDragSelectEnter,
   className,
   onDoubleClick,
   minHeight,
@@ -98,6 +102,8 @@ export const MilestoneItem = React.memo(function MilestoneItem({
   onQuickEdit?: (item: Milestone, anchorElement?: HTMLElement) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   onClick?: (multi: boolean, e: React.MouseEvent) => void;
+  onDragSelectStart?: (e: React.MouseEvent) => void;
+  onDragSelectEnter?: () => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }) {
@@ -106,6 +112,12 @@ export const MilestoneItem = React.memo(function MilestoneItem({
     <div className={className}>
       <div
         className="pointer-events-auto select-none"
+        onMouseDown={(e) => {
+          if (onDragSelectStart) onDragSelectStart(e);
+        }}
+        onMouseEnter={() => {
+          if (onDragSelectEnter) onDragSelectEnter();
+        }}
         onContextMenu={(e) => {
           if (onContextMenu) { onContextMenu(e); return; }
 

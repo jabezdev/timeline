@@ -30,8 +30,10 @@ interface TimelineViewProps {
     handleToggleItemComplete: (id: string) => void;
     timelineRef: React.RefObject<HTMLDivElement>;
     handleItemClick?: (id: string, multi: boolean, e: React.MouseEvent) => void;
+    handleItemDragSelectStart?: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+    handleItemDragSelectEnter?: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
     handleItemContextMenu?: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
-    onClearSelection: () => void;
+    onClearSelection: (e?: React.MouseEvent) => void;
     allProjects: import('@/types/timeline').Project[];
     allSubProjects: SubProject[];
 }
@@ -50,6 +52,8 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
         handleToggleItemComplete,
         timelineRef,
         handleItemClick,
+        handleItemDragSelectStart,
+        handleItemDragSelectEnter,
         handleItemContextMenu,
         onClearSelection,
         // Props extracted to overlays
@@ -89,7 +93,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                 ref={timelineRef}
                 id="timeline-scroll-container"
                 className="flex-1 overflow-auto scrollbar-hide w-full h-full select-none"
-                onClick={onClearSelection}
+                onClick={(e) => onClearSelection(e)}
             >
                 <div className="min-w-max flex flex-col">
 
@@ -176,6 +180,8 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                                     onQuickEdit={handleQuickEdit}
                                                     onQuickCreate={handleQuickCreate}
                                                     onItemClick={handleItemClick!}
+                                                    onItemDragSelectStart={handleItemDragSelectStart!}
+                                                    onItemDragSelectEnter={handleItemDragSelectEnter!}
                                                     onItemContextMenu={handleItemContextMenu!}
                                                     colorMode={timelineState.userSettings?.colorMode || 'full'}
                                                     systemAccent={timelineState.userSettings?.systemAccent || '6'}
@@ -192,7 +198,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                                     width: 'var(--sidebar-width)',
                                                     minWidth: 'var(--sidebar-width)'
                                                 }}
-                                                onClick={onClearSelection}
+                                                onClick={(e) => onClearSelection(e)}
                                             />
 
                                             <div className="flex-1">
@@ -208,6 +214,8 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                                                     onQuickCreate={handleQuickCreate}
                                                     onQuickEdit={handleQuickEdit}
                                                     onItemClick={handleItemClick!}
+                                                    onItemDragSelectStart={handleItemDragSelectStart!}
+                                                    onItemDragSelectEnter={handleItemDragSelectEnter!}
                                                     onItemContextMenu={handleItemContextMenu!}
                                                     onClearSelection={onClearSelection}
                                                     colorMode={timelineState.userSettings?.colorMode || 'full'}

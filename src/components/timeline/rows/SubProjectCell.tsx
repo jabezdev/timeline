@@ -18,6 +18,8 @@ interface SubProjectCellProps {
     onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
     onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
     onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+    onItemDragSelectStart: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+    onItemDragSelectEnter: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
     onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
     colorMode?: 'full' | 'monochromatic';
     systemAccent?: string;
@@ -36,6 +38,8 @@ export function SubProjectCell({
     onQuickCreate,
     onQuickEdit,
     onItemClick,
+    onItemDragSelectStart,
+    onItemDragSelectEnter,
     onItemContextMenu,
     colorMode,
     systemAccent
@@ -57,6 +61,8 @@ export function SubProjectCell({
                                 workspaceColor={workspaceColor}
                                 minHeight={height}
                                 onClick={(multi, e) => onItemClick(item.id, multi, e)}
+                                onDragSelectStart={(e) => onItemDragSelectStart(item.id, 'item', e)}
+                                onDragSelectEnter={() => onItemDragSelectEnter(item.id, 'item')}
                                 onContextMenu={(e) => onItemContextMenu(item.id, 'item', e)}
                                 colorMode={colorMode}
                                 systemAccent={systemAccent}

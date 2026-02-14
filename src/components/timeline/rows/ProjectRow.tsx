@@ -20,6 +20,8 @@ function MilestoneCell({
   colorMode,
   systemAccent,
   onItemClick,
+  onItemDragSelectStart,
+  onItemDragSelectEnter,
   onItemContextMenu
 }: {
   date: Date;
@@ -32,6 +34,8 @@ function MilestoneCell({
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemDragSelectStart: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+  onItemDragSelectEnter: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
   onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
@@ -58,6 +62,8 @@ function MilestoneCell({
                 onQuickEdit={onQuickEdit}
                 minHeight={PROJECT_HEADER_HEIGHT}
                 onClick={(multi, e) => onItemClick(milestone.id, multi, e)}
+                onDragSelectStart={(e) => onItemDragSelectStart(milestone.id, 'milestone', e)}
+                onDragSelectEnter={() => onItemDragSelectEnter(milestone.id, 'milestone')}
                 colorMode={colorMode}
                 systemAccent={systemAccent}
                 onContextMenu={(e) => onItemContextMenu(milestone.id, 'milestone', e)}
@@ -96,6 +102,8 @@ interface MilestoneHeaderRowProps {
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemDragSelectStart: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+  onItemDragSelectEnter: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
   onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
 }
 
@@ -110,6 +118,8 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
   colorMode,
   systemAccent,
   onItemClick,
+  onItemDragSelectStart,
+  onItemDragSelectEnter,
   onItemContextMenu
 }: MilestoneHeaderRowProps) {
 
@@ -136,6 +146,8 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
             onQuickCreate={onQuickCreate}
             onQuickEdit={onQuickEdit}
             onItemClick={onItemClick}
+            onItemDragSelectStart={onItemDragSelectStart}
+            onItemDragSelectEnter={onItemDragSelectEnter}
             onItemContextMenu={onItemContextMenu}
             colorMode={colorMode}
             systemAccent={systemAccent}
@@ -160,8 +172,10 @@ interface ProjectRowProps {
   onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
   onQuickEdit: (item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => void;
   onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+  onItemDragSelectStart: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+  onItemDragSelectEnter: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
   onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
-  onClearSelection: () => void;
+  onClearSelection: (e?: React.MouseEvent) => void;
   colorMode?: 'full' | 'monochromatic';
   systemAccent?: string;
 }
@@ -178,6 +192,8 @@ export const ProjectRow = memo(function ProjectRow({
   onQuickCreate,
   onQuickEdit,
   onItemClick,
+  onItemDragSelectStart,
+  onItemDragSelectEnter,
   onItemContextMenu,
   onClearSelection,
   colorMode,
@@ -227,6 +243,8 @@ export const ProjectRow = memo(function ProjectRow({
               onQuickCreate={onQuickCreate}
               onQuickEdit={onQuickEdit}
               onItemClick={onItemClick}
+              onItemDragSelectStart={onItemDragSelectStart}
+              onItemDragSelectEnter={onItemDragSelectEnter}
               onItemContextMenu={onItemContextMenu}
               colorMode={colorMode}
               systemAccent={systemAccent}
@@ -248,6 +266,8 @@ export const ProjectRow = memo(function ProjectRow({
         onQuickCreate={onQuickCreate}
         onQuickEdit={onQuickEdit}
         onItemClick={onItemClick}
+        onItemDragSelectStart={onItemDragSelectStart}
+        onItemDragSelectEnter={onItemDragSelectEnter}
         onItemContextMenu={onItemContextMenu}
         colorMode={colorMode}
         systemAccent={systemAccent}

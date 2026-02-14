@@ -19,6 +19,8 @@ interface SubProjectLaneProps {
     onQuickCreate: (type: 'item' | 'milestone', projectId: string, date: string, subProjectId?: string, workspaceColor?: number, anchorElement?: HTMLElement) => void;
     onQuickEdit: (item: TimelineItem | SubProject, anchorElement?: HTMLElement) => void;
     onItemClick: (id: string, multi: boolean, e: React.MouseEvent) => void;
+    onItemDragSelectStart: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
+    onItemDragSelectEnter: (id: string, type: 'item' | 'milestone' | 'subproject') => void;
     onItemContextMenu: (id: string, type: 'item' | 'milestone' | 'subproject', e: React.MouseEvent) => void;
     colorMode?: 'full' | 'monochromatic';
     systemAccent?: string;
@@ -38,6 +40,8 @@ export function SubProjectLane({
     onQuickCreate,
     onQuickEdit,
     onItemClick,
+    onItemDragSelectStart,
+    onItemDragSelectEnter,
     onItemContextMenu,
     colorMode,
     systemAccent
@@ -106,6 +110,8 @@ export function SubProjectLane({
                             onQuickCreate={onQuickCreate}
                             onQuickEdit={onQuickEdit}
                             onItemClick={onItemClick}
+                            onItemDragSelectStart={onItemDragSelectStart}
+                            onItemDragSelectEnter={onItemDragSelectEnter}
                             onItemContextMenu={onItemContextMenu}
                             colorMode={colorMode}
                             systemAccent={systemAccent}

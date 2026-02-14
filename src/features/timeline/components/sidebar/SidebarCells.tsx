@@ -21,7 +21,7 @@ interface SidebarCellProps {
     isStickyTop?: boolean;
     width?: number;
     innerClassName?: string;
-    onClick?: () => void;
+    onClick?: (e: React.MouseEvent) => void;
 }
 
 export const SidebarCell = memo(function SidebarCell({ children, height, minHeight, backgroundColor, className, width = 350, innerClassName, onClick }: SidebarCellProps) {
@@ -52,7 +52,7 @@ interface InlineWorkspaceLabelProps {
     workspace: Workspace;
     projects: Project[];
     width?: number;
-    onClearSelection?: () => void;
+    onClearSelection?: (e?: React.MouseEvent) => void;
 }
 
 export const WorkspaceSidebarCell = memo(function WorkspaceSidebarCell({
@@ -150,7 +150,7 @@ interface InlineProjectLabelProps {
     items: TimelineItem[];
     workspaceColor: string;
     width?: number;
-    onClearSelection?: () => void;
+    onClearSelection?: (e?: React.MouseEvent) => void;
 }
 
 export const ProjectSidebarCell = memo(function ProjectSidebarCell({
