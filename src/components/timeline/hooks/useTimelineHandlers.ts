@@ -56,7 +56,7 @@ export function useTimelineHandlers({
                 toJSON: rect.toJSON
             } : undefined
         });
-    }, []);
+    }, [setQuickCreateState]);
 
     const handleQuickEdit = useCallback((item: TimelineItem | Milestone | SubProject, anchorElement?: HTMLElement) => {
         const rect = anchorElement?.getBoundingClientRect();
@@ -75,7 +75,7 @@ export function useTimelineHandlers({
                 toJSON: rect.toJSON
             } : undefined
         });
-    }, []);
+    }, [setQuickEditState]);
 
     // Keyboard Hook
     const { handleSelection } = useTimelineKeyboard({
@@ -228,7 +228,7 @@ export function useTimelineHandlers({
 
         // Ensure Sidebar is closed on left click
         setIsItemDialogOpen(false);
-    }, [toggleSelection]);
+    }, [toggleSelection, setIsItemDialogOpen]);
 
     const handleClearSelection = useCallback((e?: React.MouseEvent) => {
         if (suppressClickRef.current || isDragSelectingRef.current) {
@@ -256,7 +256,7 @@ export function useTimelineHandlers({
             setSelectedItem(item);
             setIsItemDialogOpen(true);
         }
-    }, [handleSelection]);
+    }, [handleSelection, setSelectedItem, setIsItemDialogOpen]);
 
     const handleItemDoubleClick = useCallback((item: TimelineItem | Milestone | SubProject, e?: React.MouseEvent) => {
         // Single-select the double-clicked item (clear other selections)

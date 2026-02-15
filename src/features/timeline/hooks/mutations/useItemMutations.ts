@@ -233,7 +233,7 @@ export function useItemMutations(
                     items = { ...items };
                     Object.keys(items).forEach(itemId => {
                         if (items[itemId].subProjectId === id) {
-                            items[itemId] = { ...items[itemId], subProjectId: null as any };
+                            items[itemId] = { ...items[itemId], subProjectId: undefined };
                         }
                     });
                 }

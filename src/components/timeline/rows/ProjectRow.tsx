@@ -7,7 +7,10 @@ import { MilestoneItem } from '../items/MilestoneItem';
 import { SubProjectSection } from './SubProjectRow';
 import { CELL_WIDTH, PROJECT_HEADER_HEIGHT } from '@/lib/constants';
 import { packSubProjects } from '@/lib/timelineUtils';
-import { EMPTY_ARRAY } from '@/lib/constants';
+
+const EMPTY_ITEMS: TimelineItem[] = [];
+const EMPTY_MILESTONES: Milestone[] = [];
+const EMPTY_SUBPROJECTS: SubProject[] = [];
 
 function MilestoneCell({
   date,
@@ -140,7 +143,7 @@ export const MilestoneHeaderRow = memo(function MilestoneHeaderRow({
             key={dateStr}
             date={date}
             projectId={project.id}
-            milestones={milestonesByDate.get(dateStr) || (EMPTY_ARRAY as any)}
+            milestones={milestonesByDate.get(dateStr) || EMPTY_MILESTONES}
             workspaceColor={workspaceColor}
             onItemDoubleClick={onItemDoubleClick}
             onQuickCreate={onQuickCreate}
@@ -221,7 +224,7 @@ export const ProjectRow = memo(function ProjectRow({
     return { items, subProjectItems };
   }, [propItems]);
 
-  const subProjectLanes = useMemo(() => packSubProjects(propSubProjects || (EMPTY_ARRAY as any)), [propSubProjects]);
+  const subProjectLanes = useMemo(() => packSubProjects(propSubProjects || EMPTY_SUBPROJECTS), [propSubProjects]);
 
   return (
     <div className="flex flex-col">
@@ -234,8 +237,8 @@ export const ProjectRow = memo(function ProjectRow({
               date={date}
               dateStr={dateStr}
               projectId={project.id}
-              items={items.get(dateStr) || (EMPTY_ARRAY as any)}
-              milestones={EMPTY_ARRAY as any}
+              items={items.get(dateStr) || EMPTY_ITEMS}
+              milestones={EMPTY_MILESTONES}
               workspaceColor={workspaceColor}
               onToggleItemComplete={onToggleItemComplete}
               onItemDoubleClick={onItemDoubleClick}

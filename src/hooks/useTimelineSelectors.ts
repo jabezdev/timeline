@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Project, TimelineItem, Milestone, SubProject, TimelineState } from '@/types/timeline';
 
 // Helper for shallow array equality check
@@ -10,7 +10,10 @@ function areArraysEqual(arr1: unknown[], arr2: unknown[]) {
     return true;
 }
 
-export function useTimelineSelectors(state: TimelineState) {
+export function useTimelineSelectors(
+    state: TimelineState,
+    options?: { visibleWorkspaceIds?: Set<string> }
+) {
     const {
         workspaces: workspacesMap,
         projects: projectsMap,
@@ -19,6 +22,14 @@ export function useTimelineSelectors(state: TimelineState) {
         subProjects: subProjectsMap,
         workspaceOrder,
     } = state;
+
+    const visibleWorkspaceIds = options?.visibleWorkspaceIds;
+    const isWorkspaceVisible = useCallback((workspaceId: string) => {
+        const ws = workspacesMap[workspaceId];
+        if (!ws || ws.isHidden) return false;
+        if (!visibleWorkspaceIds) return true;
+        return visibleWorkspaceIds.has(workspaceId);
+    }, [workspacesMap, visibleWorkspaceIds]);
 
     // Cache Refs to store the previous version of arrays
     const cache = useRef({
@@ -36,7 +47,7 @@ export function useTimelineSelectors(state: TimelineState) {
 
         Object.values(projectsMap).forEach(p => {
             const ws = workspacesMap[p.workspaceId];
-            if (ws && !p.isHidden) {
+            if (ws && !p.isHidden && isWorkspaceVisible(p.workspaceId)) {
                 projs.push({
                     ...p,
                     workspaceName: ws.name,
@@ -52,7 +63,7 @@ export function useTimelineSelectors(state: TimelineState) {
             }
             return (a.position || 0) - (b.position || 0);
         });
-    }, [workspacesMap, projectsMap, workspaceOrder]);
+    }, [workspacesMap, projectsMap, workspaceOrder, isWorkspaceVisible]);
 
     // Derived State: Grouping and Stabilization
     const { projectsItems, projectsMilestones, projectsSubProjects } = useMemo(() => {
@@ -145,7 +156,7 @@ export function useTimelineSelectors(state: TimelineState) {
         const map = new Map<string, Project[]>();
         Object.keys(workspacesMap).forEach(wsId => map.set(wsId, []));
         Object.values(projectsMap).forEach(p => {
-            if (map.has(p.workspaceId) && !p.isHidden) {
+            if (map.has(p.workspaceId) && !p.isHidden && isWorkspaceVisible(p.workspaceId)) {
                 map.get(p.workspaceId)?.push(p);
             }
         });
@@ -153,7 +164,7 @@ export function useTimelineSelectors(state: TimelineState) {
             projs.sort((a, b) => (a.position || 0) - (b.position || 0));
         });
         return map;
-    }, [workspacesMap, projectsMap]);
+    }, [workspacesMap, projectsMap, isWorkspaceVisible]);
 
     // Derived State: SubProjects List for Dialog
     const allSubProjects = useMemo(() => Object.values(subProjectsMap), [subProjectsMap]);
@@ -161,10 +172,9 @@ export function useTimelineSelectors(state: TimelineState) {
     // Sort workspaces using workspaceOrder
     const sortedWorkspaceIds = useMemo(() => {
         return workspaceOrder.filter(id => {
-            const ws = workspacesMap[id];
-            return ws && !ws.isHidden;
+            return isWorkspaceVisible(id);
         });
-    }, [workspaceOrder, workspacesMap]);
+    }, [workspaceOrder, isWorkspaceVisible]);
 
     return {
         projectsItems,

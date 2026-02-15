@@ -111,7 +111,7 @@ export const api = {
     async createWorkspace(w: Workspace) {
         const userId = await requireUserId();
 
-        const payload: any = {
+        const payload: Record<string, unknown> = {
             user_id: userId,
             name: w.name,
             color: w.color,
@@ -142,7 +142,7 @@ export const api = {
 
     async createProject(p: Project) {
         await requireUserId();
-        const payload: any = {
+        const payload: Record<string, unknown> = {
             name: p.name,
             workspace_id: p.workspaceId,
             color: p.color,
@@ -186,7 +186,7 @@ export const api = {
 
     async createSubProject(s: SubProject) {
         await requireUserId();
-        const payload: any = {
+        const payload: Record<string, unknown> = {
             title: s.title,
             start_date: s.startDate,
             end_date: s.endDate,
@@ -222,7 +222,7 @@ export const api = {
 
     async createMilestone(m: Milestone) {
         await requireUserId();
-        const payload: any = {
+        const payload: Record<string, unknown> = {
             title: m.title,
             date: m.date,
             project_id: m.projectId,
@@ -253,7 +253,7 @@ export const api = {
 
     async createItem(i: TimelineItem) {
         await requireUserId();
-        const payload: any = {
+        const payload: Record<string, unknown> = {
             title: i.title,
             content: i.content,
             date: i.date,

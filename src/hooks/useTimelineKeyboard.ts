@@ -115,7 +115,7 @@ export function useTimelineKeyboard({
                 }
             });
         }
-    }, [timelineState, mutations, setSelectedIds, onQuickEdit, toggleSelection, clearSelection]);
+    }, [timelineState, mutations, setSelectedIds, onQuickEdit, clearSelection]);
 
     useEffect(() => {
         window.addEventListener('keydown', handleKeyDown);

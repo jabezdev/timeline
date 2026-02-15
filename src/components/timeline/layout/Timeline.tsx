@@ -4,17 +4,38 @@ import { useTimelineData } from '@/hooks/useTimelineData';
 import { useTimelineScroll } from '../hooks/useTimelineScroll';
 import { useTimelineHandlers } from '../hooks/useTimelineHandlers';
 import { useTimelineStore } from '@/hooks/useTimelineStore';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
+import { differenceInCalendarDays, parseISO } from 'date-fns';
 
 export function Timeline() {
-  const visibleDays = VISIBLE_DAYS;
+  const focusMode = useTimelineStore(state => state.focusMode);
 
   const {
     startDate,
     timelineRef,
     handleNavigate,
     handleTodayClick,
-  } = useTimelineScroll(visibleDays);
+  } = useTimelineScroll(VISIBLE_DAYS);
+
+  const { visibleDays, visibleWorkspaceIds } = useMemo(() => {
+    const selectedEntries = Object.entries(focusMode.matrix || {}).filter(([, weeks]) => weeks.length > 0);
+    const selectedWorkspaceIds = selectedEntries.map(([workspaceId]) => workspaceId);
+    const selectedWeekKeys = [...new Set(selectedEntries.flatMap(([, weeks]) => weeks))];
+
+    const isFocusActive = focusMode.enabled && selectedWorkspaceIds.length > 0 && selectedWeekKeys.length > 0;
+
+    const furthestSelectedDayOffset = selectedWeekKeys.reduce((maxOffset, weekKey) => {
+      const parsed = parseISO(weekKey);
+      if (Number.isNaN(parsed.getTime())) return maxOffset;
+      const offset = differenceInCalendarDays(parsed, startDate) + 7;
+      return Math.max(maxOffset, offset);
+    }, VISIBLE_DAYS);
+
+    return {
+      visibleDays: isFocusActive ? Math.max(VISIBLE_DAYS, furthestSelectedDayOffset) : VISIBLE_DAYS,
+      visibleWorkspaceIds: isFocusActive ? selectedWorkspaceIds : undefined,
+    };
+  }, [focusMode, startDate]);
 
   const { data: timelineState } = useTimelineData(startDate, visibleDays);
 
@@ -30,6 +51,7 @@ export function Timeline() {
       handleNavigate={handleNavigate}
       handleTodayClick={handleTodayClick}
       handlers={handlers}
+      visibleWorkspaceIds={visibleWorkspaceIds}
     />
   );
 }
@@ -44,6 +66,7 @@ interface TimelineContainerProps {
   handleNavigate: (dir: 'prev' | 'next') => void;
   handleTodayClick: () => void;
   handlers: ReturnType<typeof useTimelineHandlers>;
+  visibleWorkspaceIds?: string[];
 }
 
 const TimelineContainer = memo(function TimelineContainer({
@@ -53,9 +76,17 @@ const TimelineContainer = memo(function TimelineContainer({
   timelineRef,
   handleNavigate,
   handleTodayClick,
-  handlers
+  handlers,
+  visibleWorkspaceIds,
 }: TimelineContainerProps) {
-  const { allProjects, allSubProjects } = useTimelineSelectors(timelineState);
+  const visibleWorkspaceSet = useMemo(
+    () => visibleWorkspaceIds ? new Set(visibleWorkspaceIds) : undefined,
+    [visibleWorkspaceIds]
+  );
+
+  const { allProjects, allSubProjects } = useTimelineSelectors(timelineState, {
+    visibleWorkspaceIds: visibleWorkspaceSet,
+  });
 
   return (
     <TimelineView
@@ -86,6 +117,7 @@ const TimelineContainer = memo(function TimelineContainer({
       // Data
       allProjects={allProjects}
       allSubProjects={allSubProjects}
+      visibleWorkspaceIds={visibleWorkspaceSet}
     />
   );
 });

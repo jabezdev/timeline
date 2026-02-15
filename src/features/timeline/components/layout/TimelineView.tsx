@@ -37,6 +37,7 @@ interface TimelineViewProps {
     onClearSelection: (e?: React.MouseEvent) => void;
     allProjects: import('@/types/timeline').Project[];
     allSubProjects: SubProject[];
+    visibleWorkspaceIds?: Set<string>;
 }
 
 export const TimelineView = memo(function TimelineView(props: TimelineViewProps) {
@@ -65,6 +66,7 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
         handleItemDelete,
         allProjects,
         allSubProjects,
+        visibleWorkspaceIds,
     } = props;
 
 
@@ -74,10 +76,18 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
         projectsSubProjects,
         workspaceProjects,
         sortedWorkspaceIds,
-    } = useTimelineSelectors(timelineState);
+    } = useTimelineSelectors(timelineState, {
+        visibleWorkspaceIds,
+    });
 
     const { workspaces: workspacesMap } = timelineState;
     const blurEffectsEnabled = timelineState.userSettings?.blurEffectsEnabled ?? true;
+
+    const selectableWorkspaces = useMemo(() => {
+        return timelineState.workspaceOrder
+            .map(id => timelineState.workspaces[id])
+            .filter((ws): ws is NonNullable<typeof ws> => !!ws && !ws.isHidden);
+    }, [timelineState.workspaceOrder, timelineState.workspaces]);
 
     const daysWithStrings = useMemo(() => {
         return Array.from({ length: visibleDays }, (_, i) => {
@@ -103,10 +113,10 @@ export const TimelineView = memo(function TimelineView(props: TimelineViewProps)
                     <div className="sticky top-0 z-[60] bg-background border-b border-border flex">
                         <SidebarCell height={HEADER_HEIGHT} className="z-[61] border-b border-border" innerClassName="pl-4 pr-1">
                             <TimelineControls
-                                startDate={startDate}
                                 onNavigate={handleNavigate}
                                 onTodayClick={handleTodayClick}
                                 blurEffectsEnabled={blurEffectsEnabled}
+                                workspaces={selectableWorkspaces}
                             >
                                 <span className="text-xs font-semibold text-muted-foreground/70 tracking-wider">TIMELINE</span>
                             </TimelineControls>
