@@ -1,18 +1,58 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { TimelineState, Milestone } from '@/types/timeline';
+import { useMutation } from 'convex/react';
+import { api } from '@convex/_generated/api';
+import { Id } from '@convex/_generated/dataModel';
+import { Milestone } from '@/types/timeline';
 
-export function useMilestoneMutations(
-    updateTimelineDataCache: (updater: (oldData: Partial<TimelineState>) => Partial<TimelineState>) => void
-) {
-    const queryClient = useQueryClient();
+export function useMilestoneMutations() {
+    const createFn = useMutation(api.milestones.create);
+    const updateFn = useMutation(api.milestones.update);
+    const removeFn = useMutation(api.milestones.remove);
+    const reorderFn = useMutation(api.milestones.reorder);
 
-    const addMilestone = useMutation({
-        mutationFn: api.createMilestone,
-        onMutate: async (newMilestone) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
-            const optimId = `temp-ms-${Date.now()}`;
+    const addMilestone = {
+        mutate: (m: Omit<Milestone, 'id'>) => {
+            createFn({
+                projectId: m.projectId as Id<'projects'>,
+                title: m.title,
+                date: m.date,
+                content: m.content,
+                color: m.color,
+                position: m.position,
+            }).catch(err => console.error('addMilestone failed:', err));
+        },
+    };
+
+    const updateMilestone = {
+        mutate: ({ id, updates }: { id: string; updates: Partial<Milestone> }) => {
+            updateFn({
+                id: id as Id<'milestones'>,
+                title: updates.title,
+                date: updates.date,
+                content: updates.content,
+                color: updates.color,
+                position: updates.position,
+            }).catch(err => console.error('updateMilestone failed:', err));
+        },
+    };
+
+    const deleteMilestone = {
+        mutate: (id: string) => {
+            removeFn({ id: id as Id<'milestones'> })
+                .catch(err => console.error('deleteMilestone failed:', err));
+        },
+    };
+
+    const reorderMilestones = {
+        mutate: (milestones: Partial<Milestone>[]) => {
+            reorderFn({
+                milestones: milestones.map(m => ({ id: m.id as string, position: m.position ?? 0 })),
+            }).catch(err => console.error('reorderMilestones failed:', err));
+        },
+    };
+
+    return { addMilestone, updateMilestone, deleteMilestone, reorderMilestones };
+}
+
 
             updateTimelineDataCache((old) => ({
                 ...old,

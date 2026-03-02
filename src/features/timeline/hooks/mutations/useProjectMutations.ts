@@ -1,148 +1,52 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { TimelineState, Project } from '@/types/timeline';
+import { useMutation } from 'convex/react';
+import { api } from '@convex/_generated/api';
+import { Id } from '@convex/_generated/dataModel';
+import { Project } from '@/types/timeline';
 
-export function useProjectMutations(
-    updateTimelineDataCache: (updater: (oldData: Partial<TimelineState>) => Partial<TimelineState>) => void,
-    updateStructureCache: (updater: (oldData: Partial<TimelineState>) => Partial<TimelineState>) => void
-) {
-    const queryClient = useQueryClient();
+export function useProjectMutations() {
+    const createFn = useMutation(api.projects.create);
+    const updateFn = useMutation(api.projects.update);
+    const removeFn = useMutation(api.projects.remove);
+    const reorderFn = useMutation(api.projects.reorder);
 
-    const addProject = useMutation({
-        mutationFn: api.createProject,
-        onMutate: async (newProject) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
-            const optimId = `temp-proj-${Date.now()}`;
-
-            updateStructureCache((old) => {
-                const projects = { ...old.projects };
-                projects[optimId] = {
-                    id: optimId,
-                    ...newProject,
-                    color: newProject.color?.toString(),
-                    isHidden: false
-                } as Project;
-                return { ...old, projects };
-            });
-
-            return { previousState, optimId };
+    const addProject = {
+        mutate: (p: Omit<Project, 'id' | 'isCollapsed'> & { workspaceId: string }) => {
+            createFn({
+                workspaceId: p.workspaceId as Id<'workspaces'>,
+                name: p.name,
+                color: p.color,
+                position: p.position ?? 0,
+                isHidden: p.isHidden ?? false,
+            }).catch(err => console.error('addProject failed:', err));
         },
-        onError: (err, newProject, context) => {
-            console.error('addProject failed:', err, newProject);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'structure'], context.previousState);
-            }
-        },
-        onSuccess: (data, variables, context) => {
-            if (context?.optimId) {
-                updateStructureCache((old) => {
-                    const projects = { ...old.projects };
-                    if (projects[context.optimId]) {
-                        projects[data.id] = { ...projects[context.optimId], id: data.id };
-                        delete projects[context.optimId];
-                    }
-                    return { ...old, projects };
-                });
-            }
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
-        }
-    });
-
-    const updateProject = useMutation({
-        mutationFn: ({ id, updates }: { id: string; updates: Partial<Project> }) => api.updateProject(id, updates),
-        onMutate: async ({ id, updates }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
-
-            updateStructureCache((old) => {
-                const projects = { ...old.projects };
-                if (projects[id]) {
-                    projects[id] = { ...projects[id], ...updates };
-                }
-                return { ...old, projects };
-            });
-
-            return { previousState };
-        },
-        onError: (err, vars, context) => {
-            console.error('updateProject failed:', err, vars);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'structure'], context.previousState);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
-        }
-    });
-
-    const deleteProject = useMutation({
-        mutationFn: api.deleteProject,
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
-
-            updateStructureCache((old) => {
-                const projects = { ...old.projects };
-                delete projects[id];
-                return { ...old, projects };
-            });
-
-            return { previousState };
-        },
-        onError: (err, id, context) => {
-            console.error('deleteProject failed:', err, id);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'structure'], context.previousState);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
-
-    const reorderProjects = useMutation({
-        mutationFn: (projectIds: string[]) => {
-            const projectsToUpdate = projectIds.map((id, index) => ({ id, position: index }));
-            return api.reorderProjects(projectsToUpdate);
-        },
-        onMutate: async (projectIds) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'structure'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'structure']);
-
-            // Optimistic update for reordering is complex as position is property of Project, not a separate list
-            // and we might not have all projects in memory if strictly following structure optimization
-            // For simplicity, we might just invalidate or try to update local store if we had order as array
-            // But here structure.projects is map. Projects have 'position' field.
-
-            updateStructureCache((old) => {
-                const projects = { ...old.projects };
-                projectIds.forEach((id, index) => {
-                    if (projects[id]) {
-                        projects[id] = { ...projects[id], position: index };
-                    }
-                });
-                return { ...old, projects };
-            });
-
-            return { previousState };
-        },
-        onError: (err, vars, context) => {
-            console.error('reorderProjects failed:', err, vars);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'structure'], context.previousState);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'structure'] });
-        }
-    });
-
-    return {
-        addProject,
-        updateProject,
-        deleteProject,
-        reorderProjects
     };
+
+    const updateProject = {
+        mutate: ({ id, updates }: { id: string; updates: Partial<Project> }) => {
+            updateFn({
+                id: id as Id<'projects'>,
+                name: updates.name,
+                color: updates.color,
+                position: updates.position,
+                workspaceId: updates.workspaceId as Id<'workspaces'> | undefined,
+                isHidden: updates.isHidden,
+            }).catch(err => console.error('updateProject failed:', err));
+        },
+    };
+
+    const deleteProject = {
+        mutate: (id: string) => {
+            removeFn({ id: id as Id<'projects'> })
+                .catch(err => console.error('deleteProject failed:', err));
+        },
+    };
+
+    const reorderProjects = {
+        mutate: ({ projectIds }: { workspaceId: string; projectIds: string[] }) => {
+            reorderFn({ projectIds })
+                .catch(err => console.error('reorderProjects failed:', err));
+        },
+    };
+
+    return { addProject, updateProject, deleteProject, reorderProjects };
 }

@@ -1,32 +1,23 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
-import { AuthProvider } from "./components/auth/AuthProvider";
 import { RequireAuth } from "./components/auth/RequireAuth";
 import NotFound from "./pages/NotFound";
 
 import { ThemeProvider } from "next-themes";
 import { useThemeInitializer } from "./hooks/useThemeInitializer";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes (RAM cache)
-      gcTime: 1000 * 60 * 60 * 24 * 7, // 7 days (Disk cache / garbage collection)
-    },
-  },
-});
+import { ClerkProvider } from "@clerk/clerk-react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { convex } from "./lib/convex";
 
-const persister = createSyncStoragePersister({
-  storage: window.localStorage,
-});
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!CLERK_PUBLISHABLE_KEY) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY environment variable.");
+}
 
 function ThemeInitializer({ children }: { children: React.ReactNode }) {
   useThemeInitializer();
@@ -34,13 +25,10 @@ function ThemeInitializer({ children }: { children: React.ReactNode }) {
 }
 
 const App = () => (
-  <PersistQueryClientProvider
-    client={queryClient}
-    persistOptions={{ persister }}
-  >
-    <ThemeProvider attribute="class" defaultTheme="system">
-      <ThemeInitializer>
-        <AuthProvider>
+  <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ConvexProviderWithClerk client={convex}>
+      <ThemeProvider attribute="class" defaultTheme="system">
+        <ThemeInitializer>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -57,11 +45,12 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
-        </AuthProvider>
-      </ThemeInitializer>
-    </ThemeProvider>
-  </PersistQueryClientProvider>
+        </ThemeInitializer>
+      </ThemeProvider>
+    </ConvexProviderWithClerk>
+  </ClerkProvider>
 );
 
 export default App;
+
 

@@ -1,13 +1,21 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { TimelineState } from '@/types/timeline';
+import { useQuery } from 'convex/react';
+import { api } from '@convex/_generated/api';
+
+// ---------------------------------------------------------------------------
+// Thin wrappers around Convex reactive queries that preserve the
+// { data, isLoading, isError, error, refetch } shape used throughout the app.
+// Convex queries auto-update in real-time; refetch is a no-op.
+// ---------------------------------------------------------------------------
 
 export function useStructureQuery() {
-    return useQuery({
-        queryKey: ['timeline', 'structure'],
-        queryFn: () => api.fetchStructure(),
-        staleTime: Infinity, // Structure changes rarely
-    });
+    const data = useQuery(api.workspaces.getStructure);
+    return {
+        data: data ?? undefined,
+        isLoading: data === undefined,
+        isError: false,
+        error: null,
+        refetch: () => {},
+    };
 }
 
 interface TimelineDateRange {
@@ -16,13 +24,12 @@ interface TimelineDateRange {
 }
 
 export function useTimelineDataQuery({ startDate, endDate }: TimelineDateRange) {
-    return useQuery({
-        queryKey: ['timeline', 'data', { startDate, endDate }],
-        queryFn: () => api.fetchTimelineData(startDate, endDate),
-        // Make remote DB the priority. Always refetch on focus.
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false, // Prevent clearing on window focus if network is down
-        enabled: !!startDate && !!endDate,
-        placeholderData: keepPreviousData,
-    });
+    const data = useQuery(api.timelineItems.getByDateRange, { startDate, endDate });
+    return {
+        data: data ?? undefined,
+        isLoading: data === undefined,
+        isError: false,
+        error: null,
+        refetch: () => {},
+    };
 }

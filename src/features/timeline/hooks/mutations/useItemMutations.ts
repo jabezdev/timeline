@@ -1,266 +1,125 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { TimelineState, TimelineItem, SubProject } from '@/types/timeline';
+import { useMutation } from 'convex/react';
+import { api } from '@convex/_generated/api';
+import { Id } from '@convex/_generated/dataModel';
+import { TimelineItem, SubProject } from '@/types/timeline';
 
-export function useItemMutations(
-    updateTimelineDataCache: (updater: (oldData: Partial<TimelineState>) => Partial<TimelineState>) => void
-) {
-    const queryClient = useQueryClient();
+export function useItemMutations() {
+    const createFn = useMutation(api.timelineItems.create);
+    const updateFn = useMutation(api.timelineItems.update);
+    const removeFn = useMutation(api.timelineItems.remove);
+    const reorderFn = useMutation(api.timelineItems.reorder);
+    const batchUpdateFn = useMutation(api.timelineItems.batchUpdate);
+    const createSPFn = useMutation(api.subProjects.create);
+    const updateSPFn = useMutation(api.subProjects.update);
+    const removeSPFn = useMutation(api.subProjects.remove);
 
-    const addItem = useMutation({
-        mutationFn: api.createItem,
-        onMutate: async (newItem) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
-            const optimId = `temp-item-${Date.now()}`;
-
-            updateTimelineDataCache((old) => ({
-                ...old,
-                items: {
-                    ...old.items,
-                    [optimId]: {
-                        id: optimId,
-                        ...newItem,
-                        completed: false
-                    }
-                }
-            }));
-
-            return { previousState, optimId };
+    const addItem = {
+        mutate: (i: Omit<TimelineItem, 'id'>) => {
+            createFn({
+                projectId: i.projectId as Id<'projects'>,
+                title: i.title,
+                date: i.date,
+                content: i.content,
+                completed: i.completed ?? false,
+                subProjectId: i.subProjectId as Id<'subProjects'> | undefined,
+                color: i.color,
+                position: i.position,
+            }).catch(err => console.error('addItem failed:', err));
         },
-        onError: (err, newItem, context) => {
-            console.error('addItem failed:', err, newItem);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
-            }
+    };
+
+    const updateItem = {
+        mutate: ({ id, updates }: { id: string; updates: Partial<TimelineItem> }) => {
+            updateFn({
+                id: id as Id<'timelineItems'>,
+                title: updates.title,
+                content: updates.content,
+                date: updates.date,
+                completed: updates.completed,
+                subProjectId: updates.subProjectId as Id<'subProjects'> | undefined,
+                color: updates.color,
+                position: updates.position,
+                completedAt: updates.completedAt,
+            }).catch(err => console.error('updateItem failed:', err));
         },
-        onSuccess: (data, variables, context) => {
-            if (context?.optimId) {
-                updateTimelineDataCache((old) => {
-                    const items = { ...old.items };
-                    if (items[context.optimId]) {
-                        items[data.id] = { ...items[context.optimId], id: data.id };
-                        delete items[context.optimId];
-                    }
-                    return { ...old, items };
-                });
-            }
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
+    };
 
-    const updateItem = useMutation({
-        mutationFn: ({ id, updates }: { id: string; updates: Partial<TimelineItem> }) => api.updateItem(id, updates),
-        onMutate: async ({ id, updates }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
-
-            updateTimelineDataCache((old) => ({
-                ...old,
-                items: {
-                    ...old.items,
-                    [id]: { ...old.items?.[id], ...updates } as TimelineItem
-                }
-            }));
-
-            return { previousState };
+    const deleteItem = {
+        mutate: (id: string) => {
+            removeFn({ id: id as Id<'timelineItems'> })
+                .catch(err => console.error('deleteItem failed:', err));
         },
-        onError: (err, vars, context) => {
-            console.error('updateItem failed:', err, vars);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
-            }
+    };
+
+    const reorderItems = {
+        mutate: (items: Partial<TimelineItem>[]) => {
+            reorderFn({
+                items: items.map(i => ({ id: i.id as string, position: i.position ?? 0 })),
+            }).catch(err => console.error('reorderItems failed:', err));
         },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
+    };
 
-    const deleteItem = useMutation({
-        mutationFn: api.deleteItem,
-        onMutate: async (id) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
-
-            updateTimelineDataCache((old) => {
-                const items = { ...old.items };
-                delete items[id];
-                return { ...old, items };
-            });
-
-            return { previousState };
+    const batchUpdateItems = {
+        mutate: (items: Partial<TimelineItem>[]) => {
+            batchUpdateFn({
+                updates: items.map(({ id, ...fields }) => ({
+                    id: id as string,
+                    title: fields.title,
+                    content: fields.content,
+                    date: fields.date,
+                    completed: fields.completed,
+                    color: fields.color,
+                    position: fields.position,
+                    completedAt: fields.completedAt,
+                })),
+            }).catch(err => console.error('batchUpdateItems failed:', err));
         },
-        onError: (err, id, context) => {
-            console.error('deleteItem failed:', err, id);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
-            }
+    };
+
+    const addSubProject = {
+        mutate: (s: Omit<SubProject, 'id'>) => {
+            createSPFn({
+                projectId: s.projectId as Id<'projects'>,
+                title: s.title,
+                startDate: s.startDate,
+                endDate: s.endDate,
+                color: s.color,
+                description: s.description,
+            }).catch(err => console.error('addSubProject failed:', err));
         },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
+    };
 
-    const reorderItems = useMutation({
-        mutationFn: api.reorderItems,
-        onMutate: async (items) => {
-            // Optimistic update for reorder items inside a project/subproject container? 
-            // Currently API takes list of IDs. Frontend usually just needs to invalidate or update sort orders if tracked.
-            // Assuming no manual sort order field on items yet visible in this scope, or handled by backend.
-            return {};
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
-
-    // --- SubProjects ---
-    // SubProjects are like items but container-like.
-    const addSubProject = useMutation({
-        mutationFn: api.createSubProject,
-        onMutate: async (newSP) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
-            const optimId = `temp-sp-${Date.now()}`;
-
-            updateTimelineDataCache((old) => ({
-                ...old,
-                subProjects: {
-                    ...old.subProjects,
-                    [optimId]: {
-                        id: optimId,
-                        ...newSP,
-                        collapsed: false
-                    } as SubProject
-                }
-            }));
-
-            return { previousState, optimId };
-        },
-        onError: (err, newSP, context) => {
-            console.error('addSubProject failed:', err, newSP);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
-            }
-        },
-        onSuccess: (data, variables, context) => {
-            if (context?.optimId) {
-                updateTimelineDataCache((old) => {
-                    const subProjects = { ...old.subProjects };
-                    if (subProjects[context.optimId]) {
-                        subProjects[data.id] = { ...subProjects[context.optimId], id: data.id };
-                        delete subProjects[context.optimId];
-                    }
-                    return { ...old, subProjects };
-                });
-            }
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
-
-    const updateSubProject = useMutation({
-        mutationFn: async ({ id, updates, childItemsToUpdate }: { id: string; updates: Partial<SubProject>; childItemsToUpdate?: Partial<TimelineItem>[] }) => {
-            // 1. Update SubProject
-            await api.updateSubProject(id, updates);
-
-            // 2. Update children if any
+    const updateSubProject = {
+        mutate: ({ id, updates, childItemsToUpdate }: { id: string; updates: Partial<SubProject>; childItemsToUpdate?: Partial<TimelineItem>[] }) => {
+            updateSPFn({
+                id: id as Id<'subProjects'>,
+                title: updates.title,
+                startDate: updates.startDate,
+                endDate: updates.endDate,
+                color: updates.color,
+                description: updates.description,
+            }).catch(err => console.error('updateSubProject failed:', err));
             if (childItemsToUpdate && childItemsToUpdate.length > 0) {
-                await api.batchUpdateItems(childItemsToUpdate);
+                batchUpdateFn({
+                    updates: childItemsToUpdate.map(({ id: itemId, ...fields }) => ({
+                        id: itemId as string,
+                        date: fields.date,
+                        completedAt: fields.completedAt,
+                    })),
+                }).catch(err => console.error('batchUpdateItems (for SP) failed:', err));
             }
         },
-        onMutate: async ({ id, updates, childItemsToUpdate }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
+    };
 
-            updateTimelineDataCache((old) => {
-                const newState = {
-                    ...old,
-                    subProjects: {
-                        ...old.subProjects,
-                        [id]: { ...old.subProjects?.[id], ...updates } as SubProject
-                    }
-                };
-
-                // Optimistic child updates
-                if (childItemsToUpdate && childItemsToUpdate.length > 0) {
-                    const newItems = { ...newState.items };
-                    childItemsToUpdate.forEach(itemUpdate => {
-                        if (itemUpdate.id && newItems[itemUpdate.id]) {
-                            newItems[itemUpdate.id] = { ...newItems[itemUpdate.id], ...itemUpdate } as TimelineItem;
-                        }
-                    });
-                    newState.items = newItems;
-                }
-
-                return newState;
-            });
-
-            return { previousState };
+    const deleteSubProject = {
+        mutate: ({ id, deleteItems }: { id: string; deleteItems?: boolean }) => {
+            removeSPFn({ id: id as Id<'subProjects'>, deleteItems })
+                .catch(err => console.error('deleteSubProject failed:', err));
         },
-        onError: (err, vars, context) => {
-            console.error('updateSubProject failed:', err, vars);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
-
-    const deleteSubProject = useMutation({
-        mutationFn: async ({ id, deleteItems }: { id: string; deleteItems?: boolean }) => {
-            return api.deleteSubProject(id, deleteItems);
-        },
-        onMutate: async ({ id, deleteItems }) => {
-            await queryClient.cancelQueries({ queryKey: ['timeline', 'data'] });
-            const previousState = queryClient.getQueryData<Partial<TimelineState>>(['timeline', 'data']);
-
-            updateTimelineDataCache((old) => {
-                const subProjects = { ...old.subProjects };
-                delete subProjects[id];
-
-                let items = old.items || {};
-                if (deleteItems) {
-                    items = { ...items };
-                    Object.keys(items).forEach(itemId => {
-                        if (items[itemId].subProjectId === id) {
-                            delete items[itemId];
-                        }
-                    });
-                } else {
-                    // Just unlink
-                    items = { ...items };
-                    Object.keys(items).forEach(itemId => {
-                        if (items[itemId].subProjectId === id) {
-                            items[itemId] = { ...items[itemId], subProjectId: undefined };
-                        }
-                    });
-                }
-
-                return { ...old, subProjects, items };
-            });
-
-            return { previousState };
-        },
-        onError: (err, vars, context) => {
-            console.error('deleteSubProject failed:', err, vars);
-            if (context?.previousState) {
-                queryClient.setQueryData(['timeline', 'data'], context.previousState);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ['timeline', 'data'] });
-        }
-    });
+    };
 
     return {
-        addItem,
-        updateItem,
-        deleteItem,
-        reorderItems,
-        addSubProject,
-        updateSubProject,
-        deleteSubProject
+        addItem, updateItem, deleteItem, reorderItems, batchUpdateItems,
+        addSubProject, updateSubProject, deleteSubProject,
     };
 }

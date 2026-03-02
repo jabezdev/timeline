@@ -1,15 +1,15 @@
-import { useAuth } from '@/components/auth/AuthProvider';
+import { useUser } from '@clerk/clerk-react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
-    const { user, loading } = useAuth();
+    const { isSignedIn, isLoaded } = useUser();
     const location = useLocation();
 
-    if (loading) {
+    if (!isLoaded) {
         return <div className="h-screen w-screen flex items-center justify-center bg-background">Loading...</div>;
     }
 
-    if (!user) {
+    if (!isSignedIn) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
