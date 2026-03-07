@@ -18,15 +18,15 @@ Most productivity tools fall into two camps: they're either too simple (checklis
 - **🏗️ Structured for Focus**: I organized it into `Workspaces` > `Projects` > `Sub-Projects` / `Milestones` > `Items`. It's the only way I can keep my side projects separate from each other without losing my mind.
 - **📅 Visual Timeline**: A horizontal, date-driven view. It's a map of my time.
 - **⚡ Zero Friction**: I hate waiting for spinners. This app is built to be snappy—instant updates, no-nonsense drag-and-drop, and a UI that stays out of my way.
-- **🔄 Sync Everywhere**: I use Supabase to make sure my data is everywhere I am, instantly.
+- **🔄 Sync Everywhere**: I use Convex to make sure my data is everywhere I am, instantly.
 
 ## 🛠️ The Gear Under the Hood
 
 This is my playground for testing modern tech:
 - **Frontend**: [React](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/).
 - **Styles**: [Tailwind CSS](https://tailwindcss.com/) with [shadcn/ui](https://ui.shadcn.com/) for the core components.
-- **State**: Combo of [TanStack Query](https://tanstack.com/query/latest) and [Zustand](https://github.com/pmndrs/zustand).
-- **Backend**: [Supabase](https://supabase.com/) free tier since it's just for me.
+- **State**: [Convex](https://www.convex.dev/) for real-time data and [Zustand](https://github.com/pmndrs/zustand) for local state.
+- **Backend**: [Convex](https://www.convex.dev/) for everything—database, auth validation, and server functions.
 
 ## 🚀 How to Run It (If You Want To)
 
@@ -42,14 +42,15 @@ This is my playground for testing modern tech:
    ```
 
 3. **Set up your environment**
-   You'll need your own Supabase project:
+   You'll need your own Convex project:
    ```env
-   VITE_SUPABASE_URL=your_url
-   VITE_SUPABASE_ANON_KEY=your_key
+   VITE_CONVEX_URL=your_convex_url
+   VITE_CLERK_PUBLISHABLE_KEY=your_clerk_key
    ```
 
 4. **Fire it up**
    ```bash
+   npx convex dev
    npm run dev
    ```
 
